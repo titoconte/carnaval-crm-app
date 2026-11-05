@@ -86,8 +86,13 @@ export default function Home() {
   const [configInstagram, setConfigInstagram] = useState<ConfiguracaoInstagram>(CONFIG_INSTAGRAM_INICIAL);
   const [temaAno, setTemaAno] = useState<TemaAnoBloco>(TEMA_ANO_INICIAL);
 
-  // Carrega dados salvos no LocalStorage
+  // Estados de conexão e sincronização com Vercel Postgres / Neon
+  const [dbConnected, setDbConnected] = useState<boolean | null>(null);
+  const [dbSyncing, setDbSyncing] = useState(false);
+
+  // Carrega dados salvos no LocalStorage e sincroniza com o Vercel Postgres
   useEffect(() => {
+    // 1. Carregamento inicial rápido via LocalStorage (offline-first)
     try {
       const sTarefas = localStorage.getItem('bicha_tarefas_v2');
       if (sTarefas) setTarefas(JSON.parse(sTarefas));
@@ -142,9 +147,42 @@ export default function Home() {
     } catch (e) {
       console.error('Erro ao ler LocalStorage:', e);
     }
+
+    // 2. Sincroniza com o Vercel Postgres caso ativo no backend
+    fetch('/api/db/sync')
+      .then(res => res.json())
+      .then(data => {
+        if (data.configured) {
+          setDbConnected(true);
+          const est = data.estados || {};
+          if (est.tarefas) setTarefas(est.tarefas);
+          if (est.macrotarefas) setMacrotarefas(est.macrotarefas);
+          if (est.movimentosBar) setMovimentosBar(est.movimentosBar);
+          if (est.bilhetesRifa) setBilhetesRifa(est.bilhetesRifa);
+          if (est.rifas) setRifas(est.rifas);
+          if (est.vendasRifas) setVendasRifas(est.vendasRifas);
+          if (est.inscritos) setInscritos(est.inscritos);
+          if (est.integrantes) setIntegrantes(est.integrantes);
+          if (est.musicas) setMusicas(est.musicas);
+          if (est.letrasCifras) setLetrasCifras(est.letrasCifras);
+          if (est.enquetes) setEnquetes(est.enquetes);
+          if (est.documentos) setDocumentos(est.documentos);
+          if (est.cores) setCores(est.cores);
+          if (est.artes) setArtes(est.artes);
+          if (est.postsInstagram) setPostsInstagram(est.postsInstagram);
+          if (est.configInstagram) setConfigInstagram(est.configInstagram);
+          if (est.temaAno) setTemaAno(est.temaAno);
+        } else {
+          setDbConnected(false);
+        }
+      })
+      .catch(err => {
+        console.warn('Vercel Postgres indisponível. Operando via LocalStorage.', err);
+        setDbConnected(false);
+      });
   }, []);
 
-  // Salva no LocalStorage
+  // Salva no LocalStorage e envia atualização debounced ao Vercel Postgres
   useEffect(() => {
     try {
       localStorage.setItem('bicha_tarefas_v2', JSON.stringify(tarefas));
@@ -167,7 +205,42 @@ export default function Home() {
     } catch (e) {
       console.error('Erro ao salvar LocalStorage:', e);
     }
-  }, [tarefas, macrotarefas, movimentosBar, bilhetesRifa, rifas, vendasRifas, inscritos, integrantes, musicas, letrasCifras, enquetes, documentos, cores, artes, postsInstagram, configInstagram, temaAno]);
+
+    if (!dbConnected) return;
+
+    const timer = setTimeout(() => {
+      setDbSyncing(true);
+      fetch('/api/db/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          batch: {
+            tarefas,
+            macrotarefas,
+            movimentosBar,
+            bilhetesRifa,
+            rifas,
+            vendasRifas,
+            inscritos,
+            integrantes,
+            musicas,
+            letrasCifras,
+            enquetes,
+            documentos,
+            cores,
+            artes,
+            postsInstagram,
+            configInstagram,
+            temaAno
+          }
+        })
+      })
+        .catch(e => console.error('Erro na sincronização Vercel Postgres:', e))
+        .finally(() => setDbSyncing(false));
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [tarefas, macrotarefas, movimentosBar, bilhetesRifa, rifas, vendasRifas, inscritos, integrantes, musicas, letrasCifras, enquetes, documentos, cores, artes, postsInstagram, configInstagram, temaAno, dbConnected]);
 
   // Contagem de tarefas órfãs
   const orfasCount = tarefas.filter(
@@ -196,6 +269,8 @@ export default function Home() {
         setIsAdmin={setIsAdmin}
         openAdminModal={() => setAdminModalOpen(true)}
         temaTitulo={temaAno.titulo}
+        dbConnected={dbConnected}
+        dbSyncing={dbSyncing}
       />
 
       {/* Menu Fanzine de Navegação */}

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Lock, Unlock, Calendar, Sparkles, PartyPopper } from 'lucide-react';
+import { Lock, Unlock, Calendar, Sparkles, PartyPopper, Database } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface HeaderProps {
@@ -9,14 +9,24 @@ interface HeaderProps {
   setIsAdmin: (val: boolean) => void;
   openAdminModal: () => void;
   temaTitulo?: string;
+  dbConnected?: boolean | null;
+  dbSyncing?: boolean;
 }
 
 /**
  * Cabeçalho do Bloco Bicharada com as Cores Oficiais e Estilo Fanzine Carnavalesco.
  * - Versão Desktop: Banner completo com contagem regressiva em destaque e logo oficial.
  * - Versão Mobile: Painel compacto (~85px) para não empurrar os botões e abas para fora da tela.
+ * - Indicador Vercel Postgres: Mostra se o app está sincronizado com a nuvem ou em modo local.
  */
-export default function Header({ isAdmin, setIsAdmin, openAdminModal, temaTitulo = 'Solta pelos Ares 🪽' }: HeaderProps) {
+export default function Header({
+  isAdmin,
+  setIsAdmin,
+  openAdminModal,
+  temaTitulo = 'Solta pelos Ares 🪽',
+  dbConnected,
+  dbSyncing = false
+}: HeaderProps) {
   const [timeLeft, setTimeLeft] = useState<{ dias: number; horas: number; minutos: number }>({ dias: 0, horas: 0, minutos: 0 });
 
   useEffect(() => {
@@ -56,15 +66,44 @@ export default function Header({ isAdmin, setIsAdmin, openAdminModal, temaTitulo
       <div className="hidden sm:flex flex-col items-center justify-center py-5 px-4 text-center max-w-4xl mx-auto relative z-10">
         {/* Barra superior de status & Acesso Coordenação */}
         <div className="w-full flex items-center justify-between mb-2">
-          <button
-            type="button"
-            onClick={dispararConfetes}
-            className="flex items-center gap-1.5 px-2.5 py-1 bg-[#FBBF24] text-[#1E1B2E] border-2 border-[#1E1B2E] font-black uppercase text-[11px] shadow-[2px_2px_0px_#1E1B2E] rotate-[-1deg] transition-all hover:scale-105 active:scale-95 cursor-pointer"
-            title="Lançar confete da Bicharada"
-          >
-            <PartyPopper className="w-3.5 h-3.5 text-[#E6007E]" />
-            <span>Florianópolis • 2027</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={dispararConfetes}
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-[#FBBF24] text-[#1E1B2E] border-2 border-[#1E1B2E] font-black uppercase text-[11px] shadow-[2px_2px_0px_#1E1B2E] rotate-[-1deg] transition-all hover:scale-105 active:scale-95 cursor-pointer"
+              title="Lançar confete da Bicharada"
+            >
+              <PartyPopper className="w-3.5 h-3.5 text-[#E6007E]" />
+              <span>Florianópolis • 2027</span>
+            </button>
+
+            {dbConnected !== undefined && (
+              <div
+                className={`flex items-center gap-1.5 px-2.5 py-1 border-2 border-[#1E1B2E] font-mono font-bold text-[10px] uppercase shadow-[2px_2px_0px_#1E1B2E] ${
+                  dbConnected
+                    ? 'bg-[#00D287] text-[#1E1B2E]'
+                    : 'bg-stone-200 text-stone-700'
+                }`}
+                title={
+                  dbConnected
+                    ? 'Conectado ao Vercel Postgres / Neon em Nuvem'
+                    : 'Modo Local (LocalStorage) - Ative POSTGRES_URL para sincronização em nuvem'
+                }
+              >
+                <Database className="w-3 h-3" />
+                <span>
+                  {dbSyncing
+                    ? 'Salvando no Postgres...'
+                    : dbConnected
+                    ? 'Vercel Postgres Ativo'
+                    : 'Modo Local (LocalStorage)'}
+                </span>
+                {dbConnected && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#1E1B2E] animate-pulse" />
+                )}
+              </div>
+            )}
+          </div>
 
           <button
             type="button"
@@ -132,6 +171,17 @@ export default function Header({ isAdmin, setIsAdmin, openAdminModal, temaTitulo
             <span className="font-mono text-[11px] font-bold text-white truncate">
               {timeLeft.dias}d {timeLeft.horas}h p/ Desfile
             </span>
+            {dbConnected !== undefined && (
+              <span
+                className={`text-[9px] font-mono font-bold px-1.5 py-0.5 border border-black uppercase shadow-[1px_1px_0px_#000] flex items-center gap-1 shrink-0 ${
+                  dbConnected ? 'bg-[#00D287] text-[#1E1B2E]' : 'bg-stone-200 text-stone-700'
+                }`}
+                title={dbConnected ? 'Vercel Postgres Ativo' : 'Modo Local'}
+              >
+                <Database className="w-2.5 h-2.5" />
+                <span>{dbConnected ? 'Postgres' : 'Local'}</span>
+              </span>
+            )}
           </div>
 
           <button

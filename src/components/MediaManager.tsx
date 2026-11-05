@@ -311,6 +311,11 @@ export default function MediaManager({
    * Dispara o download de um arquivo de arte.
    */
   const handleBaixarArte = (arte: ArquivoArteMidia) => {
+    if (arte.conteudoBase64OuTexto && (arte.conteudoBase64OuTexto.startsWith('http://') || arte.conteudoBase64OuTexto.startsWith('https://'))) {
+      window.open(arte.conteudoBase64OuTexto, '_blank');
+      return;
+    }
+
     if (arte.conteudoBase64OuTexto && arte.conteudoBase64OuTexto.startsWith('data:')) {
       const link = document.createElement('a');
       link.href = arte.conteudoBase64OuTexto;

@@ -153,6 +153,12 @@ export default function DocumentsManager({
    */
   const handleBaixarDocumento = (doc: DocumentoBloco) => {
     try {
+      const urlRemota = doc.urlDownload || doc.conteudoBase64OuTexto;
+      if (urlRemota && (urlRemota.startsWith('http://') || urlRemota.startsWith('https://'))) {
+        window.open(urlRemota, '_blank');
+        return;
+      }
+
       if (doc.conteudoBase64OuTexto && doc.conteudoBase64OuTexto.startsWith('data:')) {
         const link = document.createElement('a');
         link.href = doc.conteudoBase64OuTexto;
@@ -160,6 +166,7 @@ export default function DocumentsManager({
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        return;
       } else {
         // Gera um arquivo de texto formatado como documento oficial representativo
         const conteudo = 
