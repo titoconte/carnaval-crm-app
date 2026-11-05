@@ -276,94 +276,155 @@ export default function DocumentsManager({
         </div>
       </div>
 
-      {/* Tabela de Documentos Baixáveis */}
-      <div className="vintage-card p-3 sm:p-4 overflow-x-auto">
+      {/* Tabela de Documentos Baixáveis (Desktop) e Lista de Cards (Mobile) */}
+      <div className="vintage-card p-3 sm:p-4">
         {documentosFiltrados.length === 0 ? (
           <div className="text-center py-12 text-stone-500 font-mono text-xs">
             Nenhum documento encontrado com os filtros e busca informados.
           </div>
         ) : (
-          <table className="w-full text-left border-collapse text-xs font-mono min-w-[650px]">
-            <thead>
-              <tr className="border-b-2 border-[#1E1B2E] bg-stone-100 text-[#1E1B2E]">
-                <th className="p-2.5 font-black uppercase">Título do Documento & Descrição</th>
-                <th className="p-2.5 font-black uppercase">Tags</th>
-                <th className="p-2.5 font-black uppercase">Arquivo & Tamanho</th>
-                <th className="p-2.5 font-black uppercase">Data de Envio</th>
-                <th className="p-2.5 font-black uppercase text-center">Ação</th>
-              </tr>
-            </thead>
-            <tbody>
+          <>
+            {/* VERSÃO MOBILE: Cards em Lista com Botão de Baixar em Destaque */}
+            <div className="md:hidden space-y-3">
               {documentosFiltrados.map((doc) => (
-                <tr
+                <div
                   key={doc.id}
-                  className="border-b border-stone-200 hover:bg-pink-50/40 transition-colors"
+                  className="p-3 bg-stone-50 border-2 border-[#1E1B2E] shadow-[2px_2px_0px_#1E1B2E] space-y-2.5"
                 >
-                  <td className="p-2.5 max-w-xs">
-                    <div className="flex items-start gap-2">
-                      <FileText className="w-4 h-4 text-[#581C87] shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-bold text-stone-900 block leading-tight">
-                          {doc.titulo}
-                        </span>
-                        {doc.descricao && (
-                          <span className="text-[11px] text-stone-600 font-serif block mt-0.5 line-clamp-2">
-                            {doc.descricao}
-                          </span>
-                        )}
-                      </div>
+                  <div className="flex items-start gap-2">
+                    <FileText className="w-5 h-5 text-[#581C87] shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-mono font-black text-sm text-[#1E1B2E] leading-tight">
+                        {doc.titulo}
+                      </h4>
+                      {doc.descricao && (
+                        <p className="text-xs text-stone-600 font-serif mt-1">
+                          {doc.descricao}
+                        </p>
+                      )}
                     </div>
-                  </td>
+                  </div>
 
-                  <td className="p-2.5">
-                    <div className="flex flex-wrap gap-1 max-w-[180px]">
-                      {doc.tags.map(t => (
-                        <span
-                          key={t}
-                          className="px-1.5 py-0.5 bg-[#FAF5FF] border border-[#581C87] text-[#581C87] text-[10px] font-bold"
-                        >
-                          #{t}
-                        </span>
-                      ))}
+                  {/* Tags */}
+                  <div className="flex flex-wrap gap-1">
+                    {doc.tags.map(t => (
+                      <span
+                        key={t}
+                        className="px-1.5 py-0.5 bg-[#FAF5FF] border border-[#581C87] text-[#581C87] text-[10px] font-bold font-mono"
+                      >
+                        #{t}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Informações de Arquivo e Data */}
+                  <div className="flex items-center justify-between text-[11px] font-mono text-stone-600 bg-white p-2 border border-stone-200">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <Paperclip className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+                      <span className="font-bold truncate">{doc.nomeArquivo}</span>
+                      <span className="text-stone-400">({doc.tamanhoFormatado || 'PDF'})</span>
                     </div>
-                  </td>
+                    <span className="shrink-0 text-stone-400">{doc.dataUpload}</span>
+                  </div>
 
-                  <td className="p-2.5 whitespace-nowrap">
-                    <div className="flex items-center gap-1.5">
-                      <Paperclip className="w-3.5 h-3.5 text-stone-500" />
-                      <div>
-                        <span className="font-bold text-stone-800 block text-[11px]">
-                          {doc.nomeArquivo}
-                        </span>
-                        <span className="text-[10px] text-stone-500">
-                          {doc.tamanhoFormatado || 'PDF'}
-                        </span>
-                      </div>
-                    </div>
-                  </td>
-
-                  <td className="p-2.5 whitespace-nowrap text-stone-600">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="w-3 h-3 text-stone-400" />
-                      <span>{doc.dataUpload}</span>
-                    </div>
-                  </td>
-
-                  <td className="p-2.5 text-center whitespace-nowrap">
-                    <button
-                      type="button"
-                      onClick={() => handleBaixarDocumento(doc)}
-                      className="vintage-button px-3 py-1.5 bg-[#00D287] hover:bg-[#34EEA0] text-[#1E1B2E] text-[11px] font-black uppercase flex items-center gap-1 mx-auto shadow-[1px_1px_0px_#000] cursor-pointer"
-                      title="Baixar arquivo deste documento"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Baixar</span>
-                    </button>
-                  </td>
-                </tr>
+                  {/* Botão Baixar Documento */}
+                  <button
+                    type="button"
+                    onClick={() => handleBaixarDocumento(doc)}
+                    className="w-full vintage-button py-2.5 px-3 bg-[#00D287] hover:bg-[#34EEA0] text-[#1E1B2E] text-xs font-black uppercase flex items-center justify-center gap-1.5 shadow-[2px_2px_0px_#000] cursor-pointer min-h-[44px]"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Baixar Documento</span>
+                  </button>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+
+            {/* VERSÃO DESKTOP: Tabela Tradicional */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs font-mono min-w-[650px]">
+                <thead>
+                  <tr className="border-b-2 border-[#1E1B2E] bg-stone-100 text-[#1E1B2E]">
+                    <th className="p-2.5 font-black uppercase">Título do Documento & Descrição</th>
+                    <th className="p-2.5 font-black uppercase">Tags</th>
+                    <th className="p-2.5 font-black uppercase">Arquivo & Tamanho</th>
+                    <th className="p-2.5 font-black uppercase">Data de Envio</th>
+                    <th className="p-2.5 font-black uppercase text-center">Ação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {documentosFiltrados.map((doc) => (
+                    <tr
+                      key={doc.id}
+                      className="border-b border-stone-200 hover:bg-pink-50/40 transition-colors"
+                    >
+                      <td className="p-2.5 max-w-xs">
+                        <div className="flex items-start gap-2">
+                          <FileText className="w-4 h-4 text-[#581C87] shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-bold text-stone-900 block leading-tight">
+                              {doc.titulo}
+                            </span>
+                            {doc.descricao && (
+                              <span className="text-[11px] text-stone-600 font-serif block mt-0.5 line-clamp-2">
+                                {doc.descricao}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="p-2.5">
+                        <div className="flex flex-wrap gap-1 max-w-[180px]">
+                          {doc.tags.map(t => (
+                            <span
+                              key={t}
+                              className="px-1.5 py-0.5 bg-[#FAF5FF] border border-[#581C87] text-[#581C87] text-[10px] font-bold"
+                            >
+                              #{t}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+
+                      <td className="p-2.5 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
+                          <Paperclip className="w-3.5 h-3.5 text-stone-500" />
+                          <div>
+                            <span className="font-bold text-stone-800 block text-[11px]">
+                              {doc.nomeArquivo}
+                            </span>
+                            <span className="text-[10px] text-stone-500">
+                              {doc.tamanhoFormatado || 'PDF'}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="p-2.5 whitespace-nowrap text-stone-600">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3 text-stone-400" />
+                          <span>{doc.dataUpload}</span>
+                        </div>
+                      </td>
+
+                      <td className="p-2.5 text-center whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => handleBaixarDocumento(doc)}
+                          className="vintage-button px-3 py-1.5 bg-[#00D287] hover:bg-[#34EEA0] text-[#1E1B2E] text-[11px] font-black uppercase flex items-center gap-1 mx-auto shadow-[1px_1px_0px_#000] cursor-pointer"
+                          title="Baixar arquivo deste documento"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>Baixar</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 

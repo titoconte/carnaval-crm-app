@@ -40,4 +40,14 @@ describe('Navegação e Fluxo de Letras & Cifras', () => {
     assert.strictEqual(abaMidia?.label, 'Mídia & Artes');
     assert.strictEqual(tabs.length, 11, 'O menu deve conter 11 abas completas');
   });
+
+  it('deve exibir indicador de badge numérico quando houver tarefas órfãs', () => {
+    const tabsComOrfas = getVisibleNavigationTabs(3);
+    const abaTarefas = tabsComOrfas.find(t => t.id === 'tarefas');
+    assert.strictEqual(abaTarefas?.badge, '3 órfãs');
+
+    const tabsSemOrfas = getVisibleNavigationTabs(0);
+    const abaSemOrfas = tabsSemOrfas.find(t => t.id === 'tarefas');
+    assert.strictEqual(abaSemOrfas?.badge, undefined);
+  });
 });

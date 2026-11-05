@@ -333,47 +333,31 @@ export default function JoinForm({
             </div>
           </div>
 
-          {/* Tabela de Candidatos */}
-          <div className="vintage-card p-4 overflow-x-auto">
+          {/* Lista de Candidatos (Tabela Desktop + Cards Mobile) */}
+          <div className="vintage-card p-3 sm:p-4">
             {inscritosFiltrados.length === 0 ? (
               <div className="text-center py-8 text-stone-500 font-mono text-xs">
                 Nenhum inscrito encontrado com os filtros selecionados.
               </div>
             ) : (
-              <table className="w-full text-left border-collapse text-xs font-mono">
-                <thead>
-                  <tr className="border-b-2 border-[#1E1B2E] bg-stone-100">
-                    <th className="p-2 font-black uppercase">Candidato</th>
-                    <th className="p-2 font-black uppercase">WhatsApp</th>
-                    <th className="p-2 font-black uppercase">Naipe / Função</th>
-                    <th className="p-2 font-black uppercase">Experiência & Obs</th>
-                    <th className="p-2 font-black uppercase">Data</th>
-                    <th className="p-2 font-black uppercase">Status</th>
-                    <th className="p-2 font-black uppercase text-center">Gestão & Notificação</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-stone-200">
+              <>
+                {/* VERSÃO MOBILE: Cards em Lista com Botões Grandes e Fáceis de Tocar */}
+                <div className="md:hidden space-y-3">
                   {inscritosFiltrados.map((inscrito) => (
-                    <tr key={inscrito.id} className="hover:bg-amber-50/50 transition-colors">
-                      <td className="p-2 font-bold text-stone-900 whitespace-nowrap">
-                        {inscrito.nome}
-                      </td>
-                      <td className="p-2 text-stone-700 whitespace-nowrap">
-                        {inscrito.whatsapp}
-                      </td>
-                      <td className="p-2 whitespace-nowrap">
-                        <span className="font-bold text-[#581C87]">{inscrito.grandeGrupo}</span>
-                        <span className="text-stone-500 block text-[11px]">{inscrito.instrumentoOuFuncao}</span>
-                      </td>
-                      <td className="p-2 max-w-xs text-[11px] text-stone-600">
-                        <span className="font-bold block text-stone-800">{inscrito.experiencia}</span>
-                        {inscrito.observacao && <span className="italic">{inscrito.observacao}</span>}
-                      </td>
-                      <td className="p-2 text-stone-500 text-[11px] whitespace-nowrap">
-                        {inscrito.dataInscricao}
-                      </td>
-                      <td className="p-2 whitespace-nowrap">
-                        <span className={`px-2 py-0.5 border text-[10px] font-black uppercase shadow-[1px_1px_0px_#000] ${
+                    <div
+                      key={inscrito.id}
+                      className="p-3 bg-stone-50 border-2 border-[#1E1B2E] shadow-[2px_2px_0px_#1E1B2E] space-y-2.5"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="font-mono font-black text-sm text-[#1E1B2E]">
+                            {inscrito.nome}
+                          </div>
+                          <div className="font-mono text-xs text-stone-600">
+                            📱 {inscrito.whatsapp}
+                          </div>
+                        </div>
+                        <span className={`px-2 py-0.5 border text-[10px] font-black uppercase font-mono shadow-[1px_1px_0px_#000] shrink-0 ${
                           inscrito.status === 'Aprovado'
                             ? 'bg-[#00D287] text-[#1E1B2E] border-black'
                             : inscrito.status === 'Recusado'
@@ -382,50 +366,157 @@ export default function JoinForm({
                         }`}>
                           {inscrito.status}
                         </span>
-                      </td>
-                      <td className="p-2 whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-1.5">
-                          {/* Botão Aprovar */}
-                          <button
-                            onClick={() => handleDecisao(inscrito, 'Aprovado')}
-                            className={`p-1.5 border border-black shadow-[1px_1px_0px_#000] text-xs transition-all ${
-                              inscrito.status === 'Aprovado'
-                                ? 'bg-[#00D287] text-[#1E1B2E]'
-                                : 'bg-white hover:bg-emerald-100 text-stone-700'
-                            }`}
-                            title="Aprovar inscrição e inserir no elenco"
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                          </button>
+                      </div>
 
-                          {/* Botão Recusar */}
-                          <button
-                            onClick={() => handleDecisao(inscrito, 'Recusado')}
-                            className={`p-1.5 border border-black shadow-[1px_1px_0px_#000] text-xs transition-all ${
-                              inscrito.status === 'Recusado'
-                                ? 'bg-red-400 text-white'
-                                : 'bg-white hover:bg-red-100 text-stone-700'
-                            }`}
-                            title="Recusar inscrição"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-
-                          {/* Botão Enviar Mensagem via Celular / WhatsApp */}
-                          <button
-                            onClick={() => setModalDisparo(inscrito)}
-                            className="px-2 py-1 bg-[#25D366] text-white hover:bg-[#1EBE5D] border border-black shadow-[1px_1px_0px_#000] text-[10px] font-bold uppercase flex items-center gap-1"
-                            title="Enviar mensagem do celular informando aceite ou recusa"
-                          >
-                            <MessageSquare className="w-3 h-3 fill-current" />
-                            <span>WhatsApp</span>
-                          </button>
+                      <div className="bg-white p-2 border border-stone-200 text-xs font-mono space-y-1">
+                        <div>
+                          <span className="font-bold text-[#581C87]">{inscrito.grandeGrupo}</span>
+                          <span className="text-stone-700"> • {inscrito.instrumentoOuFuncao}</span>
                         </div>
-                      </td>
-                    </tr>
+                        <div className="text-[11px] text-stone-600">
+                          <strong>Experiência:</strong> {inscrito.experiencia}
+                        </div>
+                        {inscrito.observacao && (
+                          <div className="text-[11px] text-stone-500 italic">
+                            <strong>Obs:</strong> {inscrito.observacao}
+                          </div>
+                        )}
+                        <div className="text-[10px] text-stone-400">
+                          Inscrito em: {inscrito.dataInscricao}
+                        </div>
+                      </div>
+
+                      {/* Botões de Ação Mobile Confortáveis */}
+                      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-stone-200">
+                        <button
+                          type="button"
+                          onClick={() => handleDecisao(inscrito, 'Aprovado')}
+                          className={`py-2 px-2 border-2 border-black font-mono font-black text-xs uppercase flex items-center justify-center gap-1 min-h-[40px] cursor-pointer ${
+                            inscrito.status === 'Aprovado'
+                              ? 'bg-[#00D287] text-[#1E1B2E] shadow-[1px_1px_0px_#000]'
+                              : 'bg-white hover:bg-emerald-50 text-[#00A868]'
+                          }`}
+                        >
+                          <Check className="w-4 h-4" />
+                          <span>{inscrito.status === 'Aprovado' ? 'Aprovado ✓' : 'Aprovar'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDecisao(inscrito, 'Recusado')}
+                          className={`py-2 px-2 border-2 border-black font-mono font-black text-xs uppercase flex items-center justify-center gap-1 min-h-[40px] cursor-pointer ${
+                            inscrito.status === 'Recusado'
+                              ? 'bg-red-400 text-white shadow-[1px_1px_0px_#000]'
+                              : 'bg-white hover:bg-red-50 text-red-700'
+                          }`}
+                        >
+                          <X className="w-4 h-4" />
+                          <span>{inscrito.status === 'Recusado' ? 'Recusado ✕' : 'Recusar'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setModalDisparo(inscrito)}
+                          className="col-span-2 py-2 px-3 bg-[#25D366] hover:bg-[#1EBE5D] text-white border-2 border-black shadow-[2px_2px_0px_#000] font-mono font-black text-xs uppercase flex items-center justify-center gap-1.5 min-h-[42px] cursor-pointer"
+                        >
+                          <MessageSquare className="w-4 h-4 fill-current" />
+                          <span>Notificar pelo WhatsApp</span>
+                        </button>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+
+                {/* VERSÃO DESKTOP: Tabela Tradicional */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs font-mono">
+                    <thead>
+                      <tr className="border-b-2 border-[#1E1B2E] bg-stone-100">
+                        <th className="p-2 font-black uppercase">Candidato</th>
+                        <th className="p-2 font-black uppercase">WhatsApp</th>
+                        <th className="p-2 font-black uppercase">Naipe / Função</th>
+                        <th className="p-2 font-black uppercase">Experiência & Obs</th>
+                        <th className="p-2 font-black uppercase">Data</th>
+                        <th className="p-2 font-black uppercase">Status</th>
+                        <th className="p-2 font-black uppercase text-center">Gestão & Notificação</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-200">
+                      {inscritosFiltrados.map((inscrito) => (
+                        <tr key={inscrito.id} className="hover:bg-amber-50/50 transition-colors">
+                          <td className="p-2 font-bold text-stone-900 whitespace-nowrap">
+                            {inscrito.nome}
+                          </td>
+                          <td className="p-2 text-stone-700 whitespace-nowrap">
+                            {inscrito.whatsapp}
+                          </td>
+                          <td className="p-2 whitespace-nowrap">
+                            <span className="font-bold text-[#581C87]">{inscrito.grandeGrupo}</span>
+                            <span className="text-stone-500 block text-[11px]">{inscrito.instrumentoOuFuncao}</span>
+                          </td>
+                          <td className="p-2 max-w-xs text-[11px] text-stone-600">
+                            <span className="font-bold block text-stone-800">{inscrito.experiencia}</span>
+                            {inscrito.observacao && <span className="italic">{inscrito.observacao}</span>}
+                          </td>
+                          <td className="p-2 text-stone-500 text-[11px] whitespace-nowrap">
+                            {inscrito.dataInscricao}
+                          </td>
+                          <td className="p-2 whitespace-nowrap">
+                            <span className={`px-2 py-0.5 border text-[10px] font-black uppercase shadow-[1px_1px_0px_#000] ${
+                              inscrito.status === 'Aprovado'
+                                ? 'bg-[#00D287] text-[#1E1B2E] border-black'
+                                : inscrito.status === 'Recusado'
+                                ? 'bg-red-200 text-red-900 border-red-700'
+                                : 'bg-[#FBBF24] text-[#1E1B2E] border-black'
+                            }`}>
+                              {inscrito.status}
+                            </span>
+                          </td>
+                          <td className="p-2 whitespace-nowrap">
+                            <div className="flex items-center justify-center gap-1.5">
+                              {/* Botão Aprovar */}
+                              <button
+                                onClick={() => handleDecisao(inscrito, 'Aprovado')}
+                                className={`p-1.5 border border-black shadow-[1px_1px_0px_#000] text-xs transition-all cursor-pointer ${
+                                  inscrito.status === 'Aprovado'
+                                    ? 'bg-[#00D287] text-[#1E1B2E]'
+                                    : 'bg-white hover:bg-emerald-100 text-stone-700'
+                                }`}
+                                title="Aprovar inscrição e inserir no elenco"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* Botão Recusar */}
+                              <button
+                                onClick={() => handleDecisao(inscrito, 'Recusado')}
+                                className={`p-1.5 border border-black shadow-[1px_1px_0px_#000] text-xs transition-all cursor-pointer ${
+                                  inscrito.status === 'Recusado'
+                                    ? 'bg-red-400 text-white'
+                                    : 'bg-white hover:bg-red-100 text-stone-700'
+                                }`}
+                                title="Recusar inscrição"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* Botão Enviar Mensagem via Celular / WhatsApp */}
+                              <button
+                                onClick={() => setModalDisparo(inscrito)}
+                                className="px-2 py-1 bg-[#25D366] text-white hover:bg-[#1EBE5D] border border-black shadow-[1px_1px_0px_#000] text-[10px] font-bold uppercase flex items-center gap-1 cursor-pointer"
+                                title="Enviar mensagem do celular informando aceite ou recusa"
+                              >
+                                <MessageSquare className="w-3 h-3 fill-current" />
+                                <span>WhatsApp</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
         </div>
