@@ -361,7 +361,8 @@ export const TAREFAS_POSTIT_INICIAIS: TarefaPostIt[] = [
     responsavel: '', // Órfã!
     corPostIt: 'amarelo',
     urgente: true,
-    concluida: false
+    concluida: false,
+    dataFinal: '2027-01-15'
   },
   {
     id: 'post-2',
@@ -371,7 +372,8 @@ export const TAREFAS_POSTIT_INICIAIS: TarefaPostIt[] = [
     responsavel: '', // Órfã!
     corPostIt: 'rosa',
     urgente: true,
-    concluida: false
+    concluida: false,
+    dataFinal: '2027-01-22'
   },
   {
     id: 'post-3',
@@ -381,7 +383,8 @@ export const TAREFAS_POSTIT_INICIAIS: TarefaPostIt[] = [
     responsavel: '', // Órfã!
     corPostIt: 'azul',
     urgente: false,
-    concluida: false
+    concluida: false,
+    dataFinal: '2027-02-01'
   },
   {
     id: 'post-4',
@@ -391,7 +394,8 @@ export const TAREFAS_POSTIT_INICIAIS: TarefaPostIt[] = [
     responsavel: '', // Órfã!
     corPostIt: 'verde',
     urgente: true,
-    concluida: false
+    concluida: false,
+    dataFinal: '2027-01-10'
   },
   // ATRIBUÍDAS
   {
@@ -402,7 +406,8 @@ export const TAREFAS_POSTIT_INICIAIS: TarefaPostIt[] = [
     responsavel: 'Nathy R.',
     corPostIt: 'amarelo',
     urgente: true,
-    concluida: false
+    concluida: false,
+    dataFinal: '2027-01-18'
   },
   {
     id: 'post-6',
@@ -412,7 +417,8 @@ export const TAREFAS_POSTIT_INICIAIS: TarefaPostIt[] = [
     responsavel: 'Fael',
     corPostIt: 'verde',
     urgente: true,
-    concluida: false
+    concluida: false,
+    dataFinal: '2027-01-20'
   },
   {
     id: 'post-7',
@@ -422,7 +428,8 @@ export const TAREFAS_POSTIT_INICIAIS: TarefaPostIt[] = [
     responsavel: 'Tito & Elisa',
     corPostIt: 'azul',
     urgente: false,
-    concluida: false
+    concluida: false,
+    dataFinal: '2027-01-25'
   },
   {
     id: 'post-8',
@@ -432,7 +439,8 @@ export const TAREFAS_POSTIT_INICIAIS: TarefaPostIt[] = [
     responsavel: 'Bel R. & Nathy',
     corPostIt: 'rosa',
     urgente: false,
-    concluida: false
+    concluida: false,
+    dataFinal: '2027-01-30'
   }
 ];
 
@@ -449,15 +457,46 @@ export function calcularProgressoChecklist(checklists?: ItemChecklistTarefa[]): 
 }
 
 /**
- * Ordena tarefas colocando as marcadas como urgente no topo da lista.
+ * Formata uma data no formato ISO (YYYY-MM-DD) para o formato brasileiro legível (DD/MM/AAAA).
+ * 
+ * @param dataIso - String da data no formato YYYY-MM-DD
+ * @returns Data formatada como DD/MM/AAAA ou string original se não puder ser convertida
+ */
+export function formatarDataBrasileira(dataIso?: string): string {
+  if (!dataIso) return '';
+  const partes = dataIso.split('-');
+  if (partes.length === 3) {
+    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+  }
+  return dataIso;
+}
+
+/**
+ * Ordena tarefas colocando as marcadas como urgente no topo e, em seguida, por data final mais próxima.
+ * Tarefas com data definida vêm antes de tarefas sem data dentro de cada nível de urgência.
  * 
  * @param tarefas - Lista de tarefas a serem ordenadas
- * @returns Nova lista com tarefas urgentes no topo
+ * @returns Nova lista com tarefas ordenadas por urgência e depois cronologicamente por datas
  */
 export function ordenarTarefasPorUrgencia(tarefas: TarefaPostIt[]): TarefaPostIt[] {
   return [...tarefas].sort((a, b) => {
+    // 1º Critério: Urgência (urgente = true antes de urgente = false)
     if (a.urgente && !b.urgente) return -1;
     if (!a.urgente && b.urgente) return 1;
+
+    // 2º Critério: Ordenação cronológica por data limite (mais cedo primeiro)
+    const dataA = a.dataFinal?.trim();
+    const dataB = b.dataFinal?.trim();
+
+    if (dataA && dataB) {
+      const cmp = dataA.localeCompare(dataB);
+      if (cmp !== 0) return cmp;
+    } else if (dataA && !dataB) {
+      return -1; // Tarefas com data vêm antes de tarefas sem data
+    } else if (!dataA && dataB) {
+      return 1;
+    }
+
     return 0;
   });
 }

@@ -5,7 +5,8 @@ import {
   calcularProgressoChecklist,
   converterTarefaEmMacrotarefa,
   ordenarTarefasPorUrgencia,
-  podeAcionarEquipePronta
+  podeAcionarEquipePronta,
+  formatarDataBrasileira
 } from '../src/data/blocoData';
 
 describe('Mural de Tarefas e Checklists com Prazos', () => {
@@ -27,6 +28,13 @@ describe('Mural de Tarefas e Checklists com Prazos', () => {
     ]
   };
 
+  it('deve formatar data no padrão brasileiro DD/MM/AAAA', () => {
+    assert.strictEqual(formatarDataBrasileira('2027-02-08'), '08/02/2027');
+    assert.strictEqual(formatarDataBrasileira('2027-01-15'), '15/01/2027');
+    assert.strictEqual(formatarDataBrasileira(''), '');
+    assert.strictEqual(formatarDataBrasileira(undefined), '');
+  });
+
   it('deve calcular corretamente a porcentagem de conclusão da checklist (50%)', () => {
     const pct = calcularProgressoChecklist(tarefaComChecklist.checklists);
     assert.strictEqual(pct, 50);
@@ -46,19 +54,27 @@ describe('Mural de Tarefas e Checklists com Prazos', () => {
     assert.strictEqual(macro.checklists[0].texto, 'Comprar fitas coloridas (Prazo: 2026-11-10)');
   });
 
-  it('deve ordenar post-its colocando os urgentes no topo da lista', () => {
+  it('deve ordenar post-its colocando os urgentes no topo da lista e depois por data', () => {
     const tarefas: TarefaPostIt[] = [
-      { id: '1', titulo: 'Comprar fita', descricao: '', categoria: 'Geral', urgente: false, concluida: false },
-      { id: '2', titulo: 'Socorro elétrico', descricao: '', categoria: 'Geral', urgente: true, concluida: false },
-      { id: '3', titulo: 'Pintar faixa', descricao: '', categoria: 'Geral', urgente: false, concluida: false },
-      { id: '4', titulo: 'Alvará urgente', descricao: '', categoria: 'Geral', urgente: true, concluida: false }
+      { id: '1', titulo: 'Comprar fita', descricao: '', categoria: 'Geral', urgente: false, concluida: false, dataFinal: '2027-02-01' },
+      { id: '2', titulo: 'Socorro elétrico tardio', descricao: '', categoria: 'Geral', urgente: true, concluida: false, dataFinal: '2027-01-20' },
+      { id: '3', titulo: 'Socorro elétrico urgente cedo', descricao: '', categoria: 'Geral', urgente: true, concluida: false, dataFinal: '2027-01-10' },
+      { id: '4', titulo: 'Pintar faixa cedo', descricao: '', categoria: 'Geral', urgente: false, concluida: false, dataFinal: '2027-01-15' },
+      { id: '5', titulo: 'Urgente sem data', descricao: '', categoria: 'Geral', urgente: true, concluida: false },
+      { id: '6', titulo: 'Não urgente sem data', descricao: '', categoria: 'Geral', urgente: false, concluida: false }
     ];
 
     const ordenadas = ordenarTarefasPorUrgencia(tarefas);
-    assert.strictEqual(ordenadas[0].urgente, true);
-    assert.strictEqual(ordenadas[1].urgente, true);
-    assert.strictEqual(ordenadas[2].urgente, false);
-    assert.strictEqual(ordenadas[3].urgente, false);
+
+    // Primeiro grupo: Urgentes (ordenados por data e depois sem data)
+    assert.strictEqual(ordenadas[0].id, '3', 'Urgente com data mais cedo (10/01) deve ser o 1º');
+    assert.strictEqual(ordenadas[1].id, '2', 'Urgente com data posterior (20/01) deve ser o 2º');
+    assert.strictEqual(ordenadas[2].id, '5', 'Urgente sem data deve ser o 3º');
+
+    // Segundo grupo: Não urgentes (ordenados por data e depois sem data)
+    assert.strictEqual(ordenadas[3].id, '4', 'Não urgente com data mais cedo (15/01) deve vir antes');
+    assert.strictEqual(ordenadas[4].id, '1', 'Não urgente com data posterior (01/02) deve vir depois');
+    assert.strictEqual(ordenadas[5].id, '6', 'Não urgente sem data deve vir por último');
   });
 
   it('deve permitir acionar equipe pronta apenas se a tarefa tiver dono atribuído', () => {

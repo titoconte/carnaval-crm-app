@@ -20,7 +20,8 @@ import {
   ItemChecklistTarefa,
   calcularProgressoChecklist,
   ordenarTarefasPorUrgencia,
-  podeAcionarEquipePronta
+  podeAcionarEquipePronta,
+  formatarDataBrasileira
 } from '../data/blocoData';
 
 interface TasksManagerProps {
@@ -48,6 +49,9 @@ export default function TasksManager({
   const [filtro, setFiltro] = useState<'todas' | 'orfas' | 'andamento'>('todas');
   const [modalAssumir, setModalAssumir] = useState<TarefaPostIt | null>(null);
   const [nomeVoluntario, setNomeVoluntario] = useState('');
+  const [dataAssumir, setDataAssumir] = useState('');
+  const [modalEditarData, setModalEditarData] = useState<TarefaPostIt | null>(null);
+  const [dataEdicao, setDataEdicao] = useState('');
   const [modalNovoPostIt, setModalNovoPostIt] = useState(false);
 
   // Estados do formulário de novo Post-it
@@ -71,11 +75,20 @@ export default function TasksManager({
     return true;
   });
 
-  // Sempre exibe todos os post-its juntos ordenados com urgentes no topo
+  // Sempre exibe todos os post-its juntos ordenados por urgência e depois por data
   const tarefasExibidas = ordenarTarefasPorUrgencia(tarefasFiltradas);
 
   /**
-   * Associa o nome de um folião voluntário à tarefa órfã selecionada.
+   * Abre o modal para pegar uma tarefa órfã, pré-preenchendo os dados existentes.
+   */
+  const abrirModalAssumir = (tarefa: TarefaPostIt) => {
+    setModalAssumir(tarefa);
+    setNomeVoluntario('');
+    setDataAssumir(tarefa.dataFinal || '');
+  };
+
+  /**
+   * Associa o nome do voluntário e a data de entrega definida à tarefa órfã.
    */
   const handleAssumir = (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,7 +98,8 @@ export default function TasksManager({
       if (t.id === modalAssumir.id) {
         return {
           ...t,
-          responsavel: nomeVoluntario.trim()
+          responsavel: nomeVoluntario.trim(),
+          dataFinal: dataAssumir.trim() ? dataAssumir.trim() : t.dataFinal
         };
       }
       return t;
@@ -99,6 +113,36 @@ export default function TasksManager({
 
     setModalAssumir(null);
     setNomeVoluntario('');
+    setDataAssumir('');
+  };
+
+  /**
+   * Abre o modal rápido para definir ou alterar o prazo de uma tarefa.
+   */
+  const abrirModalEditarData = (tarefa: TarefaPostIt) => {
+    setModalEditarData(tarefa);
+    setDataEdicao(tarefa.dataFinal || '');
+  };
+
+  /**
+   * Salva a nova data da tarefa selecionada.
+   */
+  const handleSalvarData = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!modalEditarData) return;
+
+    setTarefas(prev => prev.map(t => {
+      if (t.id === modalEditarData.id) {
+        return {
+          ...t,
+          dataFinal: dataEdicao.trim() ? dataEdicao.trim() : undefined
+        };
+      }
+      return t;
+    }));
+
+    setModalEditarData(null);
+    setDataEdicao('');
   };
 
   /**
@@ -307,12 +351,26 @@ export default function TasksManager({
                       {tarefa.titulo}
                     </h3>
 
-                    {tarefa.dataFinal && (
-                      <div className="mt-1 flex items-center gap-1 text-[11px] font-mono font-bold text-red-700 bg-red-50/60 px-1.5 py-0.5 border border-red-200">
-                        <Clock className="w-3 h-3" />
-                        <span>Data Final: {tarefa.dataFinal}</span>
+                    {/* Badge de Data de Prazo no Post-It (Sempre visível nos post-its) */}
+                    <div
+                      onClick={() => abrirModalEditarData(tarefa)}
+                      className="mt-2 mb-1 flex items-center justify-between gap-1.5 p-1.5 bg-black/5 border border-black/20 font-mono text-xs cursor-pointer hover:bg-black/10 transition-colors shadow-2xs"
+                      title="Clique para definir ou alterar o prazo desta missão"
+                    >
+                      <div className="flex items-center gap-1 text-[11px] font-black uppercase text-[#1E1B2E]">
+                        <Calendar className="w-3.5 h-3.5 text-[#E6007E]" />
+                        <span>Prazo:</span>
                       </div>
-                    )}
+                      <span className={`px-2 py-0.5 font-mono font-black text-[11px] border border-black shadow-[1px_1px_0px_#000] shrink-0 ${
+                        tarefa.dataFinal
+                          ? tarefa.urgente
+                            ? 'bg-red-200 text-red-900 border-red-700'
+                            : 'bg-[#FBBF24] text-[#1E1B2E]'
+                          : 'bg-stone-200 text-stone-600'
+                      }`}>
+                        {tarefa.dataFinal ? formatarDataBrasileira(tarefa.dataFinal) : 'Definir Data +'}
+                      </span>
+                    </div>
 
                     <p className="text-xs text-stone-800 mt-2 font-serif leading-relaxed">
                       {tarefa.descricao}
@@ -354,8 +412,8 @@ export default function TasksManager({
                                   {item.texto}
                                 </span>
                                 {item.dataLimite && (
-                                  <span className="block text-[10px] text-stone-600 font-sans italic">
-                                    Prazo: {item.dataLimite}
+                                  <span className="block text-[10px] text-stone-600 font-mono font-bold mt-0.5">
+                                    📅 Prazo item: {formatarDataBrasileira(item.dataLimite)}
                                   </span>
                                 )}
                               </div>
@@ -384,8 +442,8 @@ export default function TasksManager({
                       {/* Botão Quero Ajudar */}
                       {semDono && (
                         <button
-                          onClick={() => setModalAssumir(tarefa)}
-                          className="px-2.5 py-1 bg-[#E6007E] text-white hover:bg-[#C2006A] text-[10px] font-black uppercase border border-black shadow-[2px_2px_0px_#000] active:translate-x-0.5 active:translate-y-0.5"
+                          onClick={() => abrirModalAssumir(tarefa)}
+                          className="px-2.5 py-1 bg-[#E6007E] text-white hover:bg-[#C2006A] text-[10px] font-black uppercase border border-black shadow-[2px_2px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
                         >
                           Quero Ajudar!
                         </button>
@@ -424,44 +482,106 @@ export default function TasksManager({
         )}
       </div>
 
-      {/* Modal para Quero Ajudar (Assumir Post-it) */}
+      {/* Modal para Quero Ajudar (Pegar / Assumir Post-it com Prazo) */}
       {modalAssumir && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white border-4 border-[#1E1B2E] p-6 max-w-sm w-full shadow-[6px_6px_0px_#1E1B2E]">
             <div className="stamp stamp-open text-xs mb-2">Compromisso Carnavalesco</div>
-            <h3 className="text-base font-black uppercase text-[#1E1B2E]">
-              Ajudar na Missão: {modalAssumir.titulo}
+            <h3 className="text-base font-black uppercase text-[#1E1B2E] font-mono">
+              Assumir Missão: {modalAssumir.titulo}
             </h3>
             <p className="text-xs text-stone-600 mt-1 mb-4 font-serif">
-              Coloque seu nome ou apelido para registrarmos você como responsável no mural do bloco.
+              Insira seu nome e confirme ou ajuste a data de entrega para organizarmos o cronograma do bloco.
             </p>
 
-            <form onSubmit={handleAssumir} className="space-y-3">
+            <form onSubmit={handleAssumir} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Seu Nome / Apelido *</label>
+                <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1 font-mono">
+                  Seu Nome / Apelido *
+                </label>
                 <input
                   type="text"
                   required
                   placeholder="Ex: Pedro / Nati / Tito"
                   value={nomeVoluntario}
                   onChange={(e) => setNomeVoluntario(e.target.value)}
-                  className="w-full px-3 py-2 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-bold font-mono focus:outline-none"
+                  className="w-full px-3 py-2 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-bold font-mono focus:outline-none focus:bg-white"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div>
+                <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1 font-mono">
+                  Prazo / Data Prevista de Conclusão
+                </label>
+                <input
+                  type="date"
+                  value={dataAssumir}
+                  onChange={(e) => setDataAssumir(e.target.value)}
+                  className="w-full px-3 py-2 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono font-bold focus:outline-none focus:bg-white"
+                />
+                <span className="text-[10px] text-stone-500 font-mono mt-0.5 block">
+                  Esta data será exibida no post-it e usada para ordenar a prioridade no mural.
+                </span>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-200">
                 <button
                   type="button"
                   onClick={() => setModalAssumir(null)}
-                  className="px-3 py-1.5 border-2 border-[#1E1B2E] text-xs font-bold uppercase hover:bg-stone-200"
+                  className="px-3 py-1.5 border-2 border-[#1E1B2E] text-xs font-bold uppercase hover:bg-stone-200 cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="vintage-button px-4 py-1.5 bg-[#00D287] text-[#1E1B2E] text-xs uppercase"
+                  className="vintage-button px-4 py-1.5 bg-[#00D287] hover:bg-[#34EEA0] text-[#1E1B2E] text-xs uppercase cursor-pointer"
                 >
                   Confirmar Ajuda!
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Rápido para Editar Data de qualquer Post-it */}
+      {modalEditarData && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border-4 border-[#1E1B2E] p-5 max-w-sm w-full shadow-[6px_6px_0px_#1E1B2E]">
+            <div className="stamp stamp-urgent text-xs mb-2">Cronograma</div>
+            <h3 className="text-base font-black uppercase text-[#1E1B2E] font-mono">
+              Prazo da Missão
+            </h3>
+            <p className="text-xs text-stone-600 mt-1 mb-3 font-serif">
+              Defina ou altere a data final de <strong>{modalEditarData.titulo}</strong>.
+            </p>
+
+            <form onSubmit={handleSalvarData} className="space-y-3">
+              <div>
+                <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1 font-mono">
+                  Data Limite da Tarefa
+                </label>
+                <input
+                  type="date"
+                  value={dataEdicao}
+                  onChange={(e) => setDataEdicao(e.target.value)}
+                  className="w-full px-3 py-2 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono font-bold focus:outline-none focus:bg-white"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-200">
+                <button
+                  type="button"
+                  onClick={() => setModalEditarData(null)}
+                  className="px-3 py-1.5 border-2 border-[#1E1B2E] text-xs font-bold uppercase hover:bg-stone-200 cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="vintage-button px-4 py-1.5 bg-[#00D287] hover:bg-[#34EEA0] text-[#1E1B2E] text-xs uppercase cursor-pointer"
+                >
+                  Salvar Data
                 </button>
               </div>
             </form>
