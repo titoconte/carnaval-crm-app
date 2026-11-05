@@ -121,6 +121,10 @@ export interface MusicaRepertorio {
   votosFavoraveis: number;
   statusCuradoria: 'Confirmada' | 'Em Votação' | 'Sugerida para Corte';
   audioGuiaUrl?: string;
+  youtubeUrl?: string;
+  partituraUrl?: string;
+  partituraTexto?: string;
+  arquivoRepertorio?: string;
   letra?: string;
 }
 
@@ -731,13 +735,137 @@ export function gerarBilhetesRifaIniciais(): BilheteRifa[] {
   return bilhetes;
 }
 
+/**
+ * Reordena a sequência de músicas do repertório do desfile.
+ * Regra: Apenas coordenadores (isAdmin = true) têm autorização para editar a ordem.
+ * 
+ * @param musicas - Lista de músicas atual
+ * @param fromIndex - Posição de origem
+ * @param toIndex - Posição de destino
+ * @param isAdmin - Flag indicando se é usuário da coordenação
+ * @returns Lista de músicas com ordem recalculada se admin, ou lista original inalterada
+ */
+export function reordenarRepertorio(
+  musicas: MusicaRepertorio[],
+  fromIndex: number,
+  toIndex: number,
+  isAdmin: boolean
+): MusicaRepertorio[] {
+  if (!isAdmin) {
+    return musicas;
+  }
+  if (fromIndex < 0 || fromIndex >= musicas.length || toIndex < 0 || toIndex >= musicas.length) {
+    return musicas;
+  }
+  const reordenadas = [...musicas];
+  const [removido] = reordenadas.splice(fromIndex, 1);
+  reordenadas.splice(toIndex, 0, removido);
+
+  return reordenadas.map((m, idx) => ({
+    ...m,
+    ordemDesfile: idx + 1
+  }));
+}
+
+/**
+ * Cria uma nova sugestão de música com suporte a link do YouTube e arquivo de repertório/partitura.
+ * 
+ * @param dados - Metadados da sugestão
+ * @returns Novo objeto MusicaRepertorio
+ */
+export function criarSugestaoMusica(dados: {
+  titulo: string;
+  artistaOriginal: string;
+  ritmo: string;
+  youtubeUrl?: string;
+  partituraUrl?: string;
+  partituraTexto?: string;
+  arquivoRepertorio?: string;
+  ordemDesfile?: number;
+}): MusicaRepertorio {
+  return {
+    id: `mus-${Date.now()}`,
+    titulo: dados.titulo.trim(),
+    artistaOriginal: dados.artistaOriginal.trim() || 'Compositor a confirmar',
+    ritmo: dados.ritmo || 'Axé / Samba-Reggae',
+    ordemDesfile: dados.ordemDesfile || 99,
+    votosFavoraveis: 1,
+    statusCuradoria: 'Em Votação',
+    youtubeUrl: dados.youtubeUrl?.trim() || undefined,
+    partituraUrl: dados.partituraUrl?.trim() || undefined,
+    partituraTexto: dados.partituraTexto?.trim() || undefined,
+    arquivoRepertorio: dados.arquivoRepertorio?.trim() || undefined
+  };
+}
+
 export const REPERTORIO_INICIAL: MusicaRepertorio[] = [
-  { id: 'mus-1', titulo: 'Banho de Folhas', artistaOriginal: 'Luedji Luna', ritmo: 'Afoxé', ordemDesfile: 1, votosFavoraveis: 34, statusCuradoria: 'Confirmada', audioGuiaUrl: 'https://archive.org/download/sample-carnaval/banho_de_folhas_contra_canto.mp3' },
-  { id: 'mus-2', titulo: 'Ilê Pérola Negra', artistaOriginal: 'Daniela Mercury', ritmo: 'Axé / Samba-Reggae', ordemDesfile: 2, votosFavoraveis: 29, statusCuradoria: 'Confirmada' },
-  { id: 'mus-3', titulo: 'Frevo Mulher', artistaOriginal: 'Zé Ramalho', ritmo: 'Frevo', ordemDesfile: 3, votosFavoraveis: 27, statusCuradoria: 'Confirmada' },
-  { id: 'mus-4', titulo: 'Me Abraça', artistaOriginal: 'Banda Eva', ritmo: 'Axé / Samba-Reggae', ordemDesfile: 4, votosFavoraveis: 22, statusCuradoria: 'Em Votação' },
-  { id: 'mus-5', titulo: 'Pequena Eva', artistaOriginal: 'Banda Eva', ritmo: 'Axé / Samba-Reggae', ordemDesfile: 5, votosFavoraveis: 19, statusCuradoria: 'Em Votação' },
-  { id: 'mus-6', titulo: 'Erva Venenosa', artistaOriginal: 'Rita Lee', ritmo: 'Marchinha', ordemDesfile: 6, votosFavoraveis: 8, statusCuradoria: 'Sugerida para Corte' }
+  {
+    id: 'mus-1',
+    titulo: 'Banho de Folhas',
+    artistaOriginal: 'Luedji Luna',
+    ritmo: 'Afoxé',
+    ordemDesfile: 1,
+    votosFavoraveis: 34,
+    statusCuradoria: 'Confirmada',
+    audioGuiaUrl: 'https://archive.org/download/sample-carnaval/banho_de_folhas_contra_canto.mp3',
+    youtubeUrl: 'https://www.youtube.com/watch?v=1F_cZf9Ww_o',
+    partituraUrl: 'https://archive.org/details/banho_de_folhas_partitura',
+    partituraTexto: 'Tom: Em | Sopros em contra-canto no compasso 8. Convenção da percussão: 4 toques secos.'
+  },
+  {
+    id: 'mus-2',
+    titulo: 'Ilê Pérola Negra',
+    artistaOriginal: 'Daniela Mercury',
+    ritmo: 'Axé / Samba-Reggae',
+    ordemDesfile: 2,
+    votosFavoraveis: 29,
+    statusCuradoria: 'Confirmada',
+    youtubeUrl: 'https://www.youtube.com/watch?v=F3P_7c1A9d0',
+    partituraUrl: 'https://archive.org/details/ile_perola_negra_partitura',
+    partituraTexto: 'Arranjo de Metais: Trompetes puxam o refrão. Cavaquinho e baixo em contratempo.'
+  },
+  {
+    id: 'mus-3',
+    titulo: 'Frevo Mulher',
+    artistaOriginal: 'Zé Ramalho',
+    ritmo: 'Frevo',
+    ordemDesfile: 3,
+    votosFavoraveis: 27,
+    statusCuradoria: 'Confirmada',
+    youtubeUrl: 'https://www.youtube.com/watch?v=gT8T5aF_b9E',
+    partituraUrl: 'https://archive.org/details/frevo_mulher_partitura',
+    partituraTexto: 'Convenção da bateria após o refrão: 3 batidas secas de surdo -> repique solo 2 tempos -> caixa.'
+  },
+  {
+    id: 'mus-4',
+    titulo: 'Me Abraça',
+    artistaOriginal: 'Banda Eva',
+    ritmo: 'Axé / Samba-Reggae',
+    ordemDesfile: 4,
+    votosFavoraveis: 22,
+    statusCuradoria: 'Em Votação',
+    youtubeUrl: 'https://www.youtube.com/watch?v=7uK4p7yWkXo'
+  },
+  {
+    id: 'mus-5',
+    titulo: 'Pequena Eva',
+    artistaOriginal: 'Banda Eva',
+    ritmo: 'Axé / Samba-Reggae',
+    ordemDesfile: 5,
+    votosFavoraveis: 19,
+    statusCuradoria: 'Em Votação',
+    youtubeUrl: 'https://www.youtube.com/watch?v=aG0jC_0V9gE'
+  },
+  {
+    id: 'mus-6',
+    titulo: 'Erva Venenosa',
+    artistaOriginal: 'Rita Lee',
+    ritmo: 'Marchinha',
+    ordemDesfile: 6,
+    votosFavoraveis: 8,
+    statusCuradoria: 'Sugerida para Corte',
+    youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+  }
 ];
 
 export const LETRAS_CIFRAS_INICIAIS: ItemLetraCifra[] = [
