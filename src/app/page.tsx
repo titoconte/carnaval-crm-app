@@ -13,6 +13,7 @@ import RaffleApp from '../components/RaffleApp';
 import ParadeKanban from '../components/ParadeKanban';
 import CalendarView from '../components/CalendarView';
 import JoinForm from '../components/JoinForm';
+import DocumentsManager from '../components/DocumentsManager';
 import AdminPinModal from '../components/AdminPinModal';
 
 import {
@@ -28,6 +29,7 @@ import {
   LETRAS_CIFRAS_INICIAIS,
   ENQUETES_WHATSAPP_INICIAIS,
   CALENDARIO_INICIAL,
+  DOCUMENTOS_INICIAIS,
   converterTarefaEmMacrotarefa,
   Integrante,
   InscritoBloco,
@@ -40,7 +42,8 @@ import {
   MusicaRepertorio,
   ItemLetraCifra,
   EnqueteWhatsApp,
-  EventoCalendario
+  EventoCalendario,
+  DocumentoBloco
 } from '../data/blocoData';
 
 /**
@@ -65,6 +68,7 @@ export default function Home() {
   const [letrasCifras, setLetrasCifras] = useState<ItemLetraCifra[]>(LETRAS_CIFRAS_INICIAIS);
   const [enquetes, setEnquetes] = useState<EnqueteWhatsApp[]>(ENQUETES_WHATSAPP_INICIAIS);
   const [eventos] = useState<EventoCalendario[]>(CALENDARIO_INICIAL);
+  const [documentos, setDocumentos] = useState<DocumentoBloco[]>(DOCUMENTOS_INICIAIS);
 
   // Carrega dados salvos no LocalStorage
   useEffect(() => {
@@ -101,6 +105,9 @@ export default function Home() {
 
       const sEnquetes = localStorage.getItem('bicha_enquetes_v2');
       if (sEnquetes) setEnquetes(JSON.parse(sEnquetes));
+
+      const sDocs = localStorage.getItem('bicha_documentos_v2');
+      if (sDocs) setDocumentos(JSON.parse(sDocs));
     } catch (e) {
       console.error('Erro ao ler LocalStorage:', e);
     }
@@ -120,10 +127,11 @@ export default function Home() {
       localStorage.setItem('bicha_musicas_v2', JSON.stringify(musicas));
       localStorage.setItem('bicha_letras_v2', JSON.stringify(letrasCifras));
       localStorage.setItem('bicha_enquetes_v2', JSON.stringify(enquetes));
+      localStorage.setItem('bicha_documentos_v2', JSON.stringify(documentos));
     } catch (e) {
       console.error('Erro ao salvar LocalStorage:', e);
     }
-  }, [tarefas, macrotarefas, movimentosBar, bilhetesRifa, rifas, vendasRifas, inscritos, integrantes, musicas, letrasCifras, enquetes]);
+  }, [tarefas, macrotarefas, movimentosBar, bilhetesRifa, rifas, vendasRifas, inscritos, integrantes, musicas, letrasCifras, enquetes, documentos]);
 
   // Contagem de tarefas órfãs
   const orfasCount = tarefas.filter(
@@ -241,6 +249,14 @@ export default function Home() {
             inscritos={inscritos}
             setInscritos={setInscritos}
             onAddIntegrante={handleAddIntegrante}
+            isAdmin={isAdmin}
+          />
+        )}
+
+        {activeTab === 'documentos' && (
+          <DocumentsManager
+            documentos={documentos}
+            setDocumentos={setDocumentos}
             isAdmin={isAdmin}
           />
         )}

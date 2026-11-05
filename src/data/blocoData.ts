@@ -1105,3 +1105,155 @@ export const CALENDARIO_INICIAL: EventoCalendario[] = [
   { id: 'cal-10', data: '2027-01-04', diaSemana: 'SEG', tipo: 'Ensaio', local: 'Costeira', horario: '19:30', observacoes: 'Retorno intensivo de janeiro' },
   { id: 'cal-11', data: '2027-02-08', diaSemana: 'SEG', tipo: 'Desfile Oficial', local: 'Praça Oliva & Centro Histórico', horario: '14:30', observacoes: '🎊 GRANDE DESFILE DE CARNAVAL DO BLOCO BICHARADA!' }
 ];
+
+/**
+ * Interface que representa um documento oficial baixável do bloco.
+ */
+export interface DocumentoBloco {
+  id: string;
+  titulo: string;
+  descricao?: string;
+  tags: string[];
+  nomeArquivo: string;
+  tamanhoFormatado?: string;
+  tipoArquivo?: string;
+  dataUpload: string;
+  urlDownload?: string;
+  conteudoBase64OuTexto?: string;
+}
+
+/**
+ * Lista inicial de documentos oficiais disponibilizados para download.
+ */
+export const DOCUMENTOS_INICIAIS: DocumentoBloco[] = [
+  {
+    id: 'doc-1',
+    titulo: 'Estatuto & Regimento Comunitário da Bicharada',
+    descricao: 'Normas gerais de convivência, princípios antifascistas e decisões de assembleia.',
+    tags: ['Regulamento', 'Oficial', 'Jurídico'],
+    nomeArquivo: 'Estatuto_Bicharada_2027.pdf',
+    tamanhoFormatado: '1.2 MB',
+    tipoArquivo: 'application/pdf',
+    dataUpload: '2026-10-10'
+  },
+  {
+    id: 'doc-2',
+    titulo: 'Edital de Chamamento e Inscrições do Elenco 2027',
+    descricao: 'Orientações para foliões, distribuição de instrumentos e cronograma de ensaios.',
+    tags: ['Edital', 'Inscrições', 'Oficial'],
+    nomeArquivo: 'Edital_Inscricoes_Bicharada_2027.pdf',
+    tamanhoFormatado: '850 KB',
+    tipoArquivo: 'application/pdf',
+    dataUpload: '2026-10-18'
+  },
+  {
+    id: 'doc-3',
+    titulo: 'Protocolo de Segurança e Proteção dos Pernaltas',
+    descricao: 'Instruções para a equipe de apoio, corda de isolamento e raio de segurança.',
+    tags: ['Segurança', 'Desfile', 'Kombi'],
+    nomeArquivo: 'Protocolo_Seguranca_Pernaltas.pdf',
+    tamanhoFormatado: '640 KB',
+    tipoArquivo: 'application/pdf',
+    dataUpload: '2026-10-25'
+  },
+  {
+    id: 'doc-4',
+    titulo: 'Alvará Municipal de Desfile — PMF Centro Histórico',
+    descricao: 'Ofício de autorização expedido pela Prefeitura de Florianópolis.',
+    tags: ['Alvará', 'Prefeitura', 'Jurídico'],
+    nomeArquivo: 'Alvara_Prefeitura_Desfile_2027.pdf',
+    tamanhoFormatado: '1.8 MB',
+    tipoArquivo: 'application/pdf',
+    dataUpload: '2026-11-01'
+  },
+  {
+    id: 'doc-5',
+    titulo: 'Planilha de Receitas e Custos do Bar dos Ensaios',
+    descricao: 'Prestação de contas das compras de chopp, gelo e isopores de peixaria.',
+    tags: ['Financeiro', 'Bar', 'Transparência'],
+    nomeArquivo: 'Financeiro_Bar_Ensaios_Outubro.pdf',
+    tamanhoFormatado: '420 KB',
+    tipoArquivo: 'application/pdf',
+    dataUpload: '2026-11-02'
+  }
+];
+
+/**
+ * Filtra documentos pela tag selecionada e/ou busca textual no título, descrição e tags.
+ * 
+ * @param documentos - Lista de documentos a filtrar
+ * @param tagSelecionada - Tag para filtrar ou 'Todas'
+ * @param buscaTexto - Termo de busca textual
+ * @returns Lista de documentos filtrada
+ */
+export function filtrarDocumentos(
+  documentos: DocumentoBloco[],
+  tagSelecionada?: string,
+  buscaTexto?: string
+): DocumentoBloco[] {
+  return documentos.filter(doc => {
+    const matchTag = !tagSelecionada || tagSelecionada === 'Todas' || doc.tags.includes(tagSelecionada);
+    if (!matchTag) return false;
+
+    if (!buscaTexto || !buscaTexto.trim()) return true;
+    const termo = buscaTexto.trim().toLowerCase();
+    const noTitulo = doc.titulo.toLowerCase().includes(termo);
+    const naDesc = doc.descricao ? doc.descricao.toLowerCase().includes(termo) : false;
+    const noArquivo = doc.nomeArquivo.toLowerCase().includes(termo);
+    const nasTags = doc.tags.some(t => t.toLowerCase().includes(termo));
+
+    return noTitulo || naDesc || noArquivo || nasTags;
+  });
+}
+
+/**
+ * Adiciona um novo documento à lista garantindo ID único, data atual e higienização das tags.
+ * 
+ * @param documentos - Lista atual de documentos
+ * @param dados - Dados do novo documento
+ * @returns Lista atualizada com o novo documento inserido no topo
+ */
+export function adicionarNovoDocumento(
+  documentos: DocumentoBloco[],
+  dados: {
+    titulo: string;
+    descricao?: string;
+    tags: string[];
+    nomeArquivo: string;
+    tamanhoFormatado?: string;
+    tipoArquivo?: string;
+    conteudoBase64OuTexto?: string;
+  }
+): DocumentoBloco[] {
+  const tagsLimpass = dados.tags
+    .map(t => t.trim())
+    .filter(t => t.length > 0);
+
+  const novoDoc: DocumentoBloco = {
+    id: `doc-${Date.now()}`,
+    titulo: dados.titulo.trim(),
+    descricao: dados.descricao?.trim() || undefined,
+    tags: tagsLimpass.length > 0 ? tagsLimpass : ['Geral'],
+    nomeArquivo: dados.nomeArquivo.trim() || 'documento.pdf',
+    tamanhoFormatado: dados.tamanhoFormatado || '100 KB',
+    tipoArquivo: dados.tipoArquivo || 'application/pdf',
+    dataUpload: new Date().toISOString().split('T')[0],
+    conteudoBase64OuTexto: dados.conteudoBase64OuTexto
+  };
+
+  return [novoDoc, ...documentos];
+}
+
+/**
+ * Extrai todas as tags únicas presentes na lista de documentos cadastrados.
+ * 
+ * @param documentos - Lista de documentos
+ * @returns Lista com todas as tags únicas
+ */
+export function extrairTodasTagsDocumentos(documentos: DocumentoBloco[]): string[] {
+  const setTags = new Set<string>();
+  documentos.forEach(doc => {
+    doc.tags.forEach(t => setTags.add(t.trim()));
+  });
+  return Array.from(setTags);
+}
