@@ -25,6 +25,13 @@ export interface InscritoBloco {
   status: 'Pendente' | 'Aprovado' | 'Recusado';
 }
 
+export interface ItemChecklistTarefa {
+  id: string;
+  texto: string;
+  dataLimite?: string; // Data por tarefa da checklist
+  concluido: boolean;
+}
+
 export interface TarefaPostIt {
   id: string;
   titulo: string;
@@ -34,6 +41,8 @@ export interface TarefaPostIt {
   corPostIt: 'amarelo' | 'rosa' | 'verde' | 'azul';
   urgente: boolean;
   concluida: boolean;
+  dataFinal?: string; // Data final da tarefa geral
+  checklists?: ItemChecklistTarefa[];
 }
 
 export interface PremioRifa {
@@ -317,6 +326,49 @@ export const TAREFAS_POSTIT_INICIAIS: TarefaPostIt[] = [
     concluida: false
   }
 ];
+
+/**
+ * Calcula o percentual de conclusão dos itens de uma checklist (0 a 100).
+ * 
+ * @param checklists - Lista de itens da checklist
+ * @returns Percentual inteiro de conclusão
+ */
+export function calcularProgressoChecklist(checklists?: ItemChecklistTarefa[]): number {
+  if (!checklists || checklists.length === 0) return 0;
+  const concluidos = checklists.filter(c => c.concluido).length;
+  return Math.round((concluidos / checklists.length) * 100);
+}
+
+/**
+ * Converte um post-it do mural em uma macrotarefa do desfile quando a equipe está pronta.
+ * 
+ * @param tarefa - Tarefa do mural
+ * @returns Macrotarefa estruturada para a coluna 'A Fazer' do desfile
+ */
+export function converterTarefaEmMacrotarefa(tarefa: TarefaPostIt): MacrotarefaDesfile {
+  const checks = tarefa.checklists && tarefa.checklists.length > 0
+    ? tarefa.checklists.map(c => ({
+        id: c.id,
+        texto: c.dataLimite ? `${c.texto} (Prazo: ${c.dataLimite})` : c.texto,
+        concluido: c.concluido
+      }))
+    : [
+        {
+          id: `chk-${Date.now()}`,
+          texto: 'Mobilização e execução pela equipe',
+          concluido: false
+        }
+      ];
+
+  return {
+    id: `macro-${tarefa.id}`,
+    titulo: tarefa.titulo,
+    coluna: 'A Fazer',
+    responsavelPrincipal: tarefa.responsavel || 'Equipe Voluntária Mobilizada',
+    descricao: tarefa.descricao + (tarefa.dataFinal ? ` | Prazo final: ${tarefa.dataFinal}` : ''),
+    checklists: checks
+  };
+}
 
 /**
  * Macrotarefas e Checklists do Desfile (Kanban de Rua).

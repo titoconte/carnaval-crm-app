@@ -1,41 +1,77 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Pin, AlertTriangle, Plus, CheckCircle2, UserCheck, Sparkles } from 'lucide-react';
+import {
+  Pin,
+  AlertTriangle,
+  Plus,
+  Users,
+  Calendar,
+  CheckSquare,
+  Square,
+  Sparkles,
+  Trash2,
+  CheckCircle2,
+  Clock
+} from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { TarefaPostIt } from '../data/blocoData';
+import {
+  TarefaPostIt,
+  ItemChecklistTarefa,
+  calcularProgressoChecklist
+} from '../data/blocoData';
 
 interface TasksManagerProps {
   tarefas: TarefaPostIt[];
   setTarefas: React.Dispatch<React.SetStateAction<TarefaPostIt[]>>;
   isAdmin: boolean;
+  onEquipePronta?: (tarefa: TarefaPostIt) => void;
 }
 
 /**
- * Mural de Tarefas e Apoio com Post-its nas Cores Vivas Oficiais do Bloco.
+ * Mural Comunitário de Tarefas e Apoio do Bloco Bicharada.
+ * Estilo Quadro de Cortiça com Post-its vivos.
+ * Funcionalidades:
+ * - "Quero Ajudar" para assumir tarefas órfãs;
+ * - Checklists individuais com datas limites por item e % de progresso da tarefa;
+ * - Data final global da tarefa;
+ * - Botão "Equipe Pronta" que transfere a tarefa para a aba Tarefas em Andamento (Desfile).
  */
-export default function TasksManager({ tarefas, setTarefas, isAdmin }: TasksManagerProps) {
-  const [filtro, setFiltro] = useState<'todas' | 'orfas' | 'concluidas'>('orfas');
+export default function TasksManager({
+  tarefas,
+  setTarefas,
+  isAdmin,
+  onEquipePronta
+}: TasksManagerProps) {
+  const [filtro, setFiltro] = useState<'todas' | 'orfas' | 'andamento'>('orfas');
   const [modalAssumir, setModalAssumir] = useState<TarefaPostIt | null>(null);
   const [nomeVoluntario, setNomeVoluntario] = useState('');
   const [modalNovoPostIt, setModalNovoPostIt] = useState(false);
 
-  // Form states
+  // Estados do formulário de novo Post-it
   const [novoTitulo, setNovoTitulo] = useState('');
   const [novaDescricao, setNovaDescricao] = useState('');
   const [novaCategoria, setNovaCategoria] = useState<TarefaPostIt['categoria']>('Apoio');
   const [novoResponsavel, setNovoResponsavel] = useState('');
   const [novaCor, setNovaCor] = useState<TarefaPostIt['corPostIt']>('rosa');
   const [novoUrgente, setNovoUrgente] = useState(false);
+  const [novaDataFinal, setNovaDataFinal] = useState('');
+
+  // Checklist dinâmica no cadastro
+  const [checklistTemp, setChecklistTemp] = useState<{ id: string; texto: string; dataLimite?: string }[]>([]);
+  const [itemTexto, setItemTexto] = useState('');
+  const [itemData, setItemData] = useState('');
 
   const isOrfa = (t: TarefaPostIt) => !t.responsavel || t.responsavel.trim() === '' || t.responsavel.toLowerCase().includes('definir');
 
   const tarefasFiltradas = tarefas.filter(t => {
-    if (filtro === 'orfas') return isOrfa(t) && !t.concluida;
-    if (filtro === 'concluidas') return t.concluida;
+    if (filtro === 'orfas') return isOrfa(t);
     return true;
   });
 
+  /**
+   * Associa o nome de um folião voluntário à tarefa órfã selecionada.
+   */
   const handleAssumir = (e: React.FormEvent) => {
     e.preventDefault();
     if (!modalAssumir || !nomeVoluntario.trim()) return;
@@ -60,9 +96,46 @@ export default function TasksManager({ tarefas, setTarefas, isAdmin }: TasksMana
     setNomeVoluntario('');
   };
 
+  /**
+   * Adiciona um item à checklist no formulário de criação de novo post-it.
+   */
+  const handleAdicionarItemChecklist = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!itemTexto.trim()) return;
+
+    setChecklistTemp(prev => [
+      ...prev,
+      {
+        id: `chk-new-${Date.now()}-${prev.length}`,
+        texto: itemTexto.trim(),
+        dataLimite: itemData ? itemData : undefined
+      }
+    ]);
+
+    setItemTexto('');
+    setItemData('');
+  };
+
+  /**
+   * Remove um item da checklist temporária.
+   */
+  const handleRemoverItemChecklist = (id: string) => {
+    setChecklistTemp(prev => prev.filter(item => item.id !== id));
+  };
+
+  /**
+   * Cria um novo post-it com checklist opcional, percentual e prazos.
+   */
   const handleCriarPostIt = (e: React.FormEvent) => {
     e.preventDefault();
     if (!novoTitulo.trim()) return;
+
+    const itensConvertidos: ItemChecklistTarefa[] = checklistTemp.map(item => ({
+      id: item.id,
+      texto: item.texto,
+      dataLimite: item.dataLimite,
+      concluido: false
+    }));
 
     const nova: TarefaPostIt = {
       id: `post-${Date.now()}`,
@@ -72,7 +145,9 @@ export default function TasksManager({ tarefas, setTarefas, isAdmin }: TasksMana
       responsavel: novoResponsavel.trim(),
       corPostIt: novaCor,
       urgente: novoUrgente,
-      concluida: false
+      concluida: false,
+      dataFinal: novaDataFinal ? novaDataFinal : undefined,
+      checklists: itensConvertidos.length > 0 ? itensConvertidos : undefined
     };
 
     setTarefas(prev => [nova, ...prev]);
@@ -80,6 +155,8 @@ export default function TasksManager({ tarefas, setTarefas, isAdmin }: TasksMana
     setNovoTitulo('');
     setNovaDescricao('');
     setNovoResponsavel('');
+    setNovaDataFinal('');
+    setChecklistTemp([]);
 
     confetti({
       particleCount: 40,
@@ -88,13 +165,35 @@ export default function TasksManager({ tarefas, setTarefas, isAdmin }: TasksMana
     });
   };
 
-  const alternarConcluida = (id: string) => {
+  /**
+   * Alterna a conclusão de um item de checklist individual de um post-it.
+   */
+  const toggleItemChecklist = (tarefaId: string, itemId: string) => {
     setTarefas(prev => prev.map(t => {
-      if (t.id === id) {
-        return { ...t, concluida: !t.concluida };
+      if (t.id === tarefaId && t.checklists) {
+        const atualizados = t.checklists.map(c => {
+          if (c.id === itemId) return { ...c, concluido: !c.concluido };
+          return c;
+        });
+        return { ...t, checklists: atualizados };
       }
       return t;
     }));
+  };
+
+  /**
+   * Dispara o fluxo "Equipe Pronta", promovendo a tarefa para a aba de Tarefas em Andamento (Desfile).
+   */
+  const handleEquipePronta = (tarefa: TarefaPostIt) => {
+    if (onEquipePronta) {
+      onEquipePronta(tarefa);
+    }
+
+    confetti({
+      particleCount: 60,
+      spread: 80,
+      colors: ['#00D287', '#E6007E', '#581C87']
+    });
   };
 
   // Cores vivas dos post-its alinhadas à identidade visual
@@ -115,7 +214,7 @@ export default function TasksManager({ tarefas, setTarefas, isAdmin }: TasksMana
             <span>Mural de Recados & Apoio da Bicharada</span>
           </h2>
           <p className="text-xs text-stone-600 mt-0.5">
-            Quadro comunitário: veja os pedidos de socorro do bloco ou pregue uma nova missão!
+            Quadro comunitário: ofereça ajuda nas tarefas abertas ou monte um plano com checklist e prazos!
           </p>
         </div>
 
@@ -138,29 +237,18 @@ export default function TasksManager({ tarefas, setTarefas, isAdmin }: TasksMana
               : 'bg-white text-[#1E1B2E] hover:bg-pink-50'
           }`}
         >
-          🚨 Vagas Abertas (Órfãs) [{tarefas.filter(t => isOrfa(t) && !t.concluida).length}]
+          🚨 Vagas Abertas (Órfãs) [{tarefas.filter(t => isOrfa(t)).length}]
         </button>
 
         <button
           onClick={() => setFiltro('todas')}
           className={`px-3 py-1.5 border-2 border-[#1E1B2E] text-xs font-black uppercase transition-all shadow-[2px_2px_0px_#1E1B2E] ${
             filtro === 'todas'
-              ? 'bg-[#581C87] text-white'
+              ? 'bg-[#581C87] text-[#FBBF24]'
               : 'bg-white text-[#1E1B2E] hover:bg-purple-50'
           }`}
         >
-          Todos os Recados [{tarefas.length}]
-        </button>
-
-        <button
-          onClick={() => setFiltro('concluidas')}
-          className={`px-3 py-1.5 border-2 border-[#1E1B2E] text-xs font-black uppercase transition-all shadow-[2px_2px_0px_#1E1B2E] ${
-            filtro === 'concluidas'
-              ? 'bg-[#00D287] text-[#1E1B2E]'
-              : 'bg-white text-[#1E1B2E] hover:bg-emerald-50'
-          }`}
-        >
-          ✔ Missões Cumpridas [{tarefas.filter(t => t.concluida).length}]
+          Todos os Post-its [{tarefas.length}]
         </button>
       </div>
 
@@ -177,17 +265,19 @@ export default function TasksManager({ tarefas, setTarefas, isAdmin }: TasksMana
             {tarefasFiltradas.map((tarefa, idx) => {
               const semDono = isOrfa(tarefa);
               const rotation = idx % 3 === 0 ? '-rotate-1' : idx % 3 === 1 ? 'rotate-1' : 'rotate-[-0.5deg]';
+              const temChecklist = tarefa.checklists && tarefa.checklists.length > 0;
+              const progresso = temChecklist ? calcularProgressoChecklist(tarefa.checklists) : 0;
 
               return (
                 <div
                   key={tarefa.id}
                   className={`tape-top relative p-4 transition-transform hover:scale-[1.02] flex flex-col justify-between ${
                     corFundoMap[tarefa.corPostIt]
-                  } ${rotation} ${tarefa.concluida ? 'opacity-60 line-through' : ''}`}
+                  } ${rotation}`}
                 >
                   <div>
                     {/* Carimbos e Cabeçalho do Post-it */}
-                    <div className="flex items-center justify-between gap-1 mb-2">
+                    <div className="flex items-center justify-between gap-1 mb-2 flex-wrap">
                       <span className="text-[10px] font-black uppercase tracking-wider bg-black/10 px-2 py-0.5 border border-black/30 font-mono">
                         {tarefa.categoria}
                       </span>
@@ -198,7 +288,7 @@ export default function TasksManager({ tarefas, setTarefas, isAdmin }: TasksMana
                         </span>
                       )}
 
-                      {semDono && !tarefa.concluida && (
+                      {semDono && (
                         <span className="stamp stamp-open text-[10px]">
                           Vaga Aberta
                         </span>
@@ -209,13 +299,67 @@ export default function TasksManager({ tarefas, setTarefas, isAdmin }: TasksMana
                       {tarefa.titulo}
                     </h3>
 
+                    {tarefa.dataFinal && (
+                      <div className="mt-1 flex items-center gap-1 text-[11px] font-mono font-bold text-red-700 bg-red-50/60 px-1.5 py-0.5 border border-red-200">
+                        <Clock className="w-3 h-3" />
+                        <span>Data Final: {tarefa.dataFinal}</span>
+                      </div>
+                    )}
+
                     <p className="text-xs text-stone-800 mt-2 font-serif leading-relaxed">
                       {tarefa.descricao}
                     </p>
+
+                    {/* Exibição e Interação da Checklist com % de Conclusão */}
+                    {temChecklist && (
+                      <div className="mt-3 pt-2 border-t border-black/15">
+                        <div className="flex items-center justify-between text-[11px] font-mono font-bold mb-1">
+                          <span className="flex items-center gap-1">
+                            <CheckSquare className="w-3 h-3 text-[#581C87]" />
+                            Checklist da Tarefa:
+                          </span>
+                          <span className="text-[#00A868] font-black">{progresso}% concluído</span>
+                        </div>
+
+                        {/* Barra de Progresso */}
+                        <div className="w-full h-2 bg-white border border-black mb-2 shadow-[1px_1px_0px_#000]">
+                          <div
+                            className="h-full bg-gradient-to-r from-[#FBBF24] to-[#00D287]"
+                            style={{ width: `${progresso}%` }}
+                          />
+                        </div>
+
+                        <div className="space-y-1.5 max-h-36 overflow-y-auto no-scrollbar">
+                          {tarefa.checklists!.map((item) => (
+                            <div
+                              key={item.id}
+                              onClick={() => toggleItemChecklist(tarefa.id, item.id)}
+                              className="flex items-start gap-1.5 text-xs font-mono cursor-pointer hover:bg-black/5 p-1 rounded transition-colors"
+                            >
+                              {item.concluido ? (
+                                <CheckSquare className="w-3.5 h-3.5 text-[#00A868] shrink-0 mt-0.5" />
+                              ) : (
+                                <Square className="w-3.5 h-3.5 text-stone-500 shrink-0 mt-0.5" />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <span className={item.concluido ? 'line-through text-stone-500' : 'text-stone-900'}>
+                                  {item.texto}
+                                </span>
+                                {item.dataLimite && (
+                                  <span className="block text-[10px] text-stone-600 font-sans italic">
+                                    Prazo: {item.dataLimite}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Rodapé do Post-it */}
-                  <div className="mt-4 pt-3 border-t-2 border-[#1E1B2E]/20 flex items-center justify-between gap-2">
+                  <div className="mt-4 pt-3 border-t-2 border-[#1E1B2E]/20 flex items-center justify-between gap-2 flex-wrap">
                     <div className="text-xs font-bold text-[#1E1B2E]">
                       {semDono ? (
                         <span className="text-[#E6007E] font-black underline uppercase text-[11px]">
@@ -228,24 +372,25 @@ export default function TasksManager({ tarefas, setTarefas, isAdmin }: TasksMana
                       )}
                     </div>
 
-                    <div className="flex items-center gap-1.5">
-                      {semDono && !tarefa.concluida && (
+                    <div className="flex items-center gap-1.5 ml-auto">
+                      {/* Botão Quero Ajudar */}
+                      {semDono && (
                         <button
                           onClick={() => setModalAssumir(tarefa)}
                           className="px-2.5 py-1 bg-[#E6007E] text-white hover:bg-[#C2006A] text-[10px] font-black uppercase border border-black shadow-[2px_2px_0px_#000] active:translate-x-0.5 active:translate-y-0.5"
                         >
-                          Quero Esta Missão!
+                          Quero Ajudar!
                         </button>
                       )}
 
+                      {/* Botão Equipe Pronta (passa para a aba de Desfile / Tarefas em Andamento) */}
                       <button
-                        onClick={() => alternarConcluida(tarefa.id)}
-                        className={`p-1 border border-[#1E1B2E] text-xs ${
-                          tarefa.concluida ? 'bg-[#00D287] text-[#1E1B2E]' : 'bg-white hover:bg-stone-100'
-                        }`}
-                        title={tarefa.concluida ? 'Marcar como pendente' : 'Marcar como concluída'}
+                        onClick={() => handleEquipePronta(tarefa)}
+                        className="px-2.5 py-1 bg-[#00D287] hover:bg-[#34EEA0] text-[#1E1B2E] text-[10px] font-black uppercase border border-black shadow-[2px_2px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 flex items-center gap-1"
+                        title="Equipe mobilizada: passar para Tarefas em Andamento"
                       >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <Users className="w-3 h-3" />
+                        <span>Equipe Pronta</span>
                       </button>
                     </div>
                   </div>
@@ -256,16 +401,16 @@ export default function TasksManager({ tarefas, setTarefas, isAdmin }: TasksMana
         )}
       </div>
 
-      {/* Modal para Assumir Post-it */}
+      {/* Modal para Quero Ajudar (Assumir Post-it) */}
       {modalAssumir && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white border-4 border-[#1E1B2E] p-6 max-w-sm w-full shadow-[6px_6px_0px_#1E1B2E]">
             <div className="stamp stamp-open text-xs mb-2">Compromisso Carnavalesco</div>
             <h3 className="text-base font-black uppercase text-[#1E1B2E]">
-              Assumir Missão: {modalAssumir.titulo}
+              Ajudar na Missão: {modalAssumir.titulo}
             </h3>
             <p className="text-xs text-stone-600 mt-1 mb-4 font-serif">
-              Coloque seu nome ou apelido para registrarmos sua responsabilidade no quadro do bloco.
+              Coloque seu nome ou apelido para registrarmos você como responsável no mural do bloco.
             </p>
 
             <form onSubmit={handleAssumir} className="space-y-3">
@@ -293,7 +438,7 @@ export default function TasksManager({ tarefas, setTarefas, isAdmin }: TasksMana
                   type="submit"
                   className="vintage-button px-4 py-1.5 bg-[#00D287] text-[#1E1B2E] text-xs uppercase"
                 >
-                  Carimbar Meu Nome!
+                  Confirmar Ajuda!
                 </button>
               </div>
             </form>
@@ -301,16 +446,16 @@ export default function TasksManager({ tarefas, setTarefas, isAdmin }: TasksMana
         </div>
       )}
 
-      {/* Modal para Pregar Novo Post-It */}
+      {/* Modal para Pregar Novo Post-It com Checklists e Prazos */}
       {modalNovoPostIt && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border-4 border-[#1E1B2E] p-6 max-w-md w-full shadow-[6px_6px_0px_#1E1B2E]">
+          <div className="bg-white border-4 border-[#1E1B2E] p-6 max-w-md w-full shadow-[6px_6px_0px_#1E1B2E] max-h-[90vh] overflow-y-auto">
             <div className="stamp stamp-urgent text-xs mb-2">Novo Bilhete de Apoio</div>
             <h3 className="text-base font-black uppercase text-[#1E1B2E]">
               Pregar Demanda no Mural
             </h3>
             <p className="text-xs text-stone-600 mt-1 mb-4 font-serif">
-              Deixe sem responsável caso precise que algum folião se voluntarie (tarefa órfã).
+              Configure os detalhes da missão, checklists operacionais e prazos finais.
             </p>
 
             <form onSubmit={handleCriarPostIt} className="space-y-3">
@@ -339,11 +484,37 @@ export default function TasksManager({ tarefas, setTarefas, isAdmin }: TasksMana
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
+                  <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Data Final da Tarefa</label>
+                  <input
+                    type="date"
+                    value={novaDataFinal}
+                    onChange={(e) => setNovaDataFinal(e.target.value)}
+                    className="w-full px-2 py-1.5 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Cor do Post-it</label>
+                  <select
+                    value={novaCor}
+                    onChange={(e) => setNovaCor(e.target.value as any)}
+                    className="w-full px-2 py-1.5 bg-white border-2 border-[#1E1B2E] text-xs font-bold"
+                  >
+                    <option value="rosa">Rosa Choque (#E6007E)</option>
+                    <option value="verde">Verde Menta (#00D287)</option>
+                    <option value="amarelo">Amarelo Dourado (#FBBF24)</option>
+                    <option value="azul">Lavanda (#6C2BD9)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
                   <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Categoria</label>
                   <select
                     value={novaCategoria}
                     onChange={(e) => setNovaCategoria(e.target.value as any)}
-                    className="w-full px-3 py-2 bg-white border-2 border-[#1E1B2E] text-xs font-bold"
+                    className="w-full px-2 py-1.5 bg-white border-2 border-[#1E1B2E] text-xs font-bold"
                   >
                     <option value="Apoio">Apoio</option>
                     <option value="Logística">Logística</option>
@@ -355,31 +526,68 @@ export default function TasksManager({ tarefas, setTarefas, isAdmin }: TasksMana
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Cor do Post-it</label>
-                  <select
-                    value={novaCor}
-                    onChange={(e) => setNovaCor(e.target.value as any)}
-                    className="w-full px-3 py-2 bg-white border-2 border-[#1E1B2E] text-xs font-bold"
-                  >
-                    <option value="rosa">Rosa Choque (#E6007E)</option>
-                    <option value="verde">Verde Menta (#00D287)</option>
-                    <option value="amarelo">Amarelo Dourado (#FBBF24)</option>
-                    <option value="azul">Roxo / Lavanda (#6C2BD9)</option>
-                  </select>
+                  <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">
+                    Responsável (opcional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Vazio para Vaga Aberta"
+                    value={novoResponsavel}
+                    onChange={(e) => setNovoResponsavel(e.target.value)}
+                    className="w-full px-2 py-1.5 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-bold font-mono focus:outline-none"
+                  />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">
-                  Responsável (Deixe vazio para Vaga Aberta)
+              {/* Seção de Checklist da Tarefa */}
+              <div className="pt-2 border-t border-stone-200">
+                <label className="block text-xs font-black uppercase text-[#581C87] mb-1">
+                  Adicionar Itens na Checklist (com Data por Tarefa)
                 </label>
-                <input
-                  type="text"
-                  placeholder="Nome de quem vai fazer ou deixe em branco"
-                  value={novoResponsavel}
-                  onChange={(e) => setNovoResponsavel(e.target.value)}
-                  className="w-full px-3 py-2 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-bold font-mono focus:outline-none"
-                />
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    placeholder="Etapa ou sub-tarefa..."
+                    value={itemTexto}
+                    onChange={(e) => setItemTexto(e.target.value)}
+                    className="flex-1 px-2 py-1 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono"
+                  />
+                  <input
+                    type="date"
+                    value={itemData}
+                    onChange={(e) => setItemData(e.target.value)}
+                    className="w-32 px-1 py-1 bg-stone-50 border-2 border-[#1E1B2E] text-[11px] font-mono"
+                    title="Data limite para este item da checklist"
+                  />
+                  <button
+                    onClick={handleAdicionarItemChecklist}
+                    className="px-2.5 py-1 bg-[#00D287] text-[#1E1B2E] text-xs font-black uppercase border border-black shadow-[1px_1px_0px_#000]"
+                  >
+                    +
+                  </button>
+                </div>
+
+                {checklistTemp.length > 0 && (
+                  <div className="space-y-1 bg-stone-100 p-2 border border-stone-300 max-h-32 overflow-y-auto">
+                    {checklistTemp.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between text-xs font-mono bg-white p-1 border">
+                        <span className="truncate">{item.texto}</span>
+                        <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                          {item.dataLimite && (
+                            <span className="text-[10px] text-stone-500 font-sans">{item.dataLimite}</span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoverItemChecklist(item.id)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-2 pt-1">
@@ -395,7 +603,7 @@ export default function TasksManager({ tarefas, setTarefas, isAdmin }: TasksMana
                 </label>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-200">
                 <button
                   type="button"
                   onClick={() => setModalNovoPostIt(false)}

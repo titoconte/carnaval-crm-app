@@ -28,6 +28,7 @@ import {
   LETRAS_CIFRAS_INICIAIS,
   ENQUETES_WHATSAPP_INICIAIS,
   CALENDARIO_INICIAL,
+  converterTarefaEmMacrotarefa,
   Integrante,
   InscritoBloco,
   TarefaPostIt,
@@ -133,6 +134,16 @@ export default function Home() {
     setIntegrantes(prev => [novo, ...prev]);
   };
 
+  /**
+   * Promove uma tarefa do mural para a aba de Tarefas em Andamento (Desfile) ao acionar Equipe Pronta.
+   */
+  const handlePromoverTarefaParaDesfile = (tarefa: TarefaPostIt) => {
+    const novaMacro = converterTarefaEmMacrotarefa(tarefa);
+    setMacrotarefas(prev => [novaMacro, ...prev]);
+    setTarefas(prev => prev.filter(t => t.id !== tarefa.id));
+    setActiveTab('desfile');
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-[#F4EEDF] text-[#1A181B]">
       {/* Cabeçalho Vintage */}
@@ -174,6 +185,7 @@ export default function Home() {
             tarefas={tarefas}
             setTarefas={setTarefas}
             isAdmin={isAdmin}
+            onEquipePronta={handlePromoverTarefaParaDesfile}
           />
         )}
 
