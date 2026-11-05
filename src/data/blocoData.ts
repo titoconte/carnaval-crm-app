@@ -927,6 +927,42 @@ export function criarSugestaoMusica(dados: {
   };
 }
 
+/**
+ * Filtra e seleciona as músicas para compor o caderno de partituras/letras para download.
+ * 
+ * @param musicas - Lista completa de músicas
+ * @param modo - Modo de seleção ('todas' | 'confirmadas' | 'selecionadas')
+ * @param selecionadasIds - Array opcional de IDs quando em modo 'selecionadas'
+ * @returns Lista filtrada de músicas
+ */
+export function obterMusicasParaDownload(
+  musicas: MusicaRepertorio[],
+  modo: 'todas' | 'confirmadas' | 'selecionadas',
+  selecionadasIds?: string[]
+): MusicaRepertorio[] {
+  if (modo === 'confirmadas') {
+    return musicas.filter(m => m.statusCuradoria === 'Confirmada');
+  }
+  if (modo === 'selecionadas' && selecionadasIds && selecionadasIds.length > 0) {
+    return musicas.filter(m => selecionadasIds.includes(m.id));
+  }
+  return [...musicas];
+}
+
+/**
+ * Monta o texto descritivo e instruções da partitura de uma música para o caderno PDF.
+ * 
+ * @param musica - Objeto com informações da música
+ * @returns Texto formatado para o PDF do caderno
+ */
+export function montarTextoPartituraMusica(musica: MusicaRepertorio): string {
+  const arranjo = musica.partituraTexto || (musica.arquivoRepertorio ? `Arquivo anexado: ${musica.arquivoRepertorio}` : 'Arranjo padrão de percussão e metais.');
+  return `FAIXA ${musica.ordemDesfile}: ${musica.titulo.toUpperCase()}\n` +
+         `Artista Original: ${musica.artistaOriginal} | Ritmo: ${musica.ritmo} | Status: ${musica.statusCuradoria}\n` +
+         `------------------------------------------------------------\n` +
+         `PARTITURA & CONVENÇÕES:\n${arranjo}\n`;
+}
+
 export const REPERTORIO_INICIAL: MusicaRepertorio[] = [
   {
     id: 'mus-1',

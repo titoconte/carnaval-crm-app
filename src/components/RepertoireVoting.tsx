@@ -14,13 +14,19 @@ import {
   Upload,
   Lock,
   ExternalLink,
-  BookOpen
+  BookOpen,
+  Download,
+  CheckSquare,
+  Square,
+  Check
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { jsPDF } from 'jspdf';
 import {
   MusicaRepertorio,
   reordenarRepertorio,
-  criarSugestaoMusica
+  criarSugestaoMusica,
+  obterMusicasParaDownload
 } from '../data/blocoData';
 
 /**
@@ -69,6 +75,149 @@ export default function RepertoireVoting({
 
   // Modal de Leitura de Partitura
   const [modalPartitura, setModalPartitura] = useState<MusicaRepertorio | null>(null);
+
+  // Modal de Download do Caderno de Partituras em PDF
+  const [modalCadernoPdf, setModalCadernoPdf] = useState(false);
+  const [tipoDownload, setTipoDownload] = useState<'todas' | 'confirmadas' | 'selecionadas'>('confirmadas');
+  const [selecionadasIds, setSelecionadasIds] = useState<string[]>([]);
+  const [gerandoPdf, setGerandoPdf] = useState(false);
+
+  /**
+   * Alterna a seleção de uma música específica para o download do caderno em PDF.
+   * 
+   * @param id - Identificador da música
+   */
+  const toggleSelecaoMusica = (id: string) => {
+    setSelecionadasIds(prev =>
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  /**
+   * Compila e faz o download das partituras e cifras selecionadas em um arquivo PDF estruturado.
+   */
+  const handleDownloadPdf = () => {
+    setGerandoPdf(true);
+    try {
+      const idsPadrao = selecionadasIds.length > 0
+        ? selecionadasIds
+        : musicas.filter(m => m.statusCuradoria === 'Confirmada').map(m => m.id);
+
+      const musicasParaExportar = obterMusicasParaDownload(musicas, tipoDownload, idsPadrao);
+
+      if (musicasParaExportar.length === 0) {
+        alert('Nenhuma música selecionada para gerar o caderno.');
+        setGerandoPdf(false);
+        return;
+      }
+
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      // Capa do Caderno Carnavalesco
+      doc.setFillColor(88, 28, 135); // Roxo #581C87
+      doc.rect(0, 0, 210, 38, 'F');
+
+      doc.setTextColor(251, 191, 36); // Ouro #FBBF24
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(20);
+      doc.text('BLOCO BICHARADA • FLORIPA 2027', 15, 18);
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(10.5);
+      doc.setFont('helvetica', 'normal');
+      doc.text(
+        `Caderno Oficial de Partituras & Cifras • Modo: ${tipoDownload.toUpperCase()} (${musicasParaExportar.length} faixas)`,
+        15,
+        28
+      );
+
+      let y = 48;
+
+      musicasParaExportar.forEach(musica => {
+        // Verifica quebra de página
+        if (y > 230) {
+          doc.addPage();
+          y = 20;
+        }
+
+        // Cabeçalho da música
+        doc.setFillColor(243, 244, 246);
+        doc.rect(15, y, 180, 10, 'F');
+        doc.setDrawColor(30, 27, 46);
+        doc.setLineWidth(0.3);
+        doc.rect(15, y, 180, 10, 'S');
+
+        doc.setTextColor(230, 0, 126); // Rosa #E6007E
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.text(`#${musica.ordemDesfile} - ${musica.titulo.toUpperCase()}`, 18, y + 7);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.5);
+        doc.setTextColor(70, 70, 70);
+        doc.text(
+          `Ritmo: ${musica.ritmo} | Artista Original: ${musica.artistaOriginal} | Curadoria: ${musica.statusCuradoria}`,
+          18,
+          y + 15
+        );
+
+        y += 20;
+
+        // Conteúdo da Partitura / Cifra / Arranjo
+        const conteudoPartitura =
+          musica.partituraTexto ||
+          (musica.arquivoRepertorio
+            ? `Arquivo anexado: ${musica.arquivoRepertorio}\nConsulte o arquivo na pasta de partituras da bateria.`
+            : 'Arranjo padrão de bateria e metais da Bicharada.');
+
+        doc.setFont('courier', 'normal');
+        doc.setFontSize(8.5);
+        doc.setTextColor(20, 20, 20);
+
+        const linhas = doc.splitTextToSize(conteudoPartitura, 175);
+        if (y + linhas.length * 4.5 > 275) {
+          doc.addPage();
+          y = 20;
+        }
+
+        doc.text(linhas, 18, y);
+        y += linhas.length * 4.5 + 12;
+      });
+
+      // Numeração de páginas no rodapé
+      const totalPaginas = doc.getNumberOfPages();
+      for (let i = 1; i <= totalPaginas; i++) {
+        doc.setPage(i);
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(8);
+        doc.setTextColor(130, 130, 130);
+        doc.text(
+          `Bloco Bicharada Floripa 2027 • Caderno de Partituras • Página ${i} de ${totalPaginas}`,
+          15,
+          290
+        );
+      }
+
+      doc.save(`Caderno_Partituras_Bicharada_2027_${tipoDownload}.pdf`);
+
+      confetti({
+        particleCount: 50,
+        spread: 70,
+        colors: ['#581C87', '#FBBF24', '#00D287']
+      });
+
+      setModalCadernoPdf(false);
+    } catch (err) {
+      console.error('Erro ao compilar o PDF:', err);
+      alert('Houve um problema ao compilar o PDF.');
+    } finally {
+      setGerandoPdf(false);
+    }
+  };
 
   /**
    * Inicia o arrasto de um card se o usuário for coordenador.
@@ -208,17 +357,15 @@ export default function RepertoireVoting({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Botão de Transição para o Caderno de Letras e Cifras */}
-          {onOpenLetras && (
-            <button
-              onClick={onOpenLetras}
-              className="vintage-button px-3.5 py-2 bg-[#581C87] text-[#FBBF24] hover:bg-[#431464] text-xs uppercase flex items-center gap-1.5 shadow-[2px_2px_0px_#000]"
-              title="Abrir o caderno de letras, cifras e arranjos"
-            >
-              <BookOpen className="w-4 h-4" />
-              <span>Caderno de Letras & Cifras</span>
-            </button>
-          )}
+          {/* Botão de Download do Caderno de Partituras em PDF */}
+          <button
+            onClick={() => setModalCadernoPdf(true)}
+            className="vintage-button px-3.5 py-2 bg-[#581C87] text-[#FBBF24] hover:bg-[#431464] text-xs uppercase flex items-center gap-1.5 shadow-[2px_2px_0px_#000]"
+            title="Download do caderno de letras, cifras e partituras em PDF"
+          >
+            <BookOpen className="w-4 h-4" />
+            <span>Caderno de Letras & Cifras (PDF)</span>
+          </button>
 
           <button
             onClick={() => setModalNovaMusica(true)}
@@ -565,6 +712,167 @@ export default function RepertoireVoting({
               >
                 Fechar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Popup: Download do Caderno de Partituras em PDF */}
+      {modalCadernoPdf && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border-4 border-[#1A181B] p-6 max-w-lg w-full shadow-[6px_6px_0px_#1A181B] max-h-[90vh] flex flex-col">
+            <div className="stamp stamp-open text-xs mb-2">Exportação do Repertório</div>
+            <h3 className="text-base font-black uppercase text-[#1A181B] font-mono flex items-center gap-2">
+              <Download className="w-5 h-5 text-[#E6007E]" />
+              <span>Baixar Caderno de Partituras em PDF</span>
+            </h3>
+            <p className="text-xs text-stone-600 mt-1 mb-4 font-serif">
+              Escolha quais músicas e partituras você deseja compilar no PDF oficial para ensaios e desfile da Bicharada.
+            </p>
+
+            {/* Opções de Seleção */}
+            <div className="space-y-2 mb-4">
+              <label
+                onClick={() => setTipoDownload('confirmadas')}
+                className={`flex items-center justify-between p-3 border-2 cursor-pointer transition-all ${
+                  tipoDownload === 'confirmadas'
+                    ? 'border-[#00A868] bg-green-50 shadow-[2px_2px_0px_#00A868]'
+                    : 'border-stone-300 hover:border-stone-500 bg-white'
+                }`}
+              >
+                <div>
+                  <div className="font-bold text-xs uppercase text-[#1E1B2E] flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#00A868]" />
+                    <span>Apenas Músicas Confirmadas</span>
+                  </div>
+                  <p className="text-[11px] text-stone-600 font-mono mt-0.5">
+                    Gera o PDF somente com as músicas aprovadas para a avenida ({musicas.filter(m => m.statusCuradoria === 'Confirmada').length} faixas).
+                  </p>
+                </div>
+                <input
+                  type="radio"
+                  name="tipoDownload"
+                  checked={tipoDownload === 'confirmadas'}
+                  onChange={() => setTipoDownload('confirmadas')}
+                  className="accent-[#00A868] w-4 h-4"
+                />
+              </label>
+
+              <label
+                onClick={() => setTipoDownload('todas')}
+                className={`flex items-center justify-between p-3 border-2 cursor-pointer transition-all ${
+                  tipoDownload === 'todas'
+                    ? 'border-[#581C87] bg-purple-50 shadow-[2px_2px_0px_#581C87]'
+                    : 'border-stone-300 hover:border-stone-500 bg-white'
+                }`}
+              >
+                <div>
+                  <div className="font-bold text-xs uppercase text-[#1E1B2E] flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#581C87]" />
+                    <span>Baixar Tudo (Setlist Completo)</span>
+                  </div>
+                  <p className="text-[11px] text-stone-600 font-mono mt-0.5">
+                    Inclui todas as faixas cadastradas no sistema ({musicas.length} faixas).
+                  </p>
+                </div>
+                <input
+                  type="radio"
+                  name="tipoDownload"
+                  checked={tipoDownload === 'todas'}
+                  onChange={() => setTipoDownload('todas')}
+                  className="accent-[#581C87] w-4 h-4"
+                />
+              </label>
+
+              <label
+                onClick={() => setTipoDownload('selecionadas')}
+                className={`flex items-center justify-between p-3 border-2 cursor-pointer transition-all ${
+                  tipoDownload === 'selecionadas'
+                    ? 'border-[#E6007E] bg-pink-50 shadow-[2px_2px_0px_#E6007E]'
+                    : 'border-stone-300 hover:border-stone-500 bg-white'
+                }`}
+              >
+                <div>
+                  <div className="font-bold text-xs uppercase text-[#1E1B2E] flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#E6007E]" />
+                    <span>Seleção Personalizada de Músicas</span>
+                  </div>
+                  <p className="text-[11px] text-stone-600 font-mono mt-0.5">
+                    Marque individualmente as faixas que deseja incluir no arquivo.
+                  </p>
+                </div>
+                <input
+                  type="radio"
+                  name="tipoDownload"
+                  checked={tipoDownload === 'selecionadas'}
+                  onChange={() => setTipoDownload('selecionadas')}
+                  className="accent-[#E6007E] w-4 h-4"
+                />
+              </label>
+            </div>
+
+            {/* Lista com Checkboxes se o modo for Seleção Personalizada */}
+            {tipoDownload === 'selecionadas' && (
+              <div className="flex-1 overflow-y-auto border-2 border-stone-300 p-2 mb-4 max-h-48 space-y-1.5 bg-stone-50 text-xs font-mono">
+                {musicas.map(m => {
+                  const marcada = selecionadasIds.includes(m.id);
+                  return (
+                    <div
+                      key={m.id}
+                      onClick={() => toggleSelecaoMusica(m.id)}
+                      className={`flex items-center justify-between p-2 border cursor-pointer transition-colors ${
+                        marcada ? 'bg-pink-100 border-[#E6007E]' : 'bg-white border-stone-200 hover:bg-stone-100'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {marcada ? (
+                          <CheckSquare className="w-4 h-4 text-[#E6007E]" />
+                        ) : (
+                          <Square className="w-4 h-4 text-stone-400" />
+                        )}
+                        <span className="font-bold">#{m.ordemDesfile} {m.titulo}</span>
+                      </div>
+                      <span className="text-[10px] text-stone-500">{m.ritmo}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Ações do Modal */}
+            <div className="mt-auto pt-4 border-t-2 border-stone-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+              {onOpenLetras && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModalCadernoPdf(false);
+                    onOpenLetras();
+                  }}
+                  className="px-3 py-2 border-2 border-[#581C87] text-[#581C87] text-xs font-mono font-bold uppercase hover:bg-purple-50 text-center"
+                >
+                  Ver Cifras na Tela
+                </button>
+              )}
+
+              <div className="flex items-center gap-2 ml-auto">
+                <button
+                  type="button"
+                  onClick={() => setModalCadernoPdf(false)}
+                  className="px-3.5 py-2 border-2 border-[#1E1B2E] bg-stone-100 text-stone-800 text-xs font-bold uppercase hover:bg-stone-200"
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDownloadPdf}
+                  disabled={gerandoPdf}
+                  className="vintage-button px-4 py-2 bg-[#00A868] text-white hover:bg-[#008f58] text-xs font-bold uppercase flex items-center gap-1.5 shadow-[2px_2px_0px_#000]"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>{gerandoPdf ? 'Gerando PDF...' : 'Baixar Arquivo PDF'}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
