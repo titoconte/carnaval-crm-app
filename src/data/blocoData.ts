@@ -1356,3 +1356,17 @@ export function removerUsuario(
 ): UsuarioBloco[] {
   return usuarios.filter(u => u.id !== id);
 }
+
+/**
+ * Remove um integrante do elenco oficial pelo seu identificador unico.
+ * 
+ * @param integrantes - Lista atual de integrantes
+ * @param id - Identificador do integrante a ser removido
+ * @returns Lista atualizada sem o integrante removido
+ */
+export function removerIntegranteElenco(
+  integrantes: Integrante[],
+  id: string
+): Integrante[] {
+  return integrantes.filter(i => i.id !== id);
+}

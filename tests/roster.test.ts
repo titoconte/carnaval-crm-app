@@ -7,7 +7,8 @@ import {
   SETORES_ELENCO,
   CATEGORIAS_POR_SETOR,
   obterSetorDoGrupo,
-  obterColunasPorSetor
+  obterColunasPorSetor,
+  removerIntegranteElenco
 } from '../src/data/blocoData';
 
 describe('Estrutura de 3 Abas (Música, Performance e Organização) e Naipes do Elenco', () => {
@@ -90,5 +91,27 @@ describe('Estrutura de 3 Abas (Música, Performance e Organização) e Naipes do
     assert.strictEqual(colunas['Carro Alegórico'].total, 1);
     assert.strictEqual(colunas['Organização & Apoio'].total, 1);
     assert.strictEqual(colunas['Outros Instrumentos'].total, 0);
+  });
+
+  it('deve remover um integrante do elenco pelo ID', () => {
+    const listaInicial: Integrante[] = [
+      { id: '1', nome: 'André', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Caixa', ativo: true },
+      { id: '2', nome: 'Gabriel', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Caixa', ativo: true }
+    ];
+
+    const atualizada = removerIntegranteElenco(listaInicial, '1');
+    assert.strictEqual(atualizada.length, 1);
+    assert.strictEqual(atualizada[0].id, '2');
+    assert.strictEqual(atualizada[0].nome, 'Gabriel');
+  });
+
+  it('não deve alterar a lista se o ID não existir', () => {
+    const listaInicial: Integrante[] = [
+      { id: '1', nome: 'André', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Caixa', ativo: true }
+    ];
+
+    const atualizada = removerIntegranteElenco(listaInicial, '999');
+    assert.strictEqual(atualizada.length, 1);
+    assert.strictEqual(atualizada[0].id, '1');
   });
 });

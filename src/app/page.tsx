@@ -465,6 +465,7 @@ export default function Home() {
           <RosterView
             integrantes={integrantes}
             setIntegrantes={setIntegrantes}
+            isAdmin={isAdmin}
           />
         )}
 

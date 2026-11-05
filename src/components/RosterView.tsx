@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Users, UserPlus, Search, Sparkles, Music, Theater, ClipboardList } from 'lucide-react';
+import { Users, UserPlus, UserMinus, Search, Trash2, Music, Theater, ClipboardList } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import {
   Integrante,
@@ -11,12 +11,14 @@ import {
   CATEGORIAS_POR_SETOR,
   MACROCATEGORIAS_ELENCO,
   agruparElencoPorMacrocategoria,
-  obterSetorDoGrupo
+  obterSetorDoGrupo,
+  removerIntegranteElenco
 } from '../data/blocoData';
 
 interface RosterViewProps {
   integrantes: Integrante[];
   setIntegrantes: React.Dispatch<React.SetStateAction<Integrante[]>>;
+  isAdmin?: boolean;
 }
 
 /**
@@ -25,13 +27,15 @@ interface RosterViewProps {
  * 2. Performance (Brincantes, Pernaltas, Dança e Carro Alegórico)
  * 3. Organização (Organização, Apoio e Produção)
  * 
- * Dentro de cada aba, as macrocategorias ficam dispostas em colunas
- * e as funções/instrumentos e integrantes distribuídos em linhas verticais.
+ * Permite inserção de novos membros e, exclusivamente para coordenadores (isAdmin),
+ * a deleção de integrantes via botão com dropdown ou lixeira individual com confirmação.
  */
-export default function RosterView({ integrantes, setIntegrantes }: RosterViewProps) {
+export default function RosterView({ integrantes, setIntegrantes, isAdmin = false }: RosterViewProps) {
   const [search, setSearch] = useState('');
   const [setorAtivo, setSetorAtivo] = useState<SetorElenco>('Música');
   const [modalNovo, setModalNovo] = useState(false);
+  const [modalRemover, setModalRemover] = useState(false);
+  const [integranteParaRemoverId, setIntegranteParaRemoverId] = useState<string>('');
 
   // Form states para adição rápida de novos integrantes
   const [nome, setNome] = useState('');
@@ -66,6 +70,26 @@ export default function RosterView({ integrantes, setIntegrantes }: RosterViewPr
       spread: 60,
       colors: ['#00D287', '#E6007E', '#FBBF24']
     });
+  };
+
+  /**
+   * Remove um integrante do elenco oficial com pedido de confirmação.
+   * 
+   * @param id - Identificador do integrante a ser excluído
+   */
+  const handleRemoverIntegrante = (id: string) => {
+    const alvo = integrantes.find(i => i.id === id);
+    if (!alvo) return;
+
+    const confirmou = window.confirm(
+      `Tem certeza que deseja remover "${alvo.nome}" (${alvo.grandeGrupo} - ${alvo.instrumentoOuFuncao}) do elenco?`
+    );
+    if (!confirmou) return;
+
+    setIntegrantes(prev => removerIntegranteElenco(prev, id));
+    if (modalRemover) {
+      setModalRemover(false);
+    }
   };
 
   /**
@@ -170,7 +194,7 @@ export default function RosterView({ integrantes, setIntegrantes }: RosterViewPr
 
   return (
     <div className="space-y-4">
-      {/* Top Banner & Botão Adicionar */}
+      {/* Top Banner & Botões de Ação */}
       <div className="vintage-card p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -188,8 +212,8 @@ export default function RosterView({ integrantes, setIntegrantes }: RosterViewPr
           </p>
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-60">
+        <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+          <div className="relative flex-1 sm:w-56">
             <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-stone-500" />
             <input
               type="text"
@@ -206,11 +230,27 @@ export default function RosterView({ integrantes, setIntegrantes }: RosterViewPr
               setGrandeGrupo(CATEGORIAS_POR_SETOR[setorAtivo][0]);
               setModalNovo(true);
             }}
-            className="vintage-button px-3.5 py-2 bg-[#00D287] text-[#1E1B2E] hover:bg-[#34EEA0] text-xs uppercase flex items-center gap-1.5 shrink-0 shadow-[2px_2px_0px_#1E1B2E]"
+            className="vintage-button px-3.5 py-2 bg-[#00D287] text-[#1E1B2E] hover:bg-[#34EEA0] text-xs uppercase flex items-center gap-1.5 shrink-0 shadow-[2px_2px_0px_#1E1B2E] cursor-pointer"
           >
             <UserPlus className="w-4 h-4" />
             <span className="hidden sm:inline">+ Novo Integrante</span>
           </button>
+
+          {/* Botão para Coordenadores: Remover Integrante */}
+          {isAdmin && integrantes.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setIntegranteParaRemoverId(integrantes[0]?.id || '');
+                setModalRemover(true);
+              }}
+              className="vintage-button px-3.5 py-2 bg-red-100 hover:bg-red-200 text-red-700 border-2 border-[#1E1B2E] text-xs font-black uppercase flex items-center gap-1.5 shrink-0 shadow-[2px_2px_0px_#1E1B2E] cursor-pointer"
+              title="Exclusivo Coordenadores: Remover integrante do elenco"
+            >
+              <UserMinus className="w-4 h-4 text-red-600" />
+              <span>Remover Integrante</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -300,10 +340,12 @@ export default function RosterView({ integrantes, setIntegrantes }: RosterViewPr
                       {/* Linha do Instrumento */}
                       <div className="flex items-center justify-between border-b border-stone-200 pb-1 mb-2 text-xs font-mono font-black uppercase text-[#1E1B2E]">
                         <span className="truncate">{inst}</span>
-                        <span className="text-stone-500 font-normal shrink-0">({membros.length})</span>
+                        <span className="font-mono text-[10px] px-1.5 py-0.2 border border-black bg-stone-200">
+                          {membros.length}
+                        </span>
                       </div>
 
-                      {/* Linhas de Integrantes */}
+                      {/* Lista Vertical de Integrantes */}
                       <div className="space-y-1.5">
                         {membros.map((m) => (
                           <div
@@ -318,11 +360,24 @@ export default function RosterView({ integrantes, setIntegrantes }: RosterViewPr
                                 {m.nome}
                               </span>
                             </div>
-                            {m.observacao && (
-                              <span className="text-[10px] text-stone-500 truncate max-w-[120px] font-sans italic" title={m.observacao}>
-                                {m.observacao}
-                              </span>
-                            )}
+
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {m.observacao && (
+                                <span className="text-[10px] text-stone-500 truncate max-w-[100px] font-sans italic" title={m.observacao}>
+                                  {m.observacao}
+                                </span>
+                              )}
+                              {isAdmin && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoverIntegrante(m.id)}
+                                  title={`Remover ${m.nome}`}
+                                  className="text-stone-400 hover:text-red-600 p-0.5 transition-colors cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -422,6 +477,67 @@ export default function RosterView({ integrantes, setIntegrantes }: RosterViewPr
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Remover Integrante com Dropdown (Exclusivo Coordenadores) */}
+      {isAdmin && modalRemover && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#FAF6EC] border-4 border-[#1A181B] p-6 max-w-md w-full shadow-[6px_6px_0px_#1A181B]">
+            <div className="stamp stamp-closed text-xs mb-2">Apenas Coordenadores</div>
+            <h3 className="text-base font-black uppercase text-[#1A181B] font-mono mb-2 flex items-center gap-2">
+              <UserMinus className="w-5 h-5 text-red-600" />
+              <span>Remover Integrante do Elenco</span>
+            </h3>
+            <p className="text-xs text-stone-600 mb-4 font-mono">
+              Selecione o participante no menu abaixo para retirá-lo do elenco oficial:
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-mono font-bold uppercase text-stone-700 mb-1">
+                  Selecione o Integrante *
+                </label>
+                <select
+                  value={integranteParaRemoverId}
+                  onChange={(e) => setIntegranteParaRemoverId(e.target.value)}
+                  className="w-full p-2 border-2 border-[#1A181B] bg-white font-mono text-xs focus:bg-amber-50 focus:outline-hidden"
+                >
+                  {[...integrantes]
+                    .sort((a, b) => a.nome.localeCompare(b.nome))
+                    .map((int) => (
+                      <option key={int.id} value={int.id}>
+                        {int.nome} — {int.grandeGrupo} ({int.instrumentoOuFuncao})
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {integranteParaRemoverId && (
+                <div className="p-3 bg-red-50 border border-red-300 text-xs text-red-800 font-mono">
+                  <strong>Atenção:</strong> Será solicitada uma confirmação antes de excluir o participante do elenco.
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-300">
+                <button
+                  type="button"
+                  onClick={() => setModalRemover(false)}
+                  className="px-3 py-1.5 border-2 border-[#1A181B] text-xs font-bold uppercase hover:bg-stone-200"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleRemoverIntegrante(integranteParaRemoverId)}
+                  disabled={!integranteParaRemoverId}
+                  className="px-4 py-1.5 bg-red-600 text-white font-mono text-xs font-bold uppercase hover:bg-red-700 border-2 border-[#1A181B] shadow-[2px_2px_0px_#1A181B] disabled:opacity-50 cursor-pointer"
+                >
+                  Remover Integrante
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
