@@ -1240,3 +1240,119 @@ export function atualizarTemaAno(
     dataAtualizacao: new Date().toISOString()
   };
 }
+
+/**
+ * Perfis de acesso do sistema do Bloco Bicharada:
+ * - 'coordenador': Acesso total a todas as abas, edições, exclusões e criação de usuários.
+ * - 'bicho': Folião integrante do bloco, acesso às 11 abas com interações operacionais normais.
+ * - 'publico': Acesso anônimo sem login, restrito a 5 abas em modo estritamente consulta (apenas inscrição permite envio).
+ */
+export type PerfilUsuario = 'coordenador' | 'bicho' | 'publico';
+
+export interface UsuarioBloco {
+  id: string;
+  username: string; // Nome de usuário (letras/números)
+  senha: string;    // Senha simples de acesso
+  perfil: 'coordenador' | 'bicho';
+  criadoEm: string;
+}
+
+/**
+ * Usuários cadastrados inicialmente no sistema.
+ * O primeiro usuário é a coordenação geral com username 'adminbixarada' e senha 'Hluz@1006'.
+ */
+export const USUARIOS_INICIAIS: UsuarioBloco[] = [
+  {
+    id: 'user-coord-master',
+    username: 'adminbixarada',
+    senha: 'Hluz@1006',
+    perfil: 'coordenador',
+    criadoEm: '2026-11-05'
+  }
+];
+
+/**
+ * Autentica um usuário pelo nome de usuário e senha simples.
+ * 
+ * @param usuarios - Lista de usuários cadastrados no sistema
+ * @param username - Nome de usuário informado
+ * @param senha - Senha digitada
+ * @returns Objeto do usuário autenticado ou null se credenciais incorretas
+ */
+export function autenticarUsuario(
+  usuarios: UsuarioBloco[],
+  username: string,
+  senha: string
+): UsuarioBloco | null {
+  const userLimpo = username.trim().toLowerCase();
+  const senhaLimpa = senha.trim();
+
+  const encontrado = usuarios.find(
+    u => u.username.toLowerCase() === userLimpo && u.senha === senhaLimpa
+  );
+
+  return encontrado || null;
+}
+
+/**
+ * Adiciona um novo usuário ao sistema com validação de unicidade de nome de usuário.
+ * 
+ * @param usuarios - Lista atual de usuários
+ * @param dados - Dados do novo usuário a ser criado
+ * @returns Objeto com a lista atualizada de usuários e status de sucesso ou mensagem de erro
+ */
+export function adicionarNovoUsuario(
+  usuarios: UsuarioBloco[],
+  dados: {
+    username: string;
+    senha: string;
+    perfil: 'coordenador' | 'bicho';
+  }
+): { usuariosAtualizados: UsuarioBloco[]; sucesso: boolean; erro?: string } {
+  const usernameSanitizado = dados.username.trim().toLowerCase().replace(/\s+/g, '');
+
+  if (!usernameSanitizado) {
+    return { usuariosAtualizados: usuarios, sucesso: false, erro: 'Informe um nome de usuário válido.' };
+  }
+
+  if (usernameSanitizado.length < 3) {
+    return { usuariosAtualizados: usuarios, sucesso: false, erro: 'O nome de usuário deve conter pelo menos 3 caracteres.' };
+  }
+
+  if (!dados.senha || dados.senha.trim().length < 4) {
+    return { usuariosAtualizados: usuarios, sucesso: false, erro: 'A senha simples deve ter no mínimo 4 caracteres.' };
+  }
+
+  const jaExiste = usuarios.some(u => u.username.toLowerCase() === usernameSanitizado);
+  if (jaExiste) {
+    return { usuariosAtualizados: usuarios, sucesso: false, erro: `O nome de usuário "${usernameSanitizado}" já está em uso.` };
+  }
+
+  const novoUsuario: UsuarioBloco = {
+    id: `user-${Date.now()}`,
+    username: usernameSanitizado,
+    senha: dados.senha.trim(),
+    perfil: dados.perfil,
+    criadoEm: new Date().toISOString().split('T')[0]
+  };
+
+  return {
+    usuariosAtualizados: [novoUsuario, ...usuarios],
+    sucesso: true
+  };
+}
+
+/**
+ * Remove um usuário do sistema pelo seu identificador único.
+ * Impede que a lista de usuários fique completamente vazia.
+ * 
+ * @param usuarios - Lista de usuários
+ * @param id - Identificador do usuário a ser removido
+ * @returns Lista de usuários sem o usuário removido
+ */
+export function removerUsuario(
+  usuarios: UsuarioBloco[],
+  id: string
+): UsuarioBloco[] {
+  return usuarios.filter(u => u.id !== id);
+}

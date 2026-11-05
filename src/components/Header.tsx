@@ -1,13 +1,21 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Lock, Unlock, Calendar, Sparkles, PartyPopper, Database } from 'lucide-react';
+import { 
+  LogIn, 
+  LogOut, 
+  ShieldCheck, 
+  User, 
+  PartyPopper, 
+  Database 
+} from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { UsuarioBloco } from '../data/blocoData';
 
 interface HeaderProps {
-  isAdmin: boolean;
-  setIsAdmin: (val: boolean) => void;
-  openAdminModal: () => void;
+  usuarioLogado: UsuarioBloco | null;
+  onOpenLoginModal: () => void;
+  onLogout: () => void;
   temaTitulo?: string;
   dbConnected?: boolean | null;
   dbSyncing?: boolean;
@@ -15,14 +23,14 @@ interface HeaderProps {
 
 /**
  * Cabeçalho do Bloco Bicharada com as Cores Oficiais e Estilo Fanzine Carnavalesco.
- * - Versão Desktop: Banner completo com contagem regressiva em destaque e logo oficial.
- * - Versão Mobile: Painel compacto (~85px) para não empurrar os botões e abas para fora da tela.
- * - Indicador Vercel Postgres: Mostra se o app está sincronizado com a nuvem ou em modo local.
+ * - Versão Desktop: Banner completo com contagem regressiva em destaque, logo oficial e autenticação.
+ * - Versão Mobile: Painel compacto (~85px) sem sobrecarregar a tela.
+ * - Autenticação: Mostra status de Folião Público (com botão Entrar / Login) ou crachá do usuário logado (Bicho ou Coordenador).
  */
 export default function Header({
-  isAdmin,
-  setIsAdmin,
-  openAdminModal,
+  usuarioLogado,
+  onOpenLoginModal,
+  onLogout,
   temaTitulo = 'Solta pelos Ares 🪽',
   dbConnected,
   dbSyncing = false
@@ -64,7 +72,7 @@ export default function Header({
 
       {/* PAINEL DESKTOP & TABLET (sm:flex) */}
       <div className="hidden sm:flex flex-col items-center justify-center py-5 px-4 text-center max-w-4xl mx-auto relative z-10">
-        {/* Barra superior de status & Acesso Coordenação */}
+        {/* Barra superior de status & Acesso Usuários */}
         <div className="w-full flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <button
@@ -105,18 +113,45 @@ export default function Header({
             )}
           </div>
 
-          <button
-            type="button"
-            onClick={isAdmin ? () => setIsAdmin(false) : openAdminModal}
-            className={`flex items-center gap-1.5 px-2.5 py-1 border-2 border-[#1E1B2E] text-xs font-black uppercase transition-all shadow-[2px_2px_0px_#1E1B2E] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer ${
-              isAdmin 
-                ? 'bg-[#00D287] text-[#1E1B2E]' 
-                : 'bg-white hover:bg-stone-100 text-[#1E1B2E]'
-            }`}
-          >
-            {isAdmin ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
-            <span>{isAdmin ? 'Coordenação [ON]' : 'Acesso Coordenação'}</span>
-          </button>
+          {/* Autenticação Desktop */}
+          {usuarioLogado ? (
+            <div className="flex items-center gap-1.5">
+              <span className={`px-2.5 py-1 text-xs font-mono font-bold uppercase border-2 border-[#1E1B2E] shadow-[2px_2px_0px_#1E1B2E] flex items-center gap-1.5 ${
+                usuarioLogado.perfil === 'coordenador'
+                  ? 'bg-[#581C87] text-[#FBBF24]'
+                  : 'bg-[#00D287] text-[#1E1B2E]'
+              }`}>
+                {usuarioLogado.perfil === 'coordenador' ? (
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#FBBF24]" />
+                ) : (
+                  <User className="w-3.5 h-3.5 text-[#1E1B2E]" />
+                )}
+                <span>{usuarioLogado.username}</span>
+                <span className="text-[10px] opacity-80">
+                  [{usuarioLogado.perfil === 'coordenador' ? 'Coordenação' : 'Bicho'}]
+                </span>
+              </span>
+
+              <button
+                type="button"
+                onClick={onLogout}
+                className="flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-red-50 text-red-600 border-2 border-[#1E1B2E] text-xs font-black uppercase shadow-[2px_2px_0px_#1E1B2E] cursor-pointer"
+                title="Sair da conta"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Sair</span>
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={onOpenLoginModal}
+              className="flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-pink-50 text-[#1E1B2E] border-2 border-[#1E1B2E] text-xs font-black uppercase shadow-[2px_2px_0px_#1E1B2E] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
+            >
+              <LogIn className="w-3.5 h-3.5 text-[#E6007E]" />
+              <span>Entrar / Login</span>
+            </button>
+          )}
         </div>
 
         {/* Estandarte / Logo Oficial */}
@@ -138,25 +173,14 @@ export default function Header({
         </div>
 
         {/* Bilhete de Contagem Regressiva para 08/02/2027 */}
-        <div className="mt-3 bg-white text-[#1E1B2E] border-3 border-[#1E1B2E] p-2.5 max-w-sm w-full shadow-[3px_3px_0px_#1E1B2E] relative rotate-[-0.5deg]">
-          <div className="flex items-center justify-center gap-1.5 text-xs font-black uppercase text-[#1E1B2E] mb-1">
-            <Calendar className="w-3.5 h-3.5 text-[#E6007E]" />
-            <span>Desfile Oficial • Segunda, 08 de Fevereiro</span>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 text-center font-mono">
-            <div className="bg-[#FDF2F8] border-2 border-[#1E1B2E] py-1 shadow-[1px_1px_0px_#1E1B2E]">
-              <span className="block text-xl font-black text-[#E6007E]">{timeLeft.dias}</span>
-              <span className="text-[10px] font-black uppercase text-stone-700">Dias</span>
-            </div>
-            <div className="bg-[#FAF5FF] border-2 border-[#1E1B2E] py-1 shadow-[1px_1px_0px_#1E1B2E]">
-              <span className="block text-xl font-black text-[#581C87]">{timeLeft.horas}</span>
-              <span className="text-[10px] font-black uppercase text-stone-700">Horas</span>
-            </div>
-            <div className="bg-[#ECFDF5] border-2 border-[#1E1B2E] py-1 shadow-[1px_1px_0px_#1E1B2E]">
-              <span className="block text-xl font-black text-[#00A868]">{timeLeft.minutos}</span>
-              <span className="text-[10px] font-black uppercase text-stone-700">Min</span>
-            </div>
+        <div className="mt-3 flex items-center justify-center gap-2">
+          <div className="bg-[#FAF6EC] text-[#1E1B2E] border-2 border-[#1E1B2E] px-3 py-1 shadow-[2px_2px_0px_#1E1B2E] font-mono text-xs flex items-center gap-2">
+            <span className="font-bold text-[#E6007E] uppercase">Desfile Oficial:</span>
+            <span>08/02/2027 (Segunda de Carnaval)</span>
+            <span className="font-bold text-[#581C87]">★</span>
+            <span className="font-bold text-[#00A868]">
+              {timeLeft.dias} dias, {timeLeft.horas}h {timeLeft.minutos}m
+            </span>
           </div>
         </div>
       </div>
@@ -184,18 +208,35 @@ export default function Header({
             )}
           </div>
 
-          <button
-            type="button"
-            onClick={isAdmin ? () => setIsAdmin(false) : openAdminModal}
-            className={`flex items-center gap-1 px-2 py-1 border border-[#1E1B2E] text-[10px] font-black uppercase shadow-[1px_1px_0px_#1E1B2E] cursor-pointer shrink-0 active:translate-y-0.5 ${
-              isAdmin 
-                ? 'bg-[#00D287] text-[#1E1B2E]' 
-                : 'bg-white text-[#1E1B2E]'
-            }`}
-          >
-            {isAdmin ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
-            <span>{isAdmin ? 'Coord [ON]' : 'Coordenação'}</span>
-          </button>
+          {/* Autenticação Mobile */}
+          {usuarioLogado ? (
+            <div className="flex items-center gap-1 shrink-0">
+              <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 border border-[#1E1B2E] shadow-[1px_1px_0px_#1E1B2E] truncate max-w-[110px] ${
+                usuarioLogado.perfil === 'coordenador'
+                  ? 'bg-[#581C87] text-[#FBBF24]'
+                  : 'bg-[#00D287] text-[#1E1B2E]'
+              }`}>
+                {usuarioLogado.username}
+              </span>
+              <button
+                type="button"
+                onClick={onLogout}
+                className="p-1 bg-white text-red-600 border border-[#1E1B2E] shadow-[1px_1px_0px_#1E1B2E] cursor-pointer"
+                title="Sair"
+              >
+                <LogOut className="w-3 h-3" />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={onOpenLoginModal}
+              className="flex items-center gap-1 px-2 py-1 bg-white text-[#1E1B2E] border border-[#1E1B2E] text-[10px] font-black uppercase shadow-[1px_1px_0px_#1E1B2E] cursor-pointer shrink-0 active:translate-y-0.5"
+            >
+              <LogIn className="w-3 h-3 text-[#E6007E]" />
+              <span>Entrar</span>
+            </button>
+          )}
         </div>
 
         <div onClick={dispararConfetes} className="cursor-pointer flex items-center justify-between gap-2 pt-0.5">

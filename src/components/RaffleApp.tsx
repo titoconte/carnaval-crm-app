@@ -19,6 +19,7 @@ interface RaffleAppProps {
   vendas: RifaVenda[];
   setVendas: React.Dispatch<React.SetStateAction<RifaVenda[]>>;
   isAdmin: boolean;
+  isPublico?: boolean;
   // Compatibilidade caso bilhetes legados sejam passados
   bilhetes?: BilheteRifa[];
   setBilhetes?: React.Dispatch<React.SetStateAction<BilheteRifa[]>>;
@@ -34,7 +35,8 @@ export default function RaffleApp({
   setRifas,
   vendas,
   setVendas,
-  isAdmin
+  isAdmin,
+  isPublico = false
 }: RaffleAppProps) {
   // Rifa selecionada no momento
   const [activeRifaId, setActiveRifaId] = useState<string>(rifas[0]?.id || 'rifa-oficial-2027');
@@ -463,7 +465,7 @@ export default function RaffleApp({
             return (
               <button
                 key={bilhete.numero}
-                onClick={() => toggleSelectNumber(bilhete.numero)}
+                onClick={() => !isPublico && toggleSelectNumber(bilhete.numero)}
                 onDoubleClick={() => alternarStatusCoord(bilhete.numero)}
                 disabled={isPago || (vendasEncerradas && !isAdmin)}
                 className={`py-2 px-1 border-2 border-[#1E1B2E] text-xs font-mono font-black transition-all flex flex-col items-center justify-center relative ${
@@ -495,7 +497,7 @@ export default function RaffleApp({
       </div>
 
       {/* Barra Flutuante de Checkout */}
-      {selectedNumbers.length > 0 && !vendasEncerradas && (
+      {selectedNumbers.length > 0 && !vendasEncerradas && !isPublico && (
         <div className="sticky bottom-4 z-40 bg-white border-4 border-[#1E1B2E] p-4 shadow-[6px_6px_0px_#1E1B2E] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-2">
           <div>
             <span className="font-mono text-xs font-black uppercase text-[#E6007E] block">

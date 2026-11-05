@@ -15,7 +15,7 @@ import BarManager from '../components/BarManager';
 import RosterView from '../components/RosterView';
 import WhatsAppPolls from '../components/WhatsAppPolls';
 import DocumentsManager from '../components/DocumentsManager';
-import AdminPinModal from '../components/AdminPinModal';
+import LoginModal from '../components/LoginModal';
 
 import {
   INTEGRANTES_INICIAIS,
@@ -36,6 +36,9 @@ import {
   POSTS_INSTAGRAM_INICIAIS,
   CONFIG_INSTAGRAM_INICIAL,
   TEMA_ANO_INICIAL,
+  USUARIOS_INICIAIS,
+  UsuarioBloco,
+  PerfilUsuario,
   converterTarefaEmMacrotarefa,
   Integrante,
   InscritoBloco,
@@ -61,23 +64,24 @@ import {
  * Aplicação Oficial do Bloco Bicharada / Bixarada Floripa 2027.
  * Estilo Fanzine Vintage, Lambe-lambe e Quadro de Cortiça.
  * 
- * Ordem Oficial das Abas:
- * 1. Mural de Tarefas
- * 2. Calendário
- * 3. Tarefas em Andamento
- * 4. Repertório
- * 5. Rifas
- * 6. Inscrições
- * 7. Mídia & Artes
- * 8. Bar dos Ensaios
- * 9. Elenco & Naipes
- * 10. Enquetes WhatsApp
- * 11. Documentos
+ * Níveis de Acesso:
+ * - Público (visitante anônimo): Visualiza 5 abas (Inscrições, Calendário, Rifas, Repertório, Documentos).
+ * - Bicho (integrante): Visualiza as 11 abas completas com interações operacionais normais.
+ * - Coordenador: Acesso total a todas as 11 abas, edição de datas, finanças e gestão de usuários.
  */
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<TabId>('tarefas');
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [adminModalOpen, setAdminModalOpen] = useState(false);
+  // Usuários do sistema e Sessão de autenticação
+  const [usuarios, setUsuarios] = useState<UsuarioBloco[]>(USUARIOS_INICIAIS);
+  const [usuarioLogado, setUsuarioLogado] = useState<UsuarioBloco | null>(null);
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
+
+  // Perfil ativo derivado da sessão atual
+  const perfilAtivo: PerfilUsuario = usuarioLogado ? usuarioLogado.perfil : 'publico';
+  const isAdmin = perfilAtivo === 'coordenador';
+  const isPublico = perfilAtivo === 'publico';
+
+  // Aba ativa: inicia em 'inscricao' para o público e em 'tarefas' para membros
+  const [activeTab, setActiveTab] = useState<TabId>('inscricao');
 
   // Estados principais da aplicação
   const [integrantes, setIntegrantes] = useState<Integrante[]>(INTEGRANTES_INICIAIS);
@@ -107,6 +111,21 @@ export default function Home() {
   useEffect(() => {
     // 1. Carregamento inicial rápido via LocalStorage (offline-first)
     try {
+      const sSessao = localStorage.getItem('bicha_sessao_usuario_v4');
+      if (sSessao) {
+        const u = JSON.parse(sSessao);
+        setUsuarioLogado(u);
+        setActiveTab('tarefas');
+      }
+
+      const sUsuarios = localStorage.getItem('bicha_usuarios_v4');
+      if (sUsuarios) {
+        const parsedUsers = JSON.parse(sUsuarios);
+        if (Array.isArray(parsedUsers) && parsedUsers.length > 0) {
+          setUsuarios(parsedUsers);
+        }
+      }
+
       const sTarefas = localStorage.getItem('bicha_tarefas_v4');
       if (sTarefas) setTarefas(JSON.parse(sTarefas));
 
@@ -171,6 +190,9 @@ export default function Home() {
         if (data.configured) {
           setDbConnected(true);
           const est = data.estados || {};
+          if (est.usuarios && Array.isArray(est.usuarios) && est.usuarios.length > 0) {
+            setUsuarios(est.usuarios);
+          }
           if (est.tarefas) setTarefas(est.tarefas);
           if (est.macrotarefas) setMacrotarefas(est.macrotarefas);
           if (est.movimentosBar) setMovimentosBar(est.movimentosBar);
@@ -202,6 +224,7 @@ export default function Home() {
   // Salva no LocalStorage e envia atualização debounced ao Vercel Postgres
   useEffect(() => {
     try {
+      localStorage.setItem('bicha_usuarios_v4', JSON.stringify(usuarios));
       localStorage.setItem('bicha_tarefas_v4', JSON.stringify(tarefas));
       localStorage.setItem('bicha_macros_v4', JSON.stringify(macrotarefas));
       localStorage.setItem('bicha_bar_v4', JSON.stringify(movimentosBar));
@@ -233,6 +256,7 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           batch: {
+            usuarios,
             tarefas,
             macrotarefas,
             movimentosBar,
@@ -259,12 +283,42 @@ export default function Home() {
     }, 1500);
 
     return () => clearTimeout(timer);
-  }, [tarefas, macrotarefas, movimentosBar, bilhetesRifa, rifas, vendasRifas, inscritos, integrantes, musicas, letrasCifras, enquetes, eventos, documentos, cores, artes, postsInstagram, configInstagram, temaAno, dbConnected]);
+  }, [usuarios, tarefas, macrotarefas, movimentosBar, bilhetesRifa, rifas, vendasRifas, inscritos, integrantes, musicas, letrasCifras, enquetes, eventos, documentos, cores, artes, postsInstagram, configInstagram, temaAno, dbConnected]);
 
   // Contagem de tarefas órfãs
   const orfasCount = tarefas.filter(
     t => (!t.responsavel || t.responsavel.trim() === '' || t.responsavel.toLowerCase().includes('definir')) && !t.concluida
   ).length;
+
+  /**
+   * Registra o login bem-sucedido de um usuário (Bicho ou Coordenador).
+   */
+  const handleLoginSuccess = (usuario: UsuarioBloco) => {
+    setUsuarioLogado(usuario);
+    try {
+      localStorage.setItem('bicha_sessao_usuario_v4', JSON.stringify(usuario));
+    } catch (e) {}
+
+    // Ao fazer login, direciona para o Mural de Tarefas caso estivesse em inscrições
+    if (activeTab === 'inscricao') {
+      setActiveTab('tarefas');
+    }
+  };
+
+  /**
+   * Executa o logout da sessão, retornando o acesso para perfil Público.
+   */
+  const handleLogout = () => {
+    setUsuarioLogado(null);
+    try {
+      localStorage.removeItem('bicha_sessao_usuario_v4');
+    } catch (e) {}
+
+    const abasPublicas: TabId[] = ['inscricao', 'calendario', 'rifa', 'repertorio', 'documentos'];
+    if (!abasPublicas.includes(activeTab)) {
+      setActiveTab('inscricao');
+    }
+  };
 
   /**
    * Adiciona um novo integrante aprovado à listagem oficial.
@@ -285,27 +339,28 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F4EEDF] text-[#1A181B]">
-      {/* Cabeçalho Vintage */}
+      {/* Cabeçalho Vintage com Autenticação */}
       <Header
-        isAdmin={isAdmin}
-        setIsAdmin={setIsAdmin}
-        openAdminModal={() => setAdminModalOpen(true)}
+        usuarioLogado={usuarioLogado}
+        onOpenLoginModal={() => setLoginModalOpen(true)}
+        onLogout={handleLogout}
         temaTitulo={temaAno.titulo}
         dbConnected={dbConnected}
         dbSyncing={dbSyncing}
       />
 
-      {/* Menu Fanzine de Navegação */}
+      {/* Menu Fanzine de Navegação adaptado ao perfil */}
       <Navigation
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         orfasCount={orfasCount}
+        perfil={perfilAtivo}
       />
 
       {/* Área de Conteúdo da Aba Ativa na Ordem Oficial */}
       <main id="conteudo-principal" className="flex-1 max-w-5xl w-full mx-auto p-3 sm:p-6 mb-8 pb-28 md:pb-16">
-        {/* 1. Mural de Tarefas */}
-        {activeTab === 'tarefas' && (
+        {/* 1. Mural de Tarefas (Bicho e Coordenador) */}
+        {activeTab === 'tarefas' && !isPublico && (
           <TasksManager
             tarefas={tarefas}
             setTarefas={setTarefas}
@@ -323,8 +378,8 @@ export default function Home() {
           />
         )}
 
-        {/* 3. Tarefas em Andamento */}
-        {activeTab === 'desfile' && (
+        {/* 3. Tarefas em Andamento (Bicho e Coordenador) */}
+        {activeTab === 'desfile' && !isPublico && (
           <ParadeKanban
             macrotarefas={macrotarefas}
             setMacrotarefas={setMacrotarefas}
@@ -338,6 +393,7 @@ export default function Home() {
             musicas={musicas}
             setMusicas={setMusicas}
             isAdmin={isAdmin}
+            isPublico={isPublico}
             onOpenLetras={() => setActiveTab('letras')}
           />
         )}
@@ -361,21 +417,25 @@ export default function Home() {
             bilhetes={bilhetesRifa}
             setBilhetes={setBilhetesRifa}
             isAdmin={isAdmin}
+            isPublico={isPublico}
           />
         )}
 
-        {/* 6. Inscrições de Foliões */}
+        {/* 6. Inscrições de Foliões (Disponível para todos) */}
         {activeTab === 'inscricao' && (
           <JoinForm
             inscritos={inscritos}
             setInscritos={setInscritos}
             onAddIntegrante={handleAddIntegrante}
             isAdmin={isAdmin}
+            usuarios={usuarios}
+            setUsuarios={setUsuarios}
+            usuarioLogado={usuarioLogado}
           />
         )}
 
-        {/* 7. Mídia & Artes */}
-        {activeTab === 'midia' && (
+        {/* 7. Mídia & Artes (Bicho e Coordenador) */}
+        {activeTab === 'midia' && !isPublico && (
           <MediaManager
             cores={cores}
             setCores={setCores}
@@ -391,8 +451,8 @@ export default function Home() {
           />
         )}
 
-        {/* 8. Bar dos Ensaios */}
-        {activeTab === 'bar' && (
+        {/* 8. Bar dos Ensaios (Bicho e Coordenador) */}
+        {activeTab === 'bar' && !isPublico && (
           <BarManager
             movimentos={movimentosBar}
             setMovimentos={setMovimentosBar}
@@ -400,16 +460,16 @@ export default function Home() {
           />
         )}
 
-        {/* 9. Elenco & Naipes */}
-        {activeTab === 'elenco' && (
+        {/* 9. Elenco & Naipes (Bicho e Coordenador) */}
+        {activeTab === 'elenco' && !isPublico && (
           <RosterView
             integrantes={integrantes}
             setIntegrantes={setIntegrantes}
           />
         )}
 
-        {/* 10. Enquetes WhatsApp */}
-        {activeTab === 'enquetes' && (
+        {/* 10. Enquetes WhatsApp (Bicho e Coordenador) */}
+        {activeTab === 'enquetes' && !isPublico && (
           <WhatsAppPolls
             enquetes={enquetes}
             setEnquetes={setEnquetes}
@@ -423,6 +483,7 @@ export default function Home() {
             documentos={documentos}
             setDocumentos={setDocumentos}
             isAdmin={isAdmin}
+            isPublico={isPublico}
           />
         )}
       </main>
@@ -452,11 +513,12 @@ export default function Home() {
         )}
       </footer>
 
-      {/* Modal de PIN da Coordenação */}
-      <AdminPinModal
-        isOpen={adminModalOpen}
-        onClose={() => setAdminModalOpen(false)}
-        onSuccess={() => setIsAdmin(true)}
+      {/* Modal de Login de Usuários (Bicho ou Coordenador) */}
+      <LoginModal
+        isOpen={loginModalOpen}
+        onClose={() => setLoginModalOpen(false)}
+        onLoginSuccess={handleLoginSuccess}
+        usuarios={usuarios}
       />
     </div>
   );

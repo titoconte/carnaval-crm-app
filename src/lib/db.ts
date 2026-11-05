@@ -171,6 +171,17 @@ export async function initDatabaseSchema(): Promise<{ success: boolean; message:
       );
     `);
 
+    // 7. Tabela de Usuários e Autenticação do Bloco
+    await executeSql(`
+      CREATE TABLE IF NOT EXISTS usuarios_bloco (
+        id VARCHAR(100) PRIMARY KEY,
+        username VARCHAR(100) UNIQUE NOT NULL,
+        senha VARCHAR(100) NOT NULL,
+        perfil VARCHAR(30) NOT NULL,
+        criado_em TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     return {
       success: true,
       message: 'Esquema de banco de dados Vercel Postgres inicializado com sucesso!'

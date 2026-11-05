@@ -11,37 +11,48 @@ import {
   MessageSquare,
   Search,
   ExternalLink,
-  Filter
+  ShieldCheck
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import {
   Integrante,
   InscritoBloco,
+  UsuarioBloco,
   atualizarStatusInscrito,
-  gerarLinkWhatsappInscricao,
-  gerarMensagemWhatsappInscricao
+  gerarLinkWhatsappInscricao
 } from '../data/blocoData';
+import UsersManagerModal from './UsersManagerModal';
 
 interface JoinFormProps {
   inscritos: InscritoBloco[];
   setInscritos: React.Dispatch<React.SetStateAction<InscritoBloco[]>>;
   onAddIntegrante: (novo: Integrante) => void;
   isAdmin?: boolean;
+  usuarios?: UsuarioBloco[];
+  setUsuarios?: React.Dispatch<React.SetStateAction<UsuarioBloco[]>>;
+  usuarioLogado?: UsuarioBloco | null;
 }
 
 /**
  * Gestor Completo de Inscrições do Bloco Bicharada.
- * Contém duas seções: Formulário de Inscrição pública e Tabela de Gestão de Aceite/Recusa
- * com acionamento direto de mensagens no WhatsApp do folião.
+ * - Público: Preenche a ficha de inscrição para novos foliões (edital aberto);
+ * - Coordenação (isAdmin): Acesso ao painel de aceite/recusa de candidatos com disparo WhatsApp
+ *   e botão "Novos Usuários" para gerenciar acessos de Bichos e Coordenadores.
  */
 export default function JoinForm({
   inscritos,
   setInscritos,
   onAddIntegrante,
-  isAdmin = false
+  isAdmin = false,
+  usuarios = [],
+  setUsuarios,
+  usuarioLogado = null
 }: JoinFormProps) {
   // Controle de sub-aba: Formulário ou Gestão
   const [subTab, setSubTab] = useState<'formulario' | 'inscritos'>('formulario');
+
+  // Modal de Gestão de Usuários (exclusivo coordenação)
+  const [modalUsuariosOpen, setModalUsuariosOpen] = useState(false);
 
   // Estados do Formulário
   const [nome, setNome] = useState('');
@@ -126,7 +137,6 @@ export default function JoinForm({
 
   // Contadores para os badges das abas
   const pendentesCount = inscritos.filter(i => i.status === 'Pendente').length;
-  const aprovadosCount = inscritos.filter(i => i.status === 'Aprovado').length;
 
   // Filtragem da tabela
   const inscritosFiltrados = inscritos.filter(i => {
@@ -139,12 +149,12 @@ export default function JoinForm({
 
   return (
     <div className="space-y-4">
-      {/* Navegação entre as duas partes: Formulário vs Tabela de Gestão */}
-      <div className="flex items-center justify-between gap-2 border-b-2 border-[#1E1B2E] pb-2">
-        <div className="flex items-center gap-2">
+      {/* Navegação entre as partes da aba de inscrições */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-[#1E1B2E] pb-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setSubTab('formulario')}
-            className={`px-4 py-2 border-2 border-[#1E1B2E] text-xs font-black uppercase transition-all shadow-[2px_2px_0px_#1E1B2E] flex items-center gap-1.5 ${
+            className={`px-4 py-2 border-2 border-[#1E1B2E] text-xs font-black uppercase transition-all shadow-[2px_2px_0px_#1E1B2E] flex items-center gap-1.5 cursor-pointer ${
               subTab === 'formulario'
                 ? 'bg-[#E6007E] text-white'
                 : 'bg-white text-[#1E1B2E] hover:bg-pink-50'
@@ -154,26 +164,40 @@ export default function JoinForm({
             <span>Formulário de Inscrição</span>
           </button>
 
-          <button
-            onClick={() => setSubTab('inscritos')}
-            className={`px-4 py-2 border-2 border-[#1E1B2E] text-xs font-black uppercase transition-all shadow-[2px_2px_0px_#1E1B2E] flex items-center gap-1.5 ${
-              subTab === 'inscritos'
-                ? 'bg-[#00D287] text-[#1E1B2E]'
-                : 'bg-white text-[#1E1B2E] hover:bg-emerald-50'
-            }`}
-          >
-            <Users className="w-3.5 h-3.5" />
-            <span>Inscritos & Gestão</span>
-            {pendentesCount > 0 && (
-              <span className="px-1.5 py-0.2 bg-[#E6007E] text-white text-[9px] font-mono border border-black shadow-[1px_1px_0px_#000]">
-                {pendentesCount} pendentes
-              </span>
-            )}
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setSubTab('inscritos')}
+              className={`px-4 py-2 border-2 border-[#1E1B2E] text-xs font-black uppercase transition-all shadow-[2px_2px_0px_#1E1B2E] flex items-center gap-1.5 cursor-pointer ${
+                subTab === 'inscritos'
+                  ? 'bg-[#00D287] text-[#1E1B2E]'
+                  : 'bg-white text-[#1E1B2E] hover:bg-emerald-50'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>Inscritos & Gestão</span>
+              {pendentesCount > 0 && (
+                <span className="px-1.5 py-0.2 bg-[#E6007E] text-white text-[9px] font-mono border border-black shadow-[1px_1px_0px_#000]">
+                  {pendentesCount} pendentes
+                </span>
+              )}
+            </button>
+          )}
         </div>
+
+        {/* Botão de Novos Usuários (Exclusivo Coordenação) */}
+        {isAdmin && setUsuarios && (
+          <button
+            type="button"
+            onClick={() => setModalUsuariosOpen(true)}
+            className="vintage-button px-3.5 py-2 bg-[#581C87] text-[#FBBF24] hover:bg-[#6D28D9] border-2 border-[#1E1B2E] text-xs font-black uppercase flex items-center gap-1.5 shadow-[2px_2px_0px_#1E1B2E] cursor-pointer"
+          >
+            <ShieldCheck className="w-4 h-4 text-[#FBBF24]" />
+            <span>Novos Usuários</span>
+          </button>
+        )}
       </div>
 
-      {/* PARTE 1: FORMULÁRIO DE INSCRIÇÃO */}
+      {/* PARTE 1: FORMULÁRIO DE INSCRIÇÃO (Aberto a todos) */}
       {subTab === 'formulario' && (
         <div className="max-w-lg mx-auto vintage-card p-6 sm:p-8">
           <div className="text-center mb-6">
@@ -196,16 +220,18 @@ export default function JoinForm({
               <div className="flex items-center justify-center gap-2 pt-2">
                 <button
                   onClick={() => setEnviado(false)}
-                  className="px-3 py-1.5 border-2 border-[#1A181B] bg-white text-[#1A181B] text-xs font-bold uppercase hover:bg-stone-100"
+                  className="px-3 py-1.5 border-2 border-[#1A181B] bg-white text-[#1A181B] text-xs font-bold uppercase hover:bg-stone-100 cursor-pointer"
                 >
                   Nova Ficha
                 </button>
-                <button
-                  onClick={() => setSubTab('inscritos')}
-                  className="vintage-button px-4 py-1.5 bg-[#00D287] text-[#1E1B2E] text-xs uppercase"
-                >
-                  Ver Painel de Inscritos
-                </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => setSubTab('inscritos')}
+                    className="vintage-button px-4 py-1.5 bg-[#00D287] text-[#1E1B2E] text-xs uppercase cursor-pointer"
+                  >
+                    Ver Painel de Inscritos
+                  </button>
+                )}
               </div>
             </div>
           ) : (
@@ -290,7 +316,7 @@ export default function JoinForm({
 
               <button
                 type="submit"
-                className="vintage-button w-full py-2.5 bg-[#E6007E] text-white text-xs uppercase flex items-center justify-center gap-1.5 shadow-[3px_3px_0px_#1A181B]"
+                className="vintage-button w-full py-2.5 bg-[#E6007E] text-white text-xs uppercase flex items-center justify-center gap-1.5 shadow-[3px_3px_0px_#1A181B] cursor-pointer"
               >
                 <Heart className="w-4 h-4 fill-current" />
                 <span>Enviar Minha Ficha!</span>
@@ -300,8 +326,8 @@ export default function JoinForm({
         </div>
       )}
 
-      {/* PARTE 2: TABELA DE GESTÃO DE INSCRITOS */}
-      {subTab === 'inscritos' && (
+      {/* PARTE 2: TABELA DE GESTÃO DE INSCRITOS (Exclusivo Coordenação) */}
+      {isAdmin && subTab === 'inscritos' && (
         <div className="space-y-3">
           {/* Barra de Filtros e Busca */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border-2 border-[#1E1B2E] p-3 shadow-[2px_2px_0px_#1E1B2E]">
@@ -310,7 +336,7 @@ export default function JoinForm({
                 <button
                   key={st}
                   onClick={() => setFiltroStatus(st)}
-                  className={`px-3 py-1.5 border-2 border-[#1E1B2E] text-xs font-mono font-black uppercase transition-all ${
+                  className={`px-3 py-1.5 border-2 border-[#1E1B2E] text-xs font-mono font-black uppercase transition-all cursor-pointer ${
                     filtroStatus === st
                       ? 'bg-[#581C87] text-[#FBBF24] shadow-[2px_2px_0px_#1E1B2E]'
                       : 'bg-white text-stone-800 hover:bg-stone-100'
@@ -537,7 +563,7 @@ export default function JoinForm({
             <div className="space-y-2 pt-2 border-t border-stone-200">
               <button
                 onClick={() => dispararMensagemWhatsapp(modalDisparo, 'Aprovado')}
-                className="w-full p-3 bg-[#ECFDF5] hover:bg-[#D1FAE5] border-2 border-[#00D287] text-left text-xs font-mono shadow-[2px_2px_0px_#00D287] flex items-center justify-between"
+                className="w-full p-3 bg-[#ECFDF5] hover:bg-[#D1FAE5] border-2 border-[#00D287] text-left text-xs font-mono shadow-[2px_2px_0px_#00D287] flex items-center justify-between cursor-pointer"
               >
                 <div>
                   <span className="font-black text-[#00A868] uppercase block">🎉 Enviar Mensagem de Aprovação</span>
@@ -548,7 +574,7 @@ export default function JoinForm({
 
               <button
                 onClick={() => dispararMensagemWhatsapp(modalDisparo, 'Recusado')}
-                className="w-full p-3 bg-[#FEF2F2] hover:bg-[#FEE2E2] border-2 border-red-500 text-left text-xs font-mono shadow-[2px_2px_0px_#EF4444] flex items-center justify-between"
+                className="w-full p-3 bg-[#FEF2F2] hover:bg-[#FEE2E2] border-2 border-red-500 text-left text-xs font-mono shadow-[2px_2px_0px_#EF4444] flex items-center justify-between cursor-pointer"
               >
                 <div>
                   <span className="font-black text-red-600 uppercase block">💬 Enviar Mensagem de Recusa / Fila de Espera</span>
@@ -562,13 +588,24 @@ export default function JoinForm({
               <button
                 type="button"
                 onClick={() => setModalDisparo(null)}
-                className="px-3 py-1.5 border-2 border-[#1E1B2E] text-xs font-bold uppercase hover:bg-stone-200"
+                className="px-3 py-1.5 border-2 border-[#1E1B2E] text-xs font-bold uppercase hover:bg-stone-200 cursor-pointer"
               >
                 Fechar
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal de Gestão de Novos Usuários (Exclusivo Coordenação) */}
+      {isAdmin && setUsuarios && (
+        <UsersManagerModal
+          isOpen={modalUsuariosOpen}
+          onClose={() => setModalUsuariosOpen(false)}
+          usuarios={usuarios}
+          setUsuarios={setUsuarios}
+          usuarioLogado={usuarioLogado}
+        />
       )}
     </div>
   );

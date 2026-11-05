@@ -27,6 +27,7 @@ interface DocumentsManagerProps {
   documentos: DocumentoBloco[];
   setDocumentos: React.Dispatch<React.SetStateAction<DocumentoBloco[]>>;
   isAdmin: boolean;
+  isPublico?: boolean;
 }
 
 /**
@@ -37,7 +38,8 @@ interface DocumentsManagerProps {
 export default function DocumentsManager({
   documentos,
   setDocumentos,
-  isAdmin
+  isAdmin,
+  isPublico = false
 }: DocumentsManagerProps) {
   const [busca, setBusca] = useState('');
   const [tagSelecionada, setTagSelecionada] = useState('Todas');
@@ -250,14 +252,16 @@ export default function DocumentsManager({
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setModalNovoDoc(true)}
-          className="vintage-button px-4 py-2 bg-[#00D287] hover:bg-[#34EEA0] text-[#1E1B2E] text-xs font-black uppercase flex items-center gap-1.5 shrink-0 shadow-[2px_2px_0px_#1E1B2E] cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          <span>+ Adicionar Documento</span>
-        </button>
+        {!isPublico && (
+          <button
+            type="button"
+            onClick={() => setModalNovoDoc(true)}
+            className="vintage-button px-4 py-2 bg-[#00D287] hover:bg-[#34EEA0] text-[#1E1B2E] text-xs font-black uppercase flex items-center gap-1.5 shrink-0 shadow-[2px_2px_0px_#1E1B2E] cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ Adicionar Documento</span>
+          </button>
+        )}
       </div>
 
       {/* Barra de Filtros por Tags e Campo de Busca */}

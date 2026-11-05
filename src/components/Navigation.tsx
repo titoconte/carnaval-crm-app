@@ -17,6 +17,7 @@ import {
   X, 
   LucideIcon 
 } from 'lucide-react';
+import { PerfilUsuario } from '../data/blocoData';
 
 export type TabId = 
   | 'tarefas' 
@@ -41,23 +42,33 @@ export interface TabItem {
 }
 
 /**
- * Retorna as abas visíveis no menu principal na ordem oficial estrita:
- * 1. Mural de Tarefas (tarefas)
- * 2. Calendário (calendario)
- * 3. Tarefas em Andamento (desfile)
- * 4. Repertório (repertorio)
- * 5. Rifas (rifa)
- * 6. Inscrições (inscricao)
- * 7. Mídia & Artes (midia)
- * 8. Bar dos Ensaios (bar)
- * 9. Elenco & Naipes (elenco)
- * 10. Enquetes WhatsApp (enquetes)
- * 11. Documentos (documentos)
+ * Retorna as abas visíveis no menu principal respeitando o perfil de acesso do usuário:
+ * - Se 'publico' (visitante sem login): Apenas 5 abas na ordem oficial:
+ *   1. Inscrições (inscricao)
+ *   2. Calendário (calendario)
+ *   3. Rifas (rifa)
+ *   4. Repertório (repertorio)
+ *   5. Documentos (documentos)
+ * - Se 'coordenador' ou 'bicho': Todas as 11 abas na ordem oficial de 1 a 11.
  * 
  * @param orfasCount - Quantidade de tarefas órfãs para exibição no badge
+ * @param perfil - Perfil atual de acesso ('coordenador' | 'bicho' | 'publico')
  * @returns Lista de abas a serem renderizadas na barra de navegação
  */
-export function getVisibleNavigationTabs(orfasCount: number = 0): TabItem[] {
+export function getVisibleNavigationTabs(
+  orfasCount: number = 0,
+  perfil: PerfilUsuario = 'publico'
+): TabItem[] {
+  if (perfil === 'publico') {
+    return [
+      { id: 'inscricao', label: 'Inscrições', icon: UserPlus },
+      { id: 'calendario', label: 'Calendário', icon: Calendar },
+      { id: 'rifa', label: 'Rifas 🎟️', icon: Gift, highlight: true },
+      { id: 'repertorio', label: 'Repertório', icon: Music },
+      { id: 'documentos', label: 'Documentos', icon: FolderDown }
+    ];
+  }
+
   return [
     { id: 'tarefas', label: 'Mural de Tarefas', icon: ClipboardList, badge: orfasCount > 0 ? `${orfasCount} órfãs` : undefined },
     { id: 'calendario', label: 'Calendário', icon: Calendar },
@@ -77,16 +88,22 @@ interface NavigationProps {
   activeTab: TabId;
   setActiveTab: (tab: TabId) => void;
   orfasCount: number;
+  perfil?: PerfilUsuario;
 }
 
 /**
  * Menu de Navegação Oficial do Bloco Bicharada.
- * - Versão Desktop: Barra superior horizontal fixa (hidden md:block) com todas as 11 abas em ordem oficial.
+ * - Versão Desktop: Barra superior horizontal fixa (hidden md:block) com abas segundo perfil de acesso.
  * - Versão Mobile: Barra de menu superior 100% OCULTA, mantendo unicamente a barra inferior fixa (Bottom Navigation).
  */
-export default function Navigation({ activeTab, setActiveTab, orfasCount }: NavigationProps) {
+export default function Navigation({
+  activeTab,
+  setActiveTab,
+  orfasCount,
+  perfil = 'publico'
+}: NavigationProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const tabs = getVisibleNavigationTabs(orfasCount);
+  const tabs = getVisibleNavigationTabs(orfasCount, perfil);
 
   /**
    * Seleciona uma aba, fecha o menu mobile e rola suavemente para o topo da página.
@@ -142,7 +159,7 @@ export default function Navigation({ activeTab, setActiveTab, orfasCount }: Navi
         </div>
       </nav>
 
-      {/* MODAL / GAVETA MOBILE DE TODAS AS 11 ABAS EM ORDEM OFICIAL */}
+      {/* MODAL / GAVETA MOBILE DE TODAS AS ABAS DO PERFIL */}
       {mobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col justify-end p-3 animate-fadeIn">
           <div className="bg-[#FAF6EC] border-4 border-[#1E1B2E] p-4 shadow-[6px_6px_0px_#1E1B2E] max-h-[85vh] flex flex-col">
@@ -150,7 +167,7 @@ export default function Navigation({ activeTab, setActiveTab, orfasCount }: Navi
               <div>
                 <span className="stamp stamp-urgent text-[10px]">Navegação Oficial</span>
                 <h3 className="font-mono font-black text-sm uppercase text-[#1E1B2E] mt-0.5">
-                  Todas as 11 Seções do Bloco
+                  {perfil === 'publico' ? 'Seções Abertas ao Público' : 'Todas as 11 Seções do Bloco'}
                 </h3>
               </div>
               <button
@@ -204,7 +221,7 @@ export default function Navigation({ activeTab, setActiveTab, orfasCount }: Navi
         </div>
       )}
 
-      {/* BARRA FIXA INFERIOR MOBILE EXCLUSIVA (Bottom Navigation Bar com as 11 abas) */}
+      {/* BARRA FIXA INFERIOR MOBILE EXCLUSIVA (Bottom Navigation Bar) */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t-3 border-[#1E1B2E] shadow-[0_-3px_12px_rgba(0,0,0,0.18)]">
         <div className="flex items-center overflow-x-auto no-scrollbar px-1 py-1 gap-1">
           {tabs.map((tab, idx) => {
@@ -258,7 +275,7 @@ export default function Navigation({ activeTab, setActiveTab, orfasCount }: Navi
               Grade
             </span>
             <span className="text-[7.5px] font-mono text-stone-500 leading-none">
-              11 abas
+              {tabs.length} abas
             </span>
           </button>
         </div>

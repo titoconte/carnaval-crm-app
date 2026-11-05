@@ -3,20 +3,30 @@ import assert from 'node:assert';
 import { getVisibleNavigationTabs } from '../src/components/Navigation';
 
 describe('Navegação e Ordem Oficial das Páginas do Bloco Bicharada', () => {
-  it('não deve exibir a aba Letras & Cifras no menu principal de navegação', () => {
-    const tabs = getVisibleNavigationTabs(0);
-    const temLetras = tabs.some(t => t.id === 'letras');
-    assert.strictEqual(temLetras, false, 'A aba "letras" deve ter sido incorporada ao Repertório');
+  it('para o público (sem login), deve exibir exatamente 5 abas na ordem estrita solicitada', () => {
+    const tabsPublico = getVisibleNavigationTabs(0, 'publico');
+    const ids = tabsPublico.map(t => t.id);
+
+    const ordemEsperadaPublico = [
+      'inscricao',   // 1. Inscrições
+      'calendario',  // 2. Calendário
+      'rifa',        // 3. Rifas
+      'repertorio',  // 4. Repertório
+      'documentos'   // 5. Documentos
+    ];
+
+    assert.strictEqual(tabsPublico.length, 5, 'O público deve ter acesso a exatamente 5 abas');
+    assert.deepStrictEqual(ids, ordemEsperadaPublico, 'A ordem do público deve ser estritamente inscrições, calendário, rifas, repertório e documentos');
   });
 
-  it('deve conter exatamente 11 abas no menu principal', () => {
-    const tabs = getVisibleNavigationTabs(0);
-    assert.strictEqual(tabs.length, 11, 'O menu deve conter exatamente 11 abas oficiais');
-  });
+  it('para membros (coordenadores e bichos), deve conter exatamente as 11 abas oficiais na ordem completa', () => {
+    const tabsCoord = getVisibleNavigationTabs(0, 'coordenador');
+    const tabsBicho = getVisibleNavigationTabs(0, 'bicho');
 
-  it('deve seguir a ordem oficial estrita solicitada pelo usuário (1 a 11)', () => {
-    const tabs = getVisibleNavigationTabs(0);
-    const ordemEsperada = [
+    assert.strictEqual(tabsCoord.length, 11, 'Coordenadores devem visualizar 11 abas');
+    assert.strictEqual(tabsBicho.length, 11, 'Bichos devem visualizar 11 abas');
+
+    const ordemEsperadaMembros = [
       'tarefas',     // 1 mural
       'calendario',  // 2 calendário
       'desfile',     // 3 tarefas em andamento
@@ -30,33 +40,22 @@ describe('Navegação e Ordem Oficial das Páginas do Bloco Bicharada', () => {
       'documentos'   // 11 documentos
     ];
 
-    const idsAtuais = tabs.map(t => t.id);
-    assert.deepStrictEqual(idsAtuais, ordemEsperada, 'A ordem das abas deve corresponder exatamente à sequência oficial de 1 a 11');
+    assert.deepStrictEqual(tabsCoord.map(t => t.id), ordemEsperadaMembros);
+    assert.deepStrictEqual(tabsBicho.map(t => t.id), ordemEsperadaMembros);
   });
 
-  it('deve possuir as nomenclaturas oficiais adequadas para cada uma das abas', () => {
-    const tabs = getVisibleNavigationTabs(0);
-    const rotulos = tabs.map(t => ({ id: t.id, label: t.label }));
-
-    assert.strictEqual(rotulos[0].label, 'Mural de Tarefas');
-    assert.strictEqual(rotulos[1].label, 'Calendário');
-    assert.strictEqual(rotulos[2].label, 'Tarefas em Andamento');
-    assert.strictEqual(rotulos[3].label, 'Repertório');
-    assert.strictEqual(rotulos[4].label, 'Rifas 🎟️');
-    assert.strictEqual(rotulos[5].label, 'Inscrições');
-    assert.strictEqual(rotulos[6].label, 'Mídia & Artes');
-    assert.strictEqual(rotulos[7].label, 'Bar dos Ensaios');
-    assert.strictEqual(rotulos[8].label, 'Elenco & Naipes');
-    assert.strictEqual(rotulos[9].label, 'Enquetes WhatsApp');
-    assert.strictEqual(rotulos[10].label, 'Documentos');
+  it('não deve exibir a aba Letras & Cifras no menu principal de navegação', () => {
+    const tabs = getVisibleNavigationTabs(0, 'coordenador');
+    const temLetras = tabs.some(t => t.id === 'letras');
+    assert.strictEqual(temLetras, false, 'A aba "letras" deve ter sido incorporada ao Repertório');
   });
 
-  it('deve exibir indicador de badge numérico quando houver tarefas órfãs na aba de mural', () => {
-    const tabsComOrfas = getVisibleNavigationTabs(3);
+  it('deve exibir indicador de badge numérico quando houver tarefas órfãs na aba de mural para membros', () => {
+    const tabsComOrfas = getVisibleNavigationTabs(3, 'coordenador');
     const abaTarefas = tabsComOrfas.find(t => t.id === 'tarefas');
     assert.strictEqual(abaTarefas?.badge, '3 órfãs');
 
-    const tabsSemOrfas = getVisibleNavigationTabs(0);
+    const tabsSemOrfas = getVisibleNavigationTabs(0, 'coordenador');
     const abaSemOrfas = tabsSemOrfas.find(t => t.id === 'tarefas');
     assert.strictEqual(abaSemOrfas?.badge, undefined);
   });

@@ -44,6 +44,7 @@ interface RepertoireVotingProps {
   musicas: MusicaRepertorio[];
   setMusicas: React.Dispatch<React.SetStateAction<MusicaRepertorio[]>>;
   isAdmin: boolean;
+  isPublico?: boolean;
   onOpenLetras?: () => void;
 }
 
@@ -58,6 +59,7 @@ export default function RepertoireVoting({
   musicas,
   setMusicas,
   isAdmin,
+  isPublico = false,
   onOpenLetras
 }: RepertoireVotingProps) {
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
@@ -265,7 +267,7 @@ export default function RepertoireVoting({
    */
   const handleVote = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (votedSongs.has(id)) return;
+    if (isPublico || votedSongs.has(id)) return;
 
     setMusicas(prev => prev.map(m => {
       if (m.id === id) {
@@ -392,13 +394,15 @@ export default function RepertoireVoting({
             <span>Caderno de Letras & Cifras (PDF)</span>
           </button>
 
-          <button
-            onClick={() => setModalNovaMusica(true)}
-            className="vintage-button px-4 py-2 bg-[#E6007E] text-white hover:bg-[#C2006A] text-xs uppercase flex items-center gap-1.5 shadow-[2px_2px_0px_#000]"
-          >
-            <Plus className="w-4 h-4" />
-            <span>+ Sugerir Música</span>
-          </button>
+          {!isPublico && (
+            <button
+              onClick={() => setModalNovaMusica(true)}
+              className="vintage-button px-4 py-2 bg-[#E6007E] text-white hover:bg-[#C2006A] text-xs uppercase flex items-center gap-1.5 shadow-[2px_2px_0px_#000] cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Sugerir Música</span>
+            </button>
+          )}
         </div>
       </div>
 
