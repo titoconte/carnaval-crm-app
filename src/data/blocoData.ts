@@ -1,0 +1,1775 @@
+/**
+ * Modelo de dados atualizado do Bloco Bicharada para o Carnaval 2027.
+ * Suporta o novo ecossistema vintage: Rifa 100% online, Kanban do Desfile,
+ * Elenco estruturado por grandes naipes e mural de recados/tarefas estilo cortiça.
+ */
+
+export type GrandeGrupoElenco =
+  | 'Bateria'
+  | 'Sopros'
+  | 'Vozes'
+  | 'Outros Instrumentos'
+  | 'Brincantes & Dança'
+  | 'Carro Alegórico'
+  | 'Organização & Apoio';
+
+export type SetorElenco = 'Música' | 'Performance' | 'Organização';
+
+export interface Integrante {
+  id: string;
+  nome: string;
+  grandeGrupo: GrandeGrupoElenco;
+  instrumentoOuFuncao: string; // Ex: Caixas, Surdos, Trompete, Pernalta, Harmonia, Produção, Carro Alegórico
+  observacao?: string;
+  ativo: boolean;
+}
+
+export interface InscritoBloco {
+  id: string;
+  nome: string;
+  whatsapp: string;
+  grandeGrupo: Integrante['grandeGrupo'];
+  instrumentoOuFuncao: string;
+  experiencia: string;
+  observacao?: string;
+  dataInscricao: string;
+  status: 'Pendente' | 'Aprovado' | 'Recusado';
+}
+
+export interface ItemChecklistTarefa {
+  id: string;
+  texto: string;
+  dataLimite?: string; // Data por tarefa da checklist
+  concluido: boolean;
+}
+
+export interface TarefaPostIt {
+  id: string;
+  titulo: string;
+  descricao: string;
+  categoria: 'Apoio' | 'Logística' | 'Produção' | 'Música' | 'Comunicação' | 'Fantasias';
+  responsavel: string; // Se vazio ("") ou "A Definir", é Tarefa Órfã
+  corPostIt: 'amarelo' | 'rosa' | 'verde' | 'azul';
+  urgente: boolean;
+  concluida: boolean;
+  dataFinal?: string; // Data final da tarefa geral
+  checklists?: ItemChecklistTarefa[];
+}
+
+export interface PremioRifa {
+  posicao: number;
+  descricao: string;
+}
+
+export interface Rifa {
+  id: string;
+  titulo: string;
+  nomeCoordenador: string;
+  quantidadeNumeros: number;
+  precoNumero: number;
+  dataLimite: string; // Formato YYYY-MM-DD
+  numeroPremios: number;
+  premios: PremioRifa[];
+  chavePix?: string;
+  telefoneContato?: string;
+  dataCriacao: string;
+  ativa: boolean;
+}
+
+export interface RifaVenda {
+  id: string;
+  rifaId: string;
+  numero: number;
+  status: 'Disponível' | 'Reservado' | 'Pago';
+  compradorNome?: string;
+  compradorWhats?: string;
+  dataVenda?: string; // Data ISO da reserva ou venda
+  valorPago?: number;
+}
+
+export interface BilheteRifa {
+  numero: number; // 1 a 500
+  status: 'Disponível' | 'Reservado' | 'Pago';
+  compradorNome?: string;
+  compradorWhats?: string;
+  dataReserva?: string;
+}
+
+export interface MacrotarefaDesfile {
+  id: string;
+  titulo: string;
+  coluna: 'A Fazer' | 'No Dia do Desfile' | 'Concluído na Avenida';
+  responsavelPrincipal: string;
+  descricao?: string;
+  checklists: {
+    id: string;
+    texto: string;
+    concluido: boolean;
+  }[];
+}
+
+export interface MovimentoBar {
+  id: string;
+  data: string;
+  descricao: string;
+  tipo: 'Entrada' | 'Saída';
+  categoria: 'Venda de Cerveja / Bebidas' | 'Compra no Atacado (Fort)' | 'Isopor da Peixaria' | 'Gelo' | 'Outros';
+  valor: number;
+  responsavel: string;
+}
+
+export interface EnqueteWhatsApp {
+  id: string;
+  titulo: string;
+  dataEncerramento: string;
+  totalVotos: number;
+  pergunta: string;
+  opcoes: {
+    rotulo: string;
+    votos: number;
+    percentual: number;
+  }[];
+  resolucaoOficial?: string;
+}
+
+export interface MusicaRepertorio {
+  id: string;
+  titulo: string;
+  artistaOriginal: string;
+  ritmo: string;
+  ordemDesfile: number;
+  votosFavoraveis: number;
+  statusCuradoria: 'Confirmada' | 'Em Votação' | 'Sugerida para Corte';
+  audioGuiaUrl?: string;
+  youtubeUrl?: string;
+  partituraUrl?: string;
+  partituraTexto?: string;
+  arquivoRepertorio?: string;
+  letra?: string;
+}
+
+export interface ItemLetraCifra {
+  id: string;
+  titulo: string;
+  tipo: 'Letra' | 'Cifra' | 'Partitura';
+  autorUpload: string;
+  dataUpload: string;
+  conteudoTexto?: string;
+  arquivoNome?: string;
+}
+
+export interface EventoCalendario {
+  id: string;
+  data: string;
+  diaSemana: string;
+  tipo: 'Ensaio' | 'Reunião presencial' | 'Oficina de Fantasias' | 'Desfile Oficial';
+  local: string;
+  horario: string;
+  observacoes?: string;
+}
+
+export const MACROCATEGORIAS_ELENCO: Integrante['grandeGrupo'][] = [
+  'Bateria',
+  'Sopros',
+  'Vozes',
+  'Outros Instrumentos',
+  'Brincantes & Dança',
+  'Carro Alegórico',
+  'Organização & Apoio'
+];
+
+export const SETORES_ELENCO: { id: SetorElenco; rotulo: string; descricao: string; emoji: string }[] = [
+  { id: 'Música', rotulo: 'Música', descricao: 'Bateria, Sopros, Vozes e Instrumentos de Harmonia', emoji: '🎺' },
+  { id: 'Performance', rotulo: 'Performance', descricao: 'Brincantes, Pernaltas, Dança e Carro Alegórico', emoji: '🎭' },
+  { id: 'Organização', rotulo: 'Organização', descricao: 'Coordenação Geral, Produção, Apoio e Logística', emoji: '📋' }
+];
+
+export const CATEGORIAS_POR_SETOR: Record<SetorElenco, Integrante['grandeGrupo'][]> = {
+  'Música': ['Bateria', 'Sopros', 'Vozes', 'Outros Instrumentos'],
+  'Performance': ['Brincantes & Dança', 'Carro Alegórico'],
+  'Organização': ['Organização & Apoio']
+};
+
+export interface ColunaMacrocategoria {
+  categoria: Integrante['grandeGrupo'];
+  total: number;
+  instrumentos: Record<string, Integrante[]>;
+}
+
+/**
+ * Retorna o setor correspondente a uma macrocategoria do elenco.
+ * 
+ * @param grupo - Macrocategoria do integrante
+ * @returns SetorElenco ('Música' | 'Performance' | 'Organização')
+ */
+export function obterSetorDoGrupo(grupo: Integrante['grandeGrupo']): SetorElenco {
+  if (['Bateria', 'Sopros', 'Vozes', 'Outros Instrumentos'].includes(grupo)) {
+    return 'Música';
+  }
+  if (['Brincantes & Dança', 'Carro Alegórico'].includes(grupo)) {
+    return 'Performance';
+  }
+  return 'Organização';
+}
+
+/**
+ * Agrupa os integrantes do elenco por macrocategoria (colunas) e subdivide por instrumentos/funções (linhas).
+ * 
+ * @param integrantes - Lista completa de integrantes
+ * @returns Mapeamento estruturado por macrocategoria
+ */
+export function agruparElencoPorMacrocategoria(
+  integrantes: Integrante[]
+): Record<Integrante['grandeGrupo'], ColunaMacrocategoria> {
+  const resultado: Record<Integrante['grandeGrupo'], ColunaMacrocategoria> = {
+    'Bateria': { categoria: 'Bateria', total: 0, instrumentos: {} },
+    'Sopros': { categoria: 'Sopros', total: 0, instrumentos: {} },
+    'Vozes': { categoria: 'Vozes', total: 0, instrumentos: {} },
+    'Outros Instrumentos': { categoria: 'Outros Instrumentos', total: 0, instrumentos: {} },
+    'Brincantes & Dança': { categoria: 'Brincantes & Dança', total: 0, instrumentos: {} },
+    'Carro Alegórico': { categoria: 'Carro Alegórico', total: 0, instrumentos: {} },
+    'Organização & Apoio': { categoria: 'Organização & Apoio', total: 0, instrumentos: {} }
+  };
+
+  for (const integrante of integrantes) {
+    const grupo = resultado[integrante.grandeGrupo];
+    if (grupo) {
+      grupo.total += 1;
+      const inst = integrante.instrumentoOuFuncao || 'Geral';
+      if (!grupo.instrumentos[inst]) {
+        grupo.instrumentos[inst] = [];
+      }
+      grupo.instrumentos[inst].push(integrante);
+    }
+  }
+
+  return resultado;
+}
+
+/**
+ * Retorna as colunas de macrocategorias pertencentes a um setor específico do elenco.
+ * 
+ * @param integrantes - Lista de integrantes
+ * @param setor - Setor desejado ('Música', 'Performance' ou 'Organização')
+ * @returns Lista de dados agrupados para as macrocategorias do setor informado
+ */
+export function obterColunasPorSetor(
+  integrantes: Integrante[],
+  setor: SetorElenco
+): ColunaMacrocategoria[] {
+  const agrupado = agruparElencoPorMacrocategoria(integrantes);
+  const categorias = CATEGORIAS_POR_SETOR[setor] || [];
+  return categorias.map(cat => agrupado[cat]);
+}
+
+/**
+ * Elenco oficial reorganizado pelos Grandes Naipes.
+ */
+export const INTEGRANTES_INICIAIS: Integrante[] = [
+  // 1. BATERIA
+  { id: 'bat-1', nome: 'André Luis', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Caixa', ativo: true },
+  { id: 'bat-2', nome: 'Gabriel', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Caixa', ativo: true },
+  { id: 'bat-3', nome: 'Jeff', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Caixa', ativo: true },
+  { id: 'bat-4', nome: 'Gabriel Bio', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Caixa / Xequerê', ativo: true },
+  { id: 'bat-5', nome: 'Júlia', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Caixa', ativo: true },
+  { id: 'bat-6', nome: 'Igor G.', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Caixa', ativo: true },
+  { id: 'bat-7', nome: 'Nathy R.', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Repinique', ativo: true },
+  { id: 'bat-8', nome: 'Rafa', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Repinique', ativo: true },
+  { id: 'bat-9', nome: 'Mari', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Repinique', ativo: true },
+  { id: 'bat-10', nome: 'Shei', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Surdo', ativo: true },
+  { id: 'bat-11', nome: 'Regina', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Surdo', ativo: true },
+  { id: 'bat-12', nome: 'Moscão', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Surdo', ativo: true },
+  { id: 'bat-13', nome: 'Gui', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Surdo', ativo: true },
+  { id: 'bat-14', nome: 'Fer do Surdo', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Surdo', ativo: true },
+  { id: 'bat-15', nome: 'Guigo', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Xequerê', ativo: true },
+  { id: 'bat-16', nome: 'Merlim', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Xequerê', ativo: true },
+  { id: 'bat-17', nome: 'Dani', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Xequerê', ativo: true },
+  { id: 'bat-18', nome: 'Diva', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Xequerê', ativo: true },
+  { id: 'bat-19', nome: 'Camila', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Xequerê', ativo: true },
+  { id: 'bat-20', nome: 'Sara', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Agogô', ativo: true },
+  { id: 'bat-21', nome: 'Lívia', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Agogô', ativo: true },
+  { id: 'bat-22', nome: 'Silvana', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Agogô', ativo: true },
+  { id: 'bat-23', nome: 'Ariadne', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Pandeiro', ativo: true },
+  { id: 'bat-24', nome: 'Cleber', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Pandeiro', ativo: true },
+  { id: 'bat-25', nome: 'Bibi', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Pandeiro', ativo: true },
+  { id: 'bat-26', nome: 'Mari Pelli', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Pandeiro', ativo: true },
+  { id: 'bat-27', nome: 'Juliano', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Tamborim', ativo: true },
+  { id: 'bat-28', nome: 'Leda', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Tamborim', ativo: true },
+  { id: 'bat-29', nome: 'Adriana', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Tamborim', ativo: true },
+  { id: 'bat-30', nome: 'Hélio', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Tamborim', ativo: true },
+  { id: 'bat-31', nome: 'Luciane', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Tamborim', ativo: true },
+  { id: 'bat-32', nome: 'Flor', grandeGrupo: 'Bateria', instrumentoOuFuncao: 'Tamborim', ativo: true },
+
+  // 2. SOPROS
+  { id: 'sop-1', nome: 'Claudinha', grandeGrupo: 'Sopros', instrumentoOuFuncao: 'Trompete', ativo: true },
+  { id: 'sop-2', nome: 'Carlinhos', grandeGrupo: 'Sopros', instrumentoOuFuncao: 'Trompete', ativo: true },
+  { id: 'sop-3', nome: 'Luciano', grandeGrupo: 'Sopros', instrumentoOuFuncao: 'Trompete', ativo: true },
+  { id: 'sop-4', nome: 'Zeva', grandeGrupo: 'Sopros', instrumentoOuFuncao: 'Saxofone', ativo: true },
+  { id: 'sop-5', nome: 'Pedro', grandeGrupo: 'Sopros', instrumentoOuFuncao: 'Trombone', ativo: true },
+  { id: 'sop-6', nome: 'Guilherme', grandeGrupo: 'Sopros', instrumentoOuFuncao: 'Trombone', ativo: true },
+
+  // 3. VOZES
+  { id: 'voc-1', nome: 'Patricia Amante', grandeGrupo: 'Vozes', instrumentoOuFuncao: 'Voz Principal', ativo: true },
+  { id: 'voc-2', nome: 'Cris Bueno', grandeGrupo: 'Vozes', instrumentoOuFuncao: 'Coro / Vocal', ativo: true },
+  { id: 'voc-3', nome: 'Andri', grandeGrupo: 'Vozes', instrumentoOuFuncao: 'Coro / Vocal', ativo: true },
+
+  // 4. OUTROS INSTRUMENTOS / HARMONIA
+  { id: 'out-1', nome: 'Vitinho', grandeGrupo: 'Outros Instrumentos', instrumentoOuFuncao: 'Baixo Elétrico & Harmonia', ativo: true },
+  { id: 'out-2', nome: 'Léo', grandeGrupo: 'Outros Instrumentos', instrumentoOuFuncao: 'Cavaquinho', ativo: true },
+  { id: 'out-3', nome: 'Fael', grandeGrupo: 'Outros Instrumentos', instrumentoOuFuncao: 'Direção Musical & Arranjos', ativo: true },
+
+  // 5. BRINCANTES & DANÇA (Aba à parte)
+  { id: 'bri-1', nome: 'Lissa Capeleto', grandeGrupo: 'Brincantes & Dança', instrumentoOuFuncao: 'Estandarte Oficial', ativo: true },
+  { id: 'bri-2', nome: 'Barbara Baccin', grandeGrupo: 'Brincantes & Dança', instrumentoOuFuncao: 'Bambolê & Palhaçaria', ativo: true },
+  { id: 'bri-3', nome: 'Beatriz Aguiar', grandeGrupo: 'Brincantes & Dança', instrumentoOuFuncao: 'Pernalta', ativo: true },
+  { id: 'bri-4', nome: 'Lua', grandeGrupo: 'Brincantes & Dança', instrumentoOuFuncao: 'Pernalta', ativo: true },
+  { id: 'bri-5', nome: 'Juliana', grandeGrupo: 'Brincantes & Dança', instrumentoOuFuncao: 'Pernalta', ativo: true },
+  { id: 'bri-6', nome: 'Lahana', grandeGrupo: 'Brincantes & Dança', instrumentoOuFuncao: 'Pernalta', ativo: true },
+  { id: 'bri-7', nome: 'Will', grandeGrupo: 'Brincantes & Dança', instrumentoOuFuncao: 'Brincante / Performance', ativo: true },
+  { id: 'bri-8', nome: 'Dodô', grandeGrupo: 'Brincantes & Dança', instrumentoOuFuncao: 'Brincante / Performance', ativo: true },
+  { id: 'bri-9', nome: 'Laura', grandeGrupo: 'Brincantes & Dança', instrumentoOuFuncao: 'Brincante / Performance', ativo: true },
+  { id: 'bri-10', nome: 'Marlu', grandeGrupo: 'Brincantes & Dança', instrumentoOuFuncao: 'Brincante / Performance', ativo: true },
+  { id: 'dan-1', nome: 'Bel Rodrigues', grandeGrupo: 'Brincantes & Dança', instrumentoOuFuncao: 'Ala de Dança', ativo: true },
+  { id: 'dan-2', nome: 'Ju Ben', grandeGrupo: 'Brincantes & Dança', instrumentoOuFuncao: 'Ala de Dança', ativo: true },
+  { id: 'dan-3', nome: 'Vini Franke', grandeGrupo: 'Brincantes & Dança', instrumentoOuFuncao: 'Ala de Dança', ativo: true },
+
+  // 6. CARRO ALEGÓRICO (Performance & Visual)
+  { id: 'car-1', nome: 'Dudu Cenógrafo', grandeGrupo: 'Carro Alegórico', instrumentoOuFuncao: 'Cenografia e Estrutura Alegórica', ativo: true },
+  { id: 'car-2', nome: 'Beto Som', grandeGrupo: 'Carro Alegórico', instrumentoOuFuncao: 'Operação da Kombi Sonora & Iluminação', ativo: true },
+
+  // 7. ORGANIZAÇÃO & APOIO (Aba à parte)
+  { id: 'org-1', nome: 'Tito', grandeGrupo: 'Organização & Apoio', instrumentoOuFuncao: 'Coordenação Geral, Jurídico & Apoio', ativo: true },
+  { id: 'org-2', nome: 'Nathy R.', grandeGrupo: 'Organização & Apoio', instrumentoOuFuncao: 'Produção Executiva & Espaços', ativo: true },
+  { id: 'org-3', nome: 'Laís', grandeGrupo: 'Organização & Apoio', instrumentoOuFuncao: 'Comunicação / Redação e Conceito', ativo: true },
+  { id: 'org-4', nome: 'Camela', grandeGrupo: 'Organização & Apoio', instrumentoOuFuncao: 'Agenda de Postagens & Mídias', ativo: true },
+  { id: 'org-5', nome: 'Maria Alice', grandeGrupo: 'Organização & Apoio', instrumentoOuFuncao: 'Infraestrutura & Documentos', ativo: true },
+  { id: 'apo-1', nome: 'Anabel', grandeGrupo: 'Organização & Apoio', instrumentoOuFuncao: 'Apoio de Rua', ativo: true },
+  { id: 'apo-2', nome: 'Rod', grandeGrupo: 'Organização & Apoio', instrumentoOuFuncao: 'Apoio Operacional', ativo: true },
+  { id: 'apo-3', nome: 'Diogo', grandeGrupo: 'Organização & Apoio', instrumentoOuFuncao: 'Apoio Operacional', ativo: true }
+];
+
+/**
+ * Tarefas estilo Quadro de Cortiça e Post-it.
+ */
+export const TAREFAS_POSTIT_INICIAIS: TarefaPostIt[] = [
+  // ÓRFÃS (Sem responsável)
+  {
+    id: 'post-1',
+    titulo: 'Buscar caixas de isopor na peixaria',
+    descricao: 'Coletar semanalmente as caixas térmicas descartáveis da peixaria para os ensaios de sexta.',
+    categoria: 'Logística',
+    responsavel: '', // Órfã!
+    corPostIt: 'amarelo',
+    urgente: true,
+    concluida: false,
+    dataFinal: '2027-01-15'
+  },
+  {
+    id: 'post-2',
+    titulo: 'Voluntário para o Caixa do Bar',
+    descricao: 'Ajudar Pedro a atender a galera, vender fichas e conferir comprovantes Pix durante o ensaio.',
+    categoria: 'Apoio',
+    responsavel: '', // Órfã!
+    corPostIt: 'rosa',
+    urgente: true,
+    concluida: false,
+    dataFinal: '2027-01-22'
+  },
+  {
+    id: 'post-3',
+    titulo: 'Revezamento do Estandarte Oficial',
+    descricao: 'Apoiar Lissa Capeleto na condução e segurança do estandarte durante o cortejo.',
+    categoria: 'Produção',
+    responsavel: '', // Órfã!
+    corPostIt: 'azul',
+    urgente: false,
+    concluida: false,
+    dataFinal: '2027-02-01'
+  },
+  {
+    id: 'post-4',
+    titulo: 'Ala de Corda & Segurança',
+    descricao: 'Equipe de 6 pessoas para segurar a corda de proteção ao redor da bateria e da Kombi Cora.',
+    categoria: 'Logística',
+    responsavel: '', // Órfã!
+    corPostIt: 'verde',
+    urgente: true,
+    concluida: false,
+    dataFinal: '2027-01-10'
+  },
+  // ATRIBUÍDAS
+  {
+    id: 'post-5',
+    titulo: 'Acordo com Renato Cartola (Kombi Cora)',
+    descricao: 'Fechar proposta de R$ 200 para usar a Kombi como suporte de bebidas no cortejo.',
+    categoria: 'Logística',
+    responsavel: 'Nathy R.',
+    corPostIt: 'amarelo',
+    urgente: true,
+    concluida: false,
+    dataFinal: '2027-01-18'
+  },
+  {
+    id: 'post-6',
+    titulo: 'Curadoria dos Sopros & Contra-Canto',
+    descricao: 'Gravar guias de contra-canto para os metais e disponibilizar nos subgrupos.',
+    categoria: 'Música',
+    responsavel: 'Fael',
+    corPostIt: 'verde',
+    urgente: true,
+    concluida: false,
+    dataFinal: '2027-01-20'
+  },
+  {
+    id: 'post-7',
+    titulo: 'Viabilidade de CNPJ / Associação',
+    descricao: 'Estudo para constituir associação própria com blocos parceiros e evitar Pix em CPF pessoal.',
+    categoria: 'Produção',
+    responsavel: 'Tito & Elisa',
+    corPostIt: 'azul',
+    urgente: false,
+    concluida: false,
+    dataFinal: '2027-01-25'
+  },
+  {
+    id: 'post-8',
+    titulo: 'Organização das Oficinas de Fantasias',
+    descricao: 'Agendar datas no ateliê e recolher sobras de tecido e materiais recicláveis.',
+    categoria: 'Fantasias',
+    responsavel: 'Bel R. & Nathy',
+    corPostIt: 'rosa',
+    urgente: false,
+    concluida: false,
+    dataFinal: '2027-01-30'
+  }
+];
+
+/**
+ * Calcula o percentual de conclusão dos itens de uma checklist (0 a 100).
+ * 
+ * @param checklists - Lista de itens da checklist
+ * @returns Percentual inteiro de conclusão
+ */
+export function calcularProgressoChecklist(checklists?: ItemChecklistTarefa[]): number {
+  if (!checklists || checklists.length === 0) return 0;
+  const concluidos = checklists.filter(c => c.concluido).length;
+  return Math.round((concluidos / checklists.length) * 100);
+}
+
+/**
+ * Formata uma data no formato ISO (YYYY-MM-DD) para o formato brasileiro legível (DD/MM/AAAA).
+ * 
+ * @param dataIso - String da data no formato YYYY-MM-DD
+ * @returns Data formatada como DD/MM/AAAA ou string original se não puder ser convertida
+ */
+export function formatarDataBrasileira(dataIso?: string): string {
+  if (!dataIso) return '';
+  const partes = dataIso.split('-');
+  if (partes.length === 3) {
+    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+  }
+  return dataIso;
+}
+
+/**
+ * Ordena tarefas colocando as marcadas como urgente no topo e, em seguida, por data final mais próxima.
+ * Tarefas com data definida vêm antes de tarefas sem data dentro de cada nível de urgência.
+ * 
+ * @param tarefas - Lista de tarefas a serem ordenadas
+ * @returns Nova lista com tarefas ordenadas por urgência e depois cronologicamente por datas
+ */
+export function ordenarTarefasPorUrgencia(tarefas: TarefaPostIt[]): TarefaPostIt[] {
+  return [...tarefas].sort((a, b) => {
+    // 1º Critério: Urgência (urgente = true antes de urgente = false)
+    if (a.urgente && !b.urgente) return -1;
+    if (!a.urgente && b.urgente) return 1;
+
+    // 2º Critério: Ordenação cronológica por data limite (mais cedo primeiro)
+    const dataA = a.dataFinal?.trim();
+    const dataB = b.dataFinal?.trim();
+
+    if (dataA && dataB) {
+      const cmp = dataA.localeCompare(dataB);
+      if (cmp !== 0) return cmp;
+    } else if (dataA && !dataB) {
+      return -1; // Tarefas com data vêm antes de tarefas sem data
+    } else if (!dataA && dataB) {
+      return 1;
+    }
+
+    return 0;
+  });
+}
+
+/**
+ * Valida se uma tarefa possui um responsável definido para permitir acionar 'Equipe Pronta'.
+ * 
+ * @param tarefa - Tarefa a ser validada
+ * @returns True se possuir dono atribuído e válido, False caso contrário
+ */
+export function podeAcionarEquipePronta(tarefa: TarefaPostIt): boolean {
+  if (!tarefa.responsavel) return false;
+  const resp = tarefa.responsavel.trim().toLowerCase();
+  if (resp === '' || resp === 'a definir' || resp === 'órfã' || resp === 'orfa' || resp === 'sem dono') {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Converte um post-it do mural em uma macrotarefa do desfile quando a equipe está pronta.
+ * 
+ * @param tarefa - Tarefa do mural
+ * @returns Macrotarefa estruturada para a coluna 'A Fazer' do desfile
+ */
+export function converterTarefaEmMacrotarefa(tarefa: TarefaPostIt): MacrotarefaDesfile {
+  const checks = tarefa.checklists && tarefa.checklists.length > 0
+    ? tarefa.checklists.map(c => ({
+        id: c.id,
+        texto: c.dataLimite ? `${c.texto} (Prazo: ${c.dataLimite})` : c.texto,
+        concluido: c.concluido
+      }))
+    : [
+        {
+          id: `chk-${Date.now()}`,
+          texto: 'Mobilização e execução pela equipe',
+          concluido: false
+        }
+      ];
+
+  return {
+    id: `macro-${tarefa.id}`,
+    titulo: tarefa.titulo,
+    coluna: 'A Fazer',
+    responsavelPrincipal: tarefa.responsavel || 'Equipe Voluntária Mobilizada',
+    descricao: tarefa.descricao + (tarefa.dataFinal ? ` | Prazo final: ${tarefa.dataFinal}` : ''),
+    checklists: checks
+  };
+}
+
+/**
+ * Macrotarefas e Checklists do Desfile (Kanban de Rua).
+ */
+export const MACROTAREFAS_DESFILE_INICIAIS: MacrotarefaDesfile[] = [
+  {
+    id: 'macro-1',
+    titulo: 'Apoio Móvel: Kombi Cora',
+    coluna: 'A Fazer',
+    responsavelPrincipal: 'Renato Cartola & Nathy',
+    descricao: 'Veículo de suporte de hidratação, open bar e primeiros socorros.',
+    checklists: [
+      { id: 'c1', texto: 'Acerto de R$ 200 com Renato Cartola', concluido: true },
+      { id: 'c2', texto: 'Revisão mecânica básica e estepe', concluido: false },
+      { id: 'c3', texto: 'Abastecer com 4 caixas de isopor da peixaria + gelo', concluido: false },
+      { id: 'c4', texto: 'Fixar suporte para faixas decorativas e estandarte reserva', concluido: false }
+    ]
+  },
+  {
+    id: 'macro-2',
+    titulo: 'Concentração na Praça Oliva (14h30)',
+    coluna: 'No Dia do Desfile',
+    responsavelPrincipal: 'Regina, Tito & Fael',
+    descricao: 'Ponto de encontro dos bichos, credenciamento e aquecimento.',
+    checklists: [
+      { id: 'c5', texto: 'Distribuição dos crachás e pulseiras de identificação', concluido: false },
+      { id: 'c6', texto: 'Montagem do Estandarte com Lissa Capeleto', concluido: false },
+      { id: 'c7', texto: 'Aquecimento da bateria e afinação dos naipes com Fael', concluido: false },
+      { id: 'c8', texto: 'Distribuição das primeiras águas para os músicos', concluido: false }
+    ]
+  },
+  {
+    id: 'macro-3',
+    titulo: 'Ala de Corda e Isolamento dos Pernaltas',
+    coluna: 'No Dia do Desfile',
+    responsavelPrincipal: 'Apoio de Rua',
+    descricao: 'Proteção do perímetro da bateria e dos artistas com perna de pau.',
+    checklists: [
+      { id: 'c9', texto: 'Reunião de 5 min com os 6 voluntários da corda', concluido: false },
+      { id: 'c10', texto: 'Garantir raio de segurança de 2m para os pernaltas', concluido: false },
+      { id: 'c11', texto: 'Manter a Kombi Cora a 3 metros atrás da bateria', concluido: false }
+    ]
+  },
+  {
+    id: 'macro-4',
+    titulo: 'Dispersão & Limpeza Coletiva',
+    coluna: 'Concluído na Avenida',
+    responsavelPrincipal: 'Coordenação e Apoio',
+    descricao: 'Encerramento seguro do cortejo no centro histórico.',
+    checklists: [
+      { id: 'c12', texto: 'Guardar instrumentos pesados (surdos e caixas)', concluido: false },
+      { id: 'c13', texto: 'Descarte e doação dos isopores para catadores locais', concluido: false },
+      { id: 'c14', texto: 'Acerto final de combustível com a Kombi Cora', concluido: false }
+    ]
+  }
+];
+
+/**
+ * Movimentos do Bar dos Ensaios (Entradas e Saídas ágeis).
+ */
+export const MOVIMENTOS_BAR_INICIAIS: MovimentoBar[] = [
+  { id: 'mov-1', data: '2026-10-16', descricao: 'Compra de 5 caixas de cerveja (Fort Atacadista)', tipo: 'Saída', categoria: 'Compra no Atacado (Fort)', valor: 240.00, responsavel: 'Pedro' },
+  { id: 'mov-2', data: '2026-10-16', descricao: '2 sacos de gelo e isopor da peixaria', tipo: 'Saída', categoria: 'Gelo', valor: 35.00, responsavel: 'Pedro' },
+  { id: 'mov-3', data: '2026-10-16', descricao: 'Venda de latinhas no 1º Ensaio', tipo: 'Entrada', categoria: 'Venda de Cerveja / Bebidas', valor: 410.00, responsavel: 'Pedro & Tito' },
+  { id: 'mov-4', data: '2026-10-20', descricao: 'Compra de 6 caixas de cerveja e água', tipo: 'Saída', categoria: 'Compra no Atacado (Fort)', valor: 290.00, responsavel: 'Pedro' },
+  { id: 'mov-5', data: '2026-10-20', descricao: 'Venda de bebidas no 2º Ensaio', tipo: 'Entrada', categoria: 'Venda de Cerveja / Bebidas', valor: 520.00, responsavel: 'Pedro' }
+];
+
+/**
+ * Valida se a venda de um bilhete de rifa é permitida de acordo com a data limite.
+ * Regra: A venda não pode passar de 1 dia da data limite estabelecida.
+ * 
+ * @param rifa - Objeto da rifa contendo a dataLimite
+ * @param dataTentativa - Data da tentativa de venda (padrão: agora)
+ * @returns Objeto informando se é permitida e motivo em caso de recusa
+ */
+export function validarVendaRifa(
+  rifa: Rifa,
+  dataTentativa: string | Date = new Date()
+): { permitida: boolean; motivo?: string } {
+  const dataAtual = typeof dataTentativa === 'string' ? new Date(dataTentativa) : dataTentativa;
+  
+  // Limite é 1 dia após a data limite especificada (final do dia seguinte)
+  const [ano, mes, dia] = rifa.dataLimite.split('-').map(Number);
+  const dataLimiteObj = new Date(ano, mes - 1, dia, 23, 59, 59, 999);
+  
+  // Adiciona exatamente 1 dia completo de tolerância ao limite
+  const limiteMaximoVenda = new Date(dataLimiteObj.getTime() + 24 * 60 * 60 * 1000);
+
+  if (dataAtual.getTime() > limiteMaximoVenda.getTime()) {
+    return {
+      permitida: false,
+      motivo: `Venda não permitida: o prazo limite da rifa (${rifa.dataLimite}) foi ultrapassado em mais de 1 dia.`
+    };
+  }
+
+  return { permitida: true };
+}
+
+/**
+ * Cria uma nova rifa garantindo a estrutura correta de prêmios e metadados.
+ * 
+ * @param dados - Parâmetros da nova rifa informados pelo administrador
+ * @returns Nova rifa estruturada
+ */
+export function criarNovaRifa(dados: {
+  titulo: string;
+  nomeCoordenador: string;
+  quantidadeNumeros: number;
+  precoNumero: number;
+  dataLimite: string;
+  premios: PremioRifa[];
+  chavePix?: string;
+  telefoneContato?: string;
+}): Rifa {
+  return {
+    id: `rifa-${Date.now()}`,
+    titulo: dados.titulo.trim(),
+    nomeCoordenador: dados.nomeCoordenador.trim(),
+    quantidadeNumeros: dados.quantidadeNumeros,
+    precoNumero: dados.precoNumero,
+    dataLimite: dados.dataLimite,
+    numeroPremios: dados.premios.length,
+    premios: dados.premios,
+    chavePix: dados.chavePix || 'apoio@bicharada.org',
+    telefoneContato: dados.telefoneContato || '5548999999999',
+    dataCriacao: new Date().toISOString().split('T')[0],
+    ativa: true
+  };
+}
+
+/**
+ * Registra a venda/reserva de um bilhete na tabela fato de vendas, validando a data limite.
+ * 
+ * @param rifa - Rifa em que a venda está ocorrendo
+ * @param vendas - Lista atual de vendas (tabela fato)
+ * @param numero - Número do bilhete a ser vendido
+ * @param comprador - Informações do comprador e data
+ * @returns Resultado com sucesso ou recusa e a lista atualizada
+ */
+export function registrarVendaBilhete(
+  rifa: Rifa,
+  vendas: RifaVenda[],
+  numero: number,
+  comprador: {
+    compradorNome: string;
+    compradorWhats: string;
+    dataVenda?: string;
+    valorPago?: number;
+    status?: 'Reservado' | 'Pago';
+  }
+): { sucesso: boolean; motivo?: string; vendasAtualizadas: RifaVenda[] } {
+  const dataVenda = comprador.dataVenda || new Date().toISOString();
+  const validacao = validarVendaRifa(rifa, dataVenda);
+
+  if (!validacao.permitida) {
+    return {
+      sucesso: false,
+      motivo: validacao.motivo,
+      vendasAtualizadas: vendas
+    };
+  }
+
+  const status = comprador.status || 'Reservado';
+  let encontrado = false;
+
+  const vendasAtualizadas = vendas.map(v => {
+    if (v.rifaId === rifa.id && v.numero === numero) {
+      encontrado = true;
+      return {
+        ...v,
+        status,
+        compradorNome: comprador.compradorNome.trim(),
+        compradorWhats: comprador.compradorWhats.trim(),
+        dataVenda,
+        valorPago: comprador.valorPago || rifa.precoNumero
+      };
+    }
+    return v;
+  });
+
+  if (!encontrado) {
+    vendasAtualizadas.push({
+      id: `venda-${rifa.id}-${numero}`,
+      rifaId: rifa.id,
+      numero,
+      status,
+      compradorNome: comprador.compradorNome.trim(),
+      compradorWhats: comprador.compradorWhats.trim(),
+      dataVenda,
+      valorPago: comprador.valorPago || rifa.precoNumero
+    });
+  }
+
+  return {
+    sucesso: true,
+    vendasAtualizadas
+  };
+}
+
+/**
+ * Gera as linhas iniciais da tabela fato de vendas para uma nova rifa.
+ * 
+ * @param rifa - Rifa para a qual os números serão gerados
+ * @returns Lista inicial de vendas para a tabela fato
+ */
+export function gerarVendasIniciaisParaRifa(rifa: Rifa): RifaVenda[] {
+  const vendas: RifaVenda[] = [];
+  for (let i = 1; i <= rifa.quantidadeNumeros; i++) {
+    vendas.push({
+      id: `venda-${rifa.id}-${i}`,
+      rifaId: rifa.id,
+      numero: i,
+      status: 'Disponível'
+    });
+  }
+  return vendas;
+}
+
+/**
+ * Rifas estruturadas iniciais cadastradas no sistema.
+ */
+export const RIFAS_INICIAIS: Rifa[] = [
+  {
+    id: 'rifa-oficial-2027',
+    titulo: 'Grande Rifa Carnavalesca Bicharada 2027',
+    nomeCoordenador: 'Regina',
+    quantidadeNumeros: 500,
+    precoNumero: 10.0,
+    dataLimite: '2027-02-05',
+    numeroPremios: 3,
+    premios: [
+      { posicao: 1, descricao: 'Cesta Artesanal Carnavalesca + Kit Cervejas Especiais' },
+      { posicao: 2, descricao: 'Par de Óculos & Adereço Exclusivo Bicharada' },
+      { posicao: 3, descricao: 'Camiseta Oficial 2027 + Copo Tiracolo' }
+    ],
+    chavePix: 'apoio@bicharada.org',
+    telefoneContato: '5548999999999',
+    dataCriacao: '2026-10-01',
+    ativa: true
+  }
+];
+
+/**
+ * Atualiza o status de aceite/recusa de uma inscrição no bloco.
+ * 
+ * @param inscritos - Lista atual de inscritos
+ * @param id - Identificador do inscrito
+ * @param novoStatus - Novo status ('Aprovado' | 'Recusado' | 'Pendente')
+ * @returns Lista atualizada com o novo status
+ */
+export function atualizarStatusInscrito(
+  inscritos: InscritoBloco[],
+  id: string,
+  novoStatus: 'Aprovado' | 'Recusado' | 'Pendente'
+): InscritoBloco[] {
+  return inscritos.map(i => {
+    if (i.id === id) {
+      return { ...i, status: novoStatus };
+    }
+    return i;
+  });
+}
+
+/**
+ * Gera mensagem personalizada e amigável para envio via WhatsApp informando aceite ou recusa.
+ * 
+ * @param inscrito - Dados do inscrito
+ * @param decisao - Decisão tomada pela coordenação ('Aprovado' | 'Recusado')
+ * @returns Texto formatado da mensagem para o folião
+ */
+export function gerarMensagemWhatsappInscricao(
+  inscrito: InscritoBloco,
+  decisao: 'Aprovado' | 'Recusado'
+): string {
+  if (decisao === 'Aprovado') {
+    return (
+      `🎉 *PARABÉNS, ${inscrito.nome}!* 🐾🪽\n\n` +
+      `Sua inscrição para o *Bloco Bicharada 2027* foi *APROVADA*!\n\n` +
+      `🥁 *Naipe/Setor:* ${inscrito.grandeGrupo} — ${inscrito.instrumentoOuFuncao}\n` +
+      `📍 Em breve você será adicionado(a) aos subgrupos oficiais de ensaios e oficinas no WhatsApp.\n\n` +
+      `Seja muito bem-vindo(a) à nossa bicharada solta pelos ares! ✨🦁`
+    );
+  } else {
+    return (
+      `Olá, *${inscrito.nome}*! 🐾\n\n` +
+      `Agradecemos imensamente o seu interesse e carinho em querer sair no *Bloco Bicharada 2027* no naipe *${inscrito.grandeGrupo} (${inscrito.instrumentoOuFuncao})*.\n\n` +
+      `No momento nossas vagas para esta função estão preenchidas para mantermos o equilíbrio sonoro do desfile. Guardamos com muito carinho seu contato para futuras vagas de remanejamento e oficinas abertas!\n\n` +
+      `Esperamos você cantando e pulando com a gente na avenida! 🪽✨`
+    );
+  }
+}
+
+/**
+ * Gera o link universal do WhatsApp (wa.me) higienizando caracteres não numéricos do telefone.
+ * 
+ * @param inscrito - Dados do inscrito com número de WhatsApp
+ * @param decisao - Decisão ('Aprovado' | 'Recusado')
+ * @returns URL wa.me com a mensagem pré-formatada
+ */
+export function gerarLinkWhatsappInscricao(
+  inscrito: InscritoBloco,
+  decisao: 'Aprovado' | 'Recusado'
+): string {
+  let fone = inscrito.whatsapp.replace(/\D/g, '');
+  if (fone.length === 10 || fone.length === 11) {
+    fone = `55${fone}`;
+  }
+  const texto = encodeURIComponent(gerarMensagemWhatsappInscricao(inscrito, decisao));
+  return `https://wa.me/${fone}?text=${texto}`;
+}
+
+/**
+ * Lista de demonstração inicial de inscrições recebidas pelo edital.
+ */
+export const INSCRITOS_INICIAIS: InscritoBloco[] = [
+  {
+    id: 'insc-1',
+    nome: 'Carolina Mendez',
+    whatsapp: '(48) 99876-5432',
+    grandeGrupo: 'Bateria',
+    instrumentoOuFuncao: 'Caixa',
+    experiencia: 'Já toco o instrumento com facilidade',
+    observacao: 'Disponível para todos os ensaios de sexta-feira',
+    dataInscricao: '2026-11-02',
+    status: 'Pendente'
+  },
+  {
+    id: 'insc-2',
+    nome: 'Rodrigo Bastos',
+    whatsapp: '(48) 98765-4321',
+    grandeGrupo: 'Sopros',
+    instrumentoOuFuncao: 'Trombone de Vara',
+    experiencia: 'Toco profissionalmente em outros blocos',
+    observacao: 'Possuo instrumento próprio',
+    dataInscricao: '2026-11-03',
+    status: 'Aprovado'
+  },
+  {
+    id: 'insc-3',
+    nome: 'Samara Albuquerque',
+    whatsapp: '(48) 97654-3210',
+    grandeGrupo: 'Brincantes & Dança',
+    instrumentoOuFuncao: 'Pernalta',
+    experiencia: 'Iniciante com oficinas de circo',
+    observacao: 'Preciso de perna de pau emprestada se houver',
+    dataInscricao: '2026-11-04',
+    status: 'Pendente'
+  }
+];
+
+/**
+ * Tabela fato inicial de vendas de rifas.
+ */
+export const VENDAS_RIFAS_INICIAIS: RifaVenda[] = (() => {
+  const rifa = RIFAS_INICIAIS[0];
+  const vendas: RifaVenda[] = [];
+  for (let i = 1; i <= rifa.quantidadeNumeros; i++) {
+    let status: RifaVenda['status'] = 'Disponível';
+    let compradorNome: string | undefined;
+    let compradorWhats: string | undefined;
+    let dataVenda: string | undefined;
+    let valorPago: number | undefined;
+
+    if ([7, 13, 24, 69, 100, 222, 333, 444, 499].includes(i)) {
+      status = 'Pago';
+      compradorNome = 'Folião Bicharada';
+      dataVenda = '2026-10-15';
+      valorPago = rifa.precoNumero;
+    } else if ([14, 55, 88, 120].includes(i)) {
+      status = 'Reservado';
+      compradorNome = 'Aguardando Pix';
+      dataVenda = '2026-10-20';
+    }
+
+    vendas.push({
+      id: `venda-${rifa.id}-${i}`,
+      rifaId: rifa.id,
+      numero: i,
+      status,
+      compradorNome,
+      compradorWhats,
+      dataVenda,
+      valorPago
+    });
+  }
+  return vendas;
+})();
+
+/**
+ * Gerador da cartela de 500 bilhetes da Rifa Online (com alguns números já comprados para demonstração).
+ */
+export function gerarBilhetesRifaIniciais(): BilheteRifa[] {
+  const bilhetes: BilheteRifa[] = [];
+  for (let i = 1; i <= 500; i++) {
+    let status: BilheteRifa['status'] = 'Disponível';
+    let compradorNome: string | undefined;
+    let compradorWhats: string | undefined;
+
+    // Números já comprados ou reservados de demonstração
+    if ([7, 13, 24, 69, 100, 222, 333, 444, 499].includes(i)) {
+      status = 'Pago';
+      compradorNome = 'Folião Bicharada';
+    } else if ([14, 55, 88, 120].includes(i)) {
+      status = 'Reservado';
+      compradorNome = 'Aguardando Pix';
+    }
+
+    bilhetes.push({
+      numero: i,
+      status,
+      compradorNome,
+      compradorWhats
+    });
+  }
+  return bilhetes;
+}
+
+/**
+ * Reordena a sequência de músicas do repertório do desfile.
+ * Regra: Apenas coordenadores (isAdmin = true) têm autorização para editar a ordem.
+ * 
+ * @param musicas - Lista de músicas atual
+ * @param fromIndex - Posição de origem
+ * @param toIndex - Posição de destino
+ * @param isAdmin - Flag indicando se é usuário da coordenação
+ * @returns Lista de músicas com ordem recalculada se admin, ou lista original inalterada
+ */
+export function reordenarRepertorio(
+  musicas: MusicaRepertorio[],
+  fromIndex: number,
+  toIndex: number,
+  isAdmin: boolean
+): MusicaRepertorio[] {
+  if (!isAdmin) {
+    return musicas;
+  }
+  if (fromIndex < 0 || fromIndex >= musicas.length || toIndex < 0 || toIndex >= musicas.length) {
+    return musicas;
+  }
+  const reordenadas = [...musicas];
+  const [removido] = reordenadas.splice(fromIndex, 1);
+  reordenadas.splice(toIndex, 0, removido);
+
+  return reordenadas.map((m, idx) => ({
+    ...m,
+    ordemDesfile: idx + 1
+  }));
+}
+
+/**
+ * Cria uma nova sugestão de música com suporte a link do YouTube e arquivo de repertório/partitura.
+ * 
+ * @param dados - Metadados da sugestão
+ * @returns Novo objeto MusicaRepertorio
+ */
+export function criarSugestaoMusica(dados: {
+  titulo: string;
+  artistaOriginal: string;
+  ritmo: string;
+  youtubeUrl?: string;
+  partituraUrl?: string;
+  partituraTexto?: string;
+  arquivoRepertorio?: string;
+  ordemDesfile?: number;
+}): MusicaRepertorio {
+  return {
+    id: `mus-${Date.now()}`,
+    titulo: dados.titulo.trim(),
+    artistaOriginal: dados.artistaOriginal.trim() || 'Compositor a confirmar',
+    ritmo: dados.ritmo || 'Axé / Samba-Reggae',
+    ordemDesfile: dados.ordemDesfile || 99,
+    votosFavoraveis: 1,
+    statusCuradoria: 'Em Votação',
+    youtubeUrl: dados.youtubeUrl?.trim() || undefined,
+    partituraUrl: dados.partituraUrl?.trim() || undefined,
+    partituraTexto: dados.partituraTexto?.trim() || undefined,
+    arquivoRepertorio: dados.arquivoRepertorio?.trim() || undefined
+  };
+}
+
+/**
+ * Filtra e seleciona as músicas para compor o caderno de partituras/letras para download.
+ * 
+ * @param musicas - Lista completa de músicas
+ * @param modo - Modo de seleção ('todas' | 'confirmadas' | 'selecionadas')
+ * @param selecionadasIds - Array opcional de IDs quando em modo 'selecionadas'
+ * @returns Lista filtrada de músicas
+ */
+export function obterMusicasParaDownload(
+  musicas: MusicaRepertorio[],
+  modo: 'todas' | 'confirmadas' | 'selecionadas',
+  selecionadasIds?: string[]
+): MusicaRepertorio[] {
+  if (modo === 'confirmadas') {
+    return musicas.filter(m => m.statusCuradoria === 'Confirmada');
+  }
+  if (modo === 'selecionadas' && selecionadasIds && selecionadasIds.length > 0) {
+    return musicas.filter(m => selecionadasIds.includes(m.id));
+  }
+  return [...musicas];
+}
+
+/**
+ * Monta o texto descritivo e instruções da partitura de uma música para o caderno PDF.
+ * 
+ * @param musica - Objeto com informações da música
+ * @returns Texto formatado para o PDF do caderno
+ */
+export function montarTextoPartituraMusica(musica: MusicaRepertorio): string {
+  const arranjo = musica.partituraTexto || (musica.arquivoRepertorio ? `Arquivo anexado: ${musica.arquivoRepertorio}` : 'Arranjo padrão de percussão e metais.');
+  return `FAIXA ${musica.ordemDesfile}: ${musica.titulo.toUpperCase()}\n` +
+         `Artista Original: ${musica.artistaOriginal} | Ritmo: ${musica.ritmo} | Status: ${musica.statusCuradoria}\n` +
+         `------------------------------------------------------------\n` +
+         `PARTITURA & CONVENÇÕES:\n${arranjo}\n`;
+}
+
+export const REPERTORIO_INICIAL: MusicaRepertorio[] = [
+  {
+    id: 'mus-1',
+    titulo: 'Banho de Folhas',
+    artistaOriginal: 'Luedji Luna',
+    ritmo: 'Afoxé',
+    ordemDesfile: 1,
+    votosFavoraveis: 34,
+    statusCuradoria: 'Confirmada',
+    audioGuiaUrl: 'https://archive.org/download/sample-carnaval/banho_de_folhas_contra_canto.mp3',
+    youtubeUrl: 'https://www.youtube.com/watch?v=1F_cZf9Ww_o',
+    partituraUrl: 'https://archive.org/details/banho_de_folhas_partitura',
+    partituraTexto: 'Tom: Em | Sopros em contra-canto no compasso 8. Convenção da percussão: 4 toques secos.'
+  },
+  {
+    id: 'mus-2',
+    titulo: 'Ilê Pérola Negra',
+    artistaOriginal: 'Daniela Mercury',
+    ritmo: 'Axé / Samba-Reggae',
+    ordemDesfile: 2,
+    votosFavoraveis: 29,
+    statusCuradoria: 'Confirmada',
+    youtubeUrl: 'https://www.youtube.com/watch?v=F3P_7c1A9d0',
+    partituraUrl: 'https://archive.org/details/ile_perola_negra_partitura',
+    partituraTexto: 'Arranjo de Metais: Trompetes puxam o refrão. Cavaquinho e baixo em contratempo.'
+  },
+  {
+    id: 'mus-3',
+    titulo: 'Frevo Mulher',
+    artistaOriginal: 'Zé Ramalho',
+    ritmo: 'Frevo',
+    ordemDesfile: 3,
+    votosFavoraveis: 27,
+    statusCuradoria: 'Confirmada',
+    youtubeUrl: 'https://www.youtube.com/watch?v=gT8T5aF_b9E',
+    partituraUrl: 'https://archive.org/details/frevo_mulher_partitura',
+    partituraTexto: 'Convenção da bateria após o refrão: 3 batidas secas de surdo -> repique solo 2 tempos -> caixa.'
+  },
+  {
+    id: 'mus-4',
+    titulo: 'Me Abraça',
+    artistaOriginal: 'Banda Eva',
+    ritmo: 'Axé / Samba-Reggae',
+    ordemDesfile: 4,
+    votosFavoraveis: 22,
+    statusCuradoria: 'Em Votação',
+    youtubeUrl: 'https://www.youtube.com/watch?v=7uK4p7yWkXo'
+  },
+  {
+    id: 'mus-5',
+    titulo: 'Pequena Eva',
+    artistaOriginal: 'Banda Eva',
+    ritmo: 'Axé / Samba-Reggae',
+    ordemDesfile: 5,
+    votosFavoraveis: 19,
+    statusCuradoria: 'Em Votação',
+    youtubeUrl: 'https://www.youtube.com/watch?v=aG0jC_0V9gE'
+  },
+  {
+    id: 'mus-6',
+    titulo: 'Erva Venenosa',
+    artistaOriginal: 'Rita Lee',
+    ritmo: 'Marchinha',
+    ordemDesfile: 6,
+    votosFavoraveis: 8,
+    statusCuradoria: 'Sugerida para Corte',
+    youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+  }
+];
+
+export const LETRAS_CIFRAS_INICIAIS: ItemLetraCifra[] = [
+  {
+    id: 'lc-1',
+    titulo: 'Banho de Folhas — Arranjo Sopros & Cifra',
+    tipo: 'Cifra',
+    autorUpload: 'Fael (Direção Musical)',
+    dataUpload: '2026-11-02',
+    conteudoTexto: `Tom: Em | Ritmo: Ijexá / Afoxé\n\n[Intro] Em D C B7 (4x)\nSopros entram na 3ª repetição em contra-canto.\n\nEm                   D\nUm banho de folha pra purificar\nC                    B7\nÁgua de cheiro no nosso caminhar\nEm                   D\nBicharada na pista não cansa de amar!`
+  },
+  {
+    id: 'lc-2',
+    titulo: 'Frevo Mulher — Convenção dos Metais',
+    tipo: 'Partitura',
+    autorUpload: 'Vitinho & Pedro',
+    dataUpload: '2026-10-28',
+    conteudoTexto: `Convenção da bateria após o refrão:\n3 batidas secas de surdo -> repique solo 2 tempos -> entrada de caixa em levada corrida.`
+  }
+];
+
+export const ENQUETES_WHATSAPP_INICIAIS: EnqueteWhatsApp[] = [
+  {
+    id: 'enq-1',
+    titulo: 'Dias de Ensaio Oficial com Fael',
+    dataEncerramento: '2026-10-14',
+    totalVotos: 38,
+    pergunta: 'Quais dias funcionam melhor para conciliar com Samba Brás e agenda do Fael?',
+    opcoes: [
+      { rotulo: 'Segundas e Sextas', votos: 26, percentual: 68 },
+      { rotulo: 'Terças e Quintas', votos: 8, percentual: 21 },
+      { rotulo: 'Apenas aos Sábados', votos: 4, percentual: 11 }
+    ],
+    resolucaoOficial: 'Decidido: Ensaios confirmados para segundas e sextas-feiras à noite na Costeira.'
+  },
+  {
+    id: 'enq-2',
+    titulo: 'Diretriz do Tema de Fantasias 2027',
+    dataEncerramento: '2026-10-25',
+    totalVotos: 42,
+    pergunta: 'Como devemos orientar o conceito das fantasias para democratizar a participação?',
+    opcoes: [
+      { rotulo: 'Tema Livre / Animais em Extinção & Bicharada Aberta', votos: 31, percentual: 74 },
+      { rotulo: 'Tema Rígido Fechado (Ex: Bicharada no Espaço)', votos: 11, percentual: 26 }
+    ],
+    resolucaoOficial: 'Decidido: Tema amplo e inclusivo com oficinas coletivas de reaproveitamento.'
+  },
+  {
+    id: 'enq-3',
+    titulo: 'Modelo de Bebidas dos Ensaios (Isopor vs Cooler)',
+    dataEncerramento: '2026-10-31',
+    totalVotos: 35,
+    pergunta: 'Como gerenciar o gelo e as cervejas para evitar perdas de caixas térmicas pessoais?',
+    opcoes: [
+      { rotulo: 'Isopor descartável de peixaria (doado após o evento)', votos: 29, percentual: 83 },
+      { rotulo: 'Continuar com coolers etiquetados com fita crepe', votos: 6, percentual: 17 }
+    ],
+    resolucaoOficial: 'Decidido: Adotar caixas de isopor descartáveis da peixaria.'
+  }
+];
+
+export const CALENDARIO_INICIAL: EventoCalendario[] = [
+  { id: 'cal-1', data: '2026-10-16', diaSemana: 'SEX', tipo: 'Ensaio', local: 'Costeira', horario: '19:30', observacoes: 'Ensaio inaugural com 8 pessoas' },
+  { id: 'cal-2', data: '2026-10-20', diaSemana: 'TER', tipo: 'Ensaio', local: 'Costeira', horario: '19:30', observacoes: 'Sugestões de temas para o carnaval' },
+  { id: 'cal-3', data: '2026-10-30', diaSemana: 'SEX', tipo: 'Reunião presencial', local: 'Centro', horario: '19:00', observacoes: 'Alinhamento geral e divisão de comissões' },
+  { id: 'cal-4', data: '2026-11-06', diaSemana: 'SEX', tipo: 'Ensaio', local: 'Odara / Borogodó', horario: '19:30', observacoes: 'Ensaio musical geral com Fael' },
+  { id: 'cal-5', data: '2026-11-09', diaSemana: 'SEG', tipo: 'Ensaio', local: 'Costeira', horario: '19:30', observacoes: 'Ensaio de bateria e naipes de sopro' },
+  { id: 'cal-6', data: '2026-11-20', diaSemana: 'SEX', tipo: 'Ensaio', local: 'Costeira', horario: '19:30', observacoes: 'Ensaio rítmico' },
+  { id: 'cal-7', data: '2026-11-23', diaSemana: 'SEG', tipo: 'Oficina de Fantasias', local: 'Ateliê Coletivo', horario: '19:00', observacoes: 'Oficinas de adereços com Bel R. e Nathy' },
+  { id: 'cal-8', data: '2026-12-04', diaSemana: 'SEX', tipo: 'Ensaio', local: 'Costeira', horario: '19:30', observacoes: 'Repertório unificado' },
+  { id: 'cal-9', data: '2026-12-18', diaSemana: 'SEX', tipo: 'Ensaio', local: 'Costeira', horario: '19:30', observacoes: 'Último ensaio antes da pausa de fim de ano' },
+  { id: 'cal-10', data: '2027-01-04', diaSemana: 'SEG', tipo: 'Ensaio', local: 'Costeira', horario: '19:30', observacoes: 'Retorno intensivo de janeiro' },
+  { id: 'cal-11', data: '2027-02-08', diaSemana: 'SEG', tipo: 'Desfile Oficial', local: 'Praça Oliva & Centro Histórico', horario: '14:30', observacoes: '🎊 GRANDE DESFILE DE CARNAVAL DO BLOCO BICHARADA!' }
+];
+
+/**
+ * Interface que representa um documento oficial baixável do bloco.
+ */
+export interface DocumentoBloco {
+  id: string;
+  titulo: string;
+  descricao?: string;
+  tags: string[];
+  nomeArquivo: string;
+  tamanhoFormatado?: string;
+  tipoArquivo?: string;
+  dataUpload: string;
+  urlDownload?: string;
+  conteudoBase64OuTexto?: string;
+}
+
+/**
+ * Lista inicial de documentos oficiais disponibilizados para download.
+ */
+export const DOCUMENTOS_INICIAIS: DocumentoBloco[] = [
+  {
+    id: 'doc-1',
+    titulo: 'Estatuto & Regimento Comunitário da Bicharada',
+    descricao: 'Normas gerais de convivência, princípios antifascistas e decisões de assembleia.',
+    tags: ['Regulamento', 'Oficial', 'Jurídico'],
+    nomeArquivo: 'Estatuto_Bicharada_2027.pdf',
+    tamanhoFormatado: '1.2 MB',
+    tipoArquivo: 'application/pdf',
+    dataUpload: '2026-10-10'
+  },
+  {
+    id: 'doc-2',
+    titulo: 'Edital de Chamamento e Inscrições do Elenco 2027',
+    descricao: 'Orientações para foliões, distribuição de instrumentos e cronograma de ensaios.',
+    tags: ['Edital', 'Inscrições', 'Oficial'],
+    nomeArquivo: 'Edital_Inscricoes_Bicharada_2027.pdf',
+    tamanhoFormatado: '850 KB',
+    tipoArquivo: 'application/pdf',
+    dataUpload: '2026-10-18'
+  },
+  {
+    id: 'doc-3',
+    titulo: 'Protocolo de Segurança e Proteção dos Pernaltas',
+    descricao: 'Instruções para a equipe de apoio, corda de isolamento e raio de segurança.',
+    tags: ['Segurança', 'Desfile', 'Kombi'],
+    nomeArquivo: 'Protocolo_Seguranca_Pernaltas.pdf',
+    tamanhoFormatado: '640 KB',
+    tipoArquivo: 'application/pdf',
+    dataUpload: '2026-10-25'
+  },
+  {
+    id: 'doc-4',
+    titulo: 'Alvará Municipal de Desfile — PMF Centro Histórico',
+    descricao: 'Ofício de autorização expedido pela Prefeitura de Florianópolis.',
+    tags: ['Alvará', 'Prefeitura', 'Jurídico'],
+    nomeArquivo: 'Alvara_Prefeitura_Desfile_2027.pdf',
+    tamanhoFormatado: '1.8 MB',
+    tipoArquivo: 'application/pdf',
+    dataUpload: '2026-11-01'
+  },
+  {
+    id: 'doc-5',
+    titulo: 'Planilha de Receitas e Custos do Bar dos Ensaios',
+    descricao: 'Prestação de contas das compras de chopp, gelo e isopores de peixaria.',
+    tags: ['Financeiro', 'Bar', 'Transparência'],
+    nomeArquivo: 'Financeiro_Bar_Ensaios_Outubro.pdf',
+    tamanhoFormatado: '420 KB',
+    tipoArquivo: 'application/pdf',
+    dataUpload: '2026-11-02'
+  }
+];
+
+/**
+ * Filtra documentos pela tag selecionada e/ou busca textual no título, descrição e tags.
+ * 
+ * @param documentos - Lista de documentos a filtrar
+ * @param tagSelecionada - Tag para filtrar ou 'Todas'
+ * @param buscaTexto - Termo de busca textual
+ * @returns Lista de documentos filtrada
+ */
+export function filtrarDocumentos(
+  documentos: DocumentoBloco[],
+  tagSelecionada?: string,
+  buscaTexto?: string
+): DocumentoBloco[] {
+  return documentos.filter(doc => {
+    const matchTag = !tagSelecionada || tagSelecionada === 'Todas' || doc.tags.includes(tagSelecionada);
+    if (!matchTag) return false;
+
+    if (!buscaTexto || !buscaTexto.trim()) return true;
+    const termo = buscaTexto.trim().toLowerCase();
+    const noTitulo = doc.titulo.toLowerCase().includes(termo);
+    const naDesc = doc.descricao ? doc.descricao.toLowerCase().includes(termo) : false;
+    const noArquivo = doc.nomeArquivo.toLowerCase().includes(termo);
+    const nasTags = doc.tags.some(t => t.toLowerCase().includes(termo));
+
+    return noTitulo || naDesc || noArquivo || nasTags;
+  });
+}
+
+/**
+ * Adiciona um novo documento à lista garantindo ID único, data atual e higienização das tags.
+ * 
+ * @param documentos - Lista atual de documentos
+ * @param dados - Dados do novo documento
+ * @returns Lista atualizada com o novo documento inserido no topo
+ */
+export function adicionarNovoDocumento(
+  documentos: DocumentoBloco[],
+  dados: {
+    titulo: string;
+    descricao?: string;
+    tags: string[];
+    nomeArquivo: string;
+    tamanhoFormatado?: string;
+    tipoArquivo?: string;
+    conteudoBase64OuTexto?: string;
+  }
+): DocumentoBloco[] {
+  const tagsLimpass = dados.tags
+    .map(t => t.trim())
+    .filter(t => t.length > 0);
+
+  const novoDoc: DocumentoBloco = {
+    id: `doc-${Date.now()}`,
+    titulo: dados.titulo.trim(),
+    descricao: dados.descricao?.trim() || undefined,
+    tags: tagsLimpass.length > 0 ? tagsLimpass : ['Geral'],
+    nomeArquivo: dados.nomeArquivo.trim() || 'documento.pdf',
+    tamanhoFormatado: dados.tamanhoFormatado || '100 KB',
+    tipoArquivo: dados.tipoArquivo || 'application/pdf',
+    dataUpload: new Date().toISOString().split('T')[0],
+    conteudoBase64OuTexto: dados.conteudoBase64OuTexto
+  };
+
+  return [novoDoc, ...documentos];
+}
+
+/**
+ * Extrai todas as tags únicas presentes na lista de documentos cadastrados.
+ * 
+ * @param documentos - Lista de documentos
+ * @returns Lista com todas as tags únicas
+ */
+export function extrairTodasTagsDocumentos(documentos: DocumentoBloco[]): string[] {
+  const setTags = new Set<string>();
+  documentos.forEach(doc => {
+    doc.tags.forEach(t => setTags.add(t.trim()));
+  });
+  return Array.from(setTags);
+}
+
+/**
+ * Interface que representa uma cor oficial da paleta anual do bloco.
+ */
+export interface CorPaletaAnual {
+  id: string;
+  ano: number;
+  nome: string;
+  hex: string;
+  descricaoUso: string;
+  textoEscuro?: boolean;
+}
+
+/**
+ * Interface para arquivos e artes gráficas de identidade visual do bloco.
+ */
+export interface ArquivoArteMidia {
+  id: string;
+  titulo: string;
+  categoria: 'Logotipos' | 'Cartazes & Lambes' | 'Redes Sociais' | 'Camisetas & Fantasias' | 'Fontes & Tipografia';
+  nomeArquivo: string;
+  tamanhoFormatado: string;
+  formatoExtensao: string;
+  dataUpload: string;
+  dimensoesOuUso?: string;
+  urlDownload?: string;
+  conteudoBase64OuTexto?: string;
+}
+
+/**
+ * Interface para posts planejados ou publicados nas redes sociais (Instagram).
+ */
+export interface PostInstagramPlanejado {
+  id: string;
+  titulo: string;
+  tipo: 'Feed' | 'Carrossel' | 'Reels' | 'Stories';
+  legenda: string;
+  hashtags: string[];
+  imagemPreviewUrl?: string;
+  dataProgramada: string;
+  status: 'Planejado' | 'Pronto para Postar' | 'Publicado';
+}
+
+/**
+ * Interface do Tema Oficial do Ano do Bloco.
+ * Contém o título de exibição (que estampa a faixa oficial do cabeçalho),
+ * as diretrizes de fantasia e adereços, e a descrição das cores oficiais.
+ */
+export interface TemaAnoBloco {
+  ano: number;
+  titulo: string;
+  fantasia: string;
+  descricaoCores: string;
+  subtituloOuSlogan?: string;
+  autorOuCriador?: string;
+  dataAtualizacao?: string;
+}
+
+/**
+ * Interface de configuração do perfil e integração com a API do Instagram (Meta Graph API).
+ */
+export interface ConfiguracaoInstagram {
+  handle: string;
+  nomePerfil: string;
+  biografia: string;
+  linkBio: string;
+  totalSeguidores: number;
+  metaBusinessId?: string;
+  accessTokenConectado: boolean;
+  ultimaSincronizacao?: string;
+}
+
+/**
+ * Paleta oficial de cores carnavalescas do Bloco Bicharada 2027.
+ */
+export const CORES_PALETA_INICIAIS: CorPaletaAnual[] = [
+  {
+    id: 'cor-1',
+    ano: 2027,
+    nome: 'Rosa Choque Purpurina',
+    hex: '#E6007E',
+    descricaoUso: 'Estandarte principal, destaques no fanzine, crachás e fitilhos dos brincantes.',
+    textoEscuro: false
+  },
+  {
+    id: 'cor-2',
+    ano: 2027,
+    nome: 'Verde Menta Costeira',
+    hex: '#00D287',
+    descricaoUso: 'Ala de percussão, botões de ação do CRM, tiras dos surdos e pulseiras.',
+    textoEscuro: true
+  },
+  {
+    id: 'cor-3',
+    ano: 2027,
+    nome: 'Roxo Estandarte Real',
+    hex: '#581C87',
+    descricaoUso: 'Tipografia de impacto, contraste nos cartazes e bandeiras das comissões.',
+    textoEscuro: false
+  },
+  {
+    id: 'cor-4',
+    ano: 2027,
+    nome: 'Ouro Glitter & Confete',
+    hex: '#FBBF24',
+    descricaoUso: 'Adereços luminosos, estrelas da bateria, medalhas e carimbos comemorativos.',
+    textoEscuro: true
+  },
+  {
+    id: 'cor-5',
+    ano: 2027,
+    nome: 'Algodão Cru / Papel Fanzine',
+    hex: '#FFFDF9',
+    descricaoUso: 'Fundo dos lambe-lambes, camisas oficiais de algodão e miolo das publicações.',
+    textoEscuro: true
+  },
+  {
+    id: 'cor-6',
+    ano: 2027,
+    nome: 'Tinta Tipográfica Noturna',
+    hex: '#1E1B2E',
+    descricaoUso: 'Bordas neo-brutalistas, sombras sólidas e leitura de alto contraste.',
+    textoEscuro: false
+  }
+];
+
+/**
+ * Artes e arquivos de marca iniciais cadastrados no acervo gráfico.
+ */
+export const ARTES_MIDIA_INICIAIS: ArquivoArteMidia[] = [
+  {
+    id: 'arte-1',
+    titulo: 'Logotipo Vetorial Oficial Bicharada 2027 (Curvas)',
+    categoria: 'Logotipos',
+    nomeArquivo: 'Logo_Bicharada_2027_Vetor.svg',
+    tamanhoFormatado: '140 KB',
+    formatoExtensao: 'SVG',
+    dataUpload: '2026-10-15',
+    dimensoesOuUso: 'Vetor Escalável • CMYK / RGB'
+  },
+  {
+    id: 'arte-2',
+    titulo: 'Brasão Redondo para Adesivos e Bottons de Ensaio',
+    categoria: 'Logotipos',
+    nomeArquivo: 'Brasao_Adesivo_Redondo_300dpi.png',
+    tamanhoFormatado: '520 KB',
+    formatoExtensao: 'PNG',
+    dataUpload: '2026-10-20',
+    dimensoesOuUso: '1200 x 1200 px • 300 DPI Fundo Transparente'
+  },
+  {
+    id: 'arte-3',
+    titulo: 'Cartaz Lambe-Lambe Oficial A3 — Chamamento Foliões',
+    categoria: 'Cartazes & Lambes',
+    nomeArquivo: 'Cartaz_A3_Lambe_Lambe_Chamamento.pdf',
+    tamanhoFormatado: '2.8 MB',
+    formatoExtensao: 'PDF',
+    dataUpload: '2026-10-25',
+    dimensoesOuUso: 'Formato A3 • Pronto para Gráfica / Paste-up'
+  },
+  {
+    id: 'arte-4',
+    titulo: 'Mockup e Guia de Estamparia da Camiseta Oficial',
+    categoria: 'Camisetas & Fantasias',
+    nomeArquivo: 'Guia_Silk_Camiseta_Oficial_2027.pdf',
+    tamanhoFormatado: '1.9 MB',
+    formatoExtensao: 'PDF',
+    dataUpload: '2026-11-01',
+    dimensoesOuUso: 'Serigrafia 3 Cores • Frente e Costas'
+  },
+  {
+    id: 'arte-5',
+    titulo: 'Molduras & Stories Editáveis para Ensaios (Canva/PSD)',
+    categoria: 'Redes Sociais',
+    nomeArquivo: 'Templates_Stories_Instagram_Bicharada.zip',
+    tamanhoFormatado: '4.5 MB',
+    formatoExtensao: 'ZIP',
+    dataUpload: '2026-11-03',
+    dimensoesOuUso: '1080 x 1920 px • Stories e Reels'
+  }
+];
+
+/**
+ * Configuração inicial do perfil e integração Instagram.
+ */
+export const CONFIG_INSTAGRAM_INICIAL: ConfiguracaoInstagram = {
+  handle: '@bicharadafloripa',
+  nomePerfil: 'Bloco Bicharada • Floripa 2027 🐾🪽',
+  biografia: 'Carnaval de rua libertário, diverso e vibrante em Florianópolis! Desfile na Segunda de Carnaval (08/02). Bicharada solta pelos ares!',
+  linkBio: 'https://bicharada.org/inscricoes',
+  totalSeguidores: 3840,
+  metaBusinessId: 'act_1092837465',
+  accessTokenConectado: true,
+  ultimaSincronizacao: '2026-11-05 00:30'
+};
+
+/**
+ * Grade inicial de postagens planejadas para o Instagram do bloco.
+ */
+export const POSTS_INSTAGRAM_INICIAIS: PostInstagramPlanejado[] = [
+  {
+    id: 'post-ig-1',
+    titulo: 'Lançamento do Tema 2027: Bicharada Solta Pelos Ares',
+    tipo: 'Carrossel',
+    legenda: 'Preparem as asas, as garras e os tamborins! Nosso tema para 2027 está solto no ar! Vem ser bicho com a gente na avenida.',
+    hashtags: ['#Bicharada2027', '#CarnavalFloripa', '#BicharadaSoltaPelosAres', '#CarnavalDeRua'],
+    dataProgramada: '2026-11-10 18:00',
+    status: 'Pronto para Postar'
+  },
+  {
+    id: 'post-ig-2',
+    titulo: 'Edital Aberto de Inscrições para a Bateria e Sopros',
+    tipo: 'Feed',
+    legenda: 'Quer tocar na nossa bateria ou nos sopros com o mestre Fael? O edital de chamamento está no link da bio! Vagas abertas para todos os naipes.',
+    hashtags: ['#BateriaBicharada', '#SoprosCarnaval', '#OficinasCarnavalFloripa'],
+    dataProgramada: '2026-11-15 12:00',
+    status: 'Planejado'
+  },
+  {
+    id: 'post-ig-3',
+    titulo: 'Grande Rifa Solidária da Kombi Cora',
+    tipo: 'Reels',
+    legenda: 'Ajude nosso apoio móvel e concorra a prêmios especiais do Carnaval! Bilhetes a R$ 10 com chave Pix direta.',
+    hashtags: ['#RifaBicharada', '#KombiCora', '#ApoioCarnavalesco'],
+    dataProgramada: '2026-11-20 19:30',
+    status: 'Planejado'
+  }
+];
+
+/**
+ * Adiciona uma nova cor à paleta anual do bloco.
+ * 
+ * @param cores - Paleta atual
+ * @param nova - Dados da nova cor
+ * @returns Paleta atualizada com a nova cor inserida
+ */
+export function adicionarCorPaleta(
+  cores: CorPaletaAnual[],
+  nova: Omit<CorPaletaAnual, 'id'>
+): CorPaletaAnual[] {
+  const novaCor: CorPaletaAnual = {
+    id: `cor-${Date.now()}`,
+    ano: nova.ano || 2027,
+    nome: nova.nome.trim(),
+    hex: nova.hex.trim().toUpperCase(),
+    descricaoUso: nova.descricaoUso.trim(),
+    textoEscuro: nova.textoEscuro
+  };
+  return [...cores, novaCor];
+}
+
+/**
+ * Remove uma cor da paleta anual pelo identificador.
+ * 
+ * @param cores - Paleta atual
+ * @param id - Identificador da cor a ser removida
+ * @returns Paleta sem a cor especificada
+ */
+export function removerCorPaleta(cores: CorPaletaAnual[], id: string): CorPaletaAnual[] {
+  return cores.filter(c => c.id !== id);
+}
+
+/**
+ * Atualiza os dados de uma cor existente na paleta anual do bloco.
+ * 
+ * @param cores - Paleta atual
+ * @param id - Identificador da cor a ser editada
+ * @param dadosAtualizados - Novos valores para nome, hex, ano ou descricaoUso
+ * @returns Paleta atualizada com a cor modificada
+ */
+export function editarCorPaleta(
+  cores: CorPaletaAnual[],
+  id: string,
+  dadosAtualizados: Partial<Omit<CorPaletaAnual, 'id'>>
+): CorPaletaAnual[] {
+  return cores.map(cor => {
+    if (cor.id === id) {
+      return {
+        ...cor,
+        ...dadosAtualizados,
+        nome: dadosAtualizados.nome !== undefined ? dadosAtualizados.nome.trim() : cor.nome,
+        hex: dadosAtualizados.hex !== undefined ? dadosAtualizados.hex.trim().toUpperCase() : cor.hex,
+        descricaoUso: dadosAtualizados.descricaoUso !== undefined ? dadosAtualizados.descricaoUso.trim() : cor.descricaoUso,
+        ano: dadosAtualizados.ano !== undefined ? dadosAtualizados.ano : cor.ano
+      };
+    }
+    return cor;
+  });
+}
+
+/**
+ * Cadastra um novo arquivo de arte/marca na galeria de mídia do bloco.
+ * 
+ * @param artes - Lista atual de artes
+ * @param nova - Dados do arquivo de arte
+ * @returns Lista atualizada com o novo arquivo no topo
+ */
+export function adicionarArquivoArte(
+  artes: ArquivoArteMidia[],
+  nova: Omit<ArquivoArteMidia, 'id' | 'dataUpload'>
+): ArquivoArteMidia[] {
+  const novoArquivo: ArquivoArteMidia = {
+    id: `arte-${Date.now()}`,
+    titulo: nova.titulo.trim(),
+    categoria: nova.categoria,
+    nomeArquivo: nova.nomeArquivo.trim(),
+    tamanhoFormatado: nova.tamanhoFormatado || '200 KB',
+    formatoExtensao: nova.formatoExtensao.toUpperCase(),
+    dataUpload: new Date().toISOString().split('T')[0],
+    dimensoesOuUso: nova.dimensoesOuUso?.trim(),
+    conteudoBase64OuTexto: nova.conteudoBase64OuTexto
+  };
+  return [novoArquivo, ...artes];
+}
+
+/**
+ * Filtra os arquivos de arte por categoria e por busca textual.
+ * 
+ * @param artes - Lista de arquivos de arte
+ * @param categoria - Categoria selecionada ('Todas' ou categoria específica)
+ * @param busca - Termo de busca textual
+ * @returns Lista filtrada de artes
+ */
+export function filtrarArquivosArte(
+  artes: ArquivoArteMidia[],
+  categoria?: string,
+  busca?: string
+): ArquivoArteMidia[] {
+  return artes.filter(arte => {
+    const matchCat = !categoria || categoria === 'Todas' || arte.categoria === categoria;
+    if (!matchCat) return false;
+
+    if (!busca || !busca.trim()) return true;
+    const termo = busca.trim().toLowerCase();
+    return (
+      arte.titulo.toLowerCase().includes(termo) ||
+      arte.nomeArquivo.toLowerCase().includes(termo) ||
+      arte.formatoExtensao.toLowerCase().includes(termo)
+    );
+  });
+}
+
+/**
+ * Gera o texto de legenda formatado para o Instagram pronto para ser copiado.
+ * 
+ * @param post - Post planejado
+ * @param handleBloco - Handle oficial do bloco
+ * @returns Texto formatado com quebras e hashtags
+ */
+export function gerarTextoLegendaInstagram(
+  post: PostInstagramPlanejado,
+  handleBloco: string = '@bicharadafloripa'
+): string {
+  const hashtagsTexto = post.hashtags.map(h => (h.startsWith('#') ? h : `#${h}`)).join(' ');
+  return (
+    `${post.legenda}\n\n` +
+    `🐾 Siga ${handleBloco} para acompanhar todos os ensaios e oficinas!\n` +
+    `📍 Desfile Oficial: Segunda-feira de Carnaval (08/02/2027) no Centro Histórico de Floripa.\n\n` +
+    `.\n.\n` +
+    `${hashtagsTexto}`
+  );
+}
+
+/**
+ * Adiciona um novo post planejado à grade do Instagram do bloco.
+ * 
+ * @param posts - Lista atual de posts
+ * @param novo - Dados do novo post
+ * @returns Lista de posts com o novo item adicionado
+ */
+export function adicionarPostPlanejado(
+  posts: PostInstagramPlanejado[],
+  novo: Omit<PostInstagramPlanejado, 'id'>
+): PostInstagramPlanejado[] {
+  const postCriado: PostInstagramPlanejado = {
+    id: `post-ig-${Date.now()}`,
+    titulo: novo.titulo.trim(),
+    tipo: novo.tipo,
+    legenda: novo.legenda.trim(),
+    hashtags: novo.hashtags.map(h => h.trim()).filter(h => h.length > 0),
+    imagemPreviewUrl: novo.imagemPreviewUrl,
+    dataProgramada: novo.dataProgramada,
+    status: novo.status || 'Planejado'
+  };
+  return [postCriado, ...posts];
+}
+
+/**
+ * Tema Oficial Inicial do Bloco Bicharada.
+ */
+export const TEMA_ANO_INICIAL: TemaAnoBloco = {
+  ano: 2027,
+  titulo: 'Solta pelos Ares 🪽',
+  fantasia: 'Fantasias leves e esvoaçantes com asas, penas coloridas sintéticas, capas translúcidas, criaturas aladas e insetos polinizadores. Uso criativo de maquiagens holográficas e glitter biodegradável.',
+  descricaoCores: 'Paleta vibrante 2027: Rosa Choque Neon (#FF007A) como força principal, Verde Papagaio (#00D287) como contraste tropical, Amarelo Ouro (#FBBF24) para brilhos e Roxo Profundo (#581C87) para contrastes e forros.',
+  subtituloOuSlogan: 'O voo livre da diversidade no Carnaval de Floripa',
+  autorOuCriador: 'Coordenação Artística & Visual'
+};
+
+/**
+ * Atualiza as informações do tema do ano oficial do bloco.
+ * 
+ * @param temaAtual - Objeto com os dados do tema atual
+ * @param novosDados - Campos a serem atualizados (título, fantasia, descrição de cores, etc.)
+ * @returns Novo objeto atualizado do tema do ano
+ */
+export function atualizarTemaAno(
+  temaAtual: TemaAnoBloco,
+  novosDados: Partial<TemaAnoBloco>
+): TemaAnoBloco {
+  return {
+    ...temaAtual,
+    ...novosDados,
+    dataAtualizacao: new Date().toISOString()
+  };
+}

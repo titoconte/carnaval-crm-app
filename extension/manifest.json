@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Bicharada - Coletor WhatsApp Web",
+  "version": "1.0.0",
+  "description": "Coleta e sincroniza mensagens do grupo Bicharada para geração de síntese executiva com IA.",
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://web.whatsapp.com/*",
+    "http://localhost:3141/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Bicharada Sync"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://web.whatsapp.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
+

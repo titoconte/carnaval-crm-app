@@ -1,0 +1,17 @@
+{
+  "name": "Bloco Bicharada 2027",
+  "short_name": "Bicharada",
+  "description": "Gestão Oficial do Bloco Bicharada - Carnaval 2027",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFDF9",
+  "theme_color": "#E6007E",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}
+
