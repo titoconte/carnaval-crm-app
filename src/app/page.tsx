@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Header from '../components/Header';
 import Navigation, { TabId } from '../components/Navigation';
 import TasksManager from '../components/TasksManager';
@@ -106,6 +106,60 @@ export default function Home() {
   // Estados de conexão e sincronização com Vercel Postgres / Neon
   const [dbConnected, setDbConnected] = useState<boolean | null>(null);
   const [dbSyncing, setDbSyncing] = useState(false);
+  const [dadosCarregadosDoBanco, setDadosCarregadosDoBanco] = useState(false);
+
+  /**
+   * Sincroniza os estados locais com o Vercel Postgres em tempo real,
+   * garantindo cache desabilitado via URL com timestamp e cabeçalhos no-store.
+   * 
+   * @param silencioso - Se verdadeiro, executa sem piscar o indicador principal
+   */
+  const recarregarDadosDoServidor = useCallback(async (silencioso = false) => {
+    if (!silencioso) setDbSyncing(true);
+    try {
+      const res = await fetch(`/api/db/sync?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+      const data = await res.json();
+      if (data.configured) {
+        setDbConnected(true);
+        const est = data.estados || {};
+        if (est.usuarios && Array.isArray(est.usuarios) && est.usuarios.length > 0) {
+          setUsuarios(est.usuarios);
+        }
+        if (est.tarefas && Array.isArray(est.tarefas)) setTarefas(est.tarefas);
+        if (est.macrotarefas && Array.isArray(est.macrotarefas)) setMacrotarefas(est.macrotarefas);
+        if (est.movimentosBar && Array.isArray(est.movimentosBar)) setMovimentosBar(est.movimentosBar);
+        if (est.bilhetesRifa && Array.isArray(est.bilhetesRifa)) setBilhetesRifa(est.bilhetesRifa);
+        if (est.rifas && Array.isArray(est.rifas)) setRifas(est.rifas);
+        if (est.vendasRifas && Array.isArray(est.vendasRifas)) setVendasRifas(est.vendasRifas);
+        if (est.inscritos && Array.isArray(est.inscritos)) setInscritos(est.inscritos);
+        if (est.integrantes && Array.isArray(est.integrantes)) setIntegrantes(est.integrantes);
+        if (est.musicas && Array.isArray(est.musicas)) setMusicas(est.musicas);
+        if (est.letrasCifras && Array.isArray(est.letrasCifras)) setLetrasCifras(est.letrasCifras);
+        if (est.enquetes && Array.isArray(est.enquetes)) setEnquetes(est.enquetes);
+        if (est.eventos && Array.isArray(est.eventos)) setEventos(est.eventos);
+        if (est.documentos && Array.isArray(est.documentos)) setDocumentos(est.documentos);
+        if (est.cores && Array.isArray(est.cores)) setCores(est.cores);
+        if (est.artes && Array.isArray(est.artes)) setArtes(est.artes);
+        if (est.postsInstagram && Array.isArray(est.postsInstagram)) setPostsInstagram(est.postsInstagram);
+        if (est.configInstagram) setConfigInstagram(est.configInstagram);
+        if (est.temaAno) setTemaAno(est.temaAno);
+      } else {
+        setDbConnected(false);
+      }
+    } catch (err) {
+      console.warn('Vercel Postgres indisponível. Operando via LocalStorage.', err);
+      setDbConnected(false);
+    } finally {
+      setDadosCarregadosDoBanco(true);
+      if (!silencioso) setDbSyncing(false);
+    }
+  }, []);
 
   // Carrega dados salvos no LocalStorage e sincroniza com o Vercel Postgres
   useEffect(() => {
@@ -184,42 +238,23 @@ export default function Home() {
     }
 
     // 2. Sincroniza com o Vercel Postgres caso ativo no backend
-    fetch('/api/db/sync')
-      .then(res => res.json())
-      .then(data => {
-        if (data.configured) {
-          setDbConnected(true);
-          const est = data.estados || {};
-          if (est.usuarios && Array.isArray(est.usuarios) && est.usuarios.length > 0) {
-            setUsuarios(est.usuarios);
-          }
-          if (est.tarefas) setTarefas(est.tarefas);
-          if (est.macrotarefas) setMacrotarefas(est.macrotarefas);
-          if (est.movimentosBar) setMovimentosBar(est.movimentosBar);
-          if (est.bilhetesRifa) setBilhetesRifa(est.bilhetesRifa);
-          if (est.rifas) setRifas(est.rifas);
-          if (est.vendasRifas) setVendasRifas(est.vendasRifas);
-          if (est.inscritos) setInscritos(est.inscritos);
-          if (est.integrantes) setIntegrantes(est.integrantes);
-          if (est.musicas) setMusicas(est.musicas);
-          if (est.letrasCifras) setLetrasCifras(est.letrasCifras);
-          if (est.enquetes) setEnquetes(est.enquetes);
-          if (est.eventos) setEventos(est.eventos);
-          if (est.documentos) setDocumentos(est.documentos);
-          if (est.cores) setCores(est.cores);
-          if (est.artes) setArtes(est.artes);
-          if (est.postsInstagram) setPostsInstagram(est.postsInstagram);
-          if (est.configInstagram) setConfigInstagram(est.configInstagram);
-          if (est.temaAno) setTemaAno(est.temaAno);
-        } else {
-          setDbConnected(false);
-        }
-      })
-      .catch(err => {
-        console.warn('Vercel Postgres indisponível. Operando via LocalStorage.', err);
-        setDbConnected(false);
-      });
-  }, []);
+    recarregarDadosDoServidor(false);
+  }, [recarregarDadosDoServidor]);
+
+  // Atualiza automaticamente quando a janela ganha foco ou volta do segundo plano
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        recarregarDadosDoServidor(true);
+      }
+    };
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleVisibilityChange);
+    return () => {
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleVisibilityChange);
+    };
+  }, [recarregarDadosDoServidor]);
 
   // Salva no LocalStorage e envia atualização debounced ao Vercel Postgres
   useEffect(() => {
@@ -247,7 +282,8 @@ export default function Home() {
       console.error('Erro ao salvar LocalStorage:', e);
     }
 
-    if (!dbConnected) return;
+    // Só envia para o banco após a leitura inicial ter completado e se o banco estiver ativo
+    if (!dbConnected || !dadosCarregadosDoBanco) return;
 
     const timer = setTimeout(() => {
       setDbSyncing(true);
@@ -283,7 +319,7 @@ export default function Home() {
     }, 1500);
 
     return () => clearTimeout(timer);
-  }, [usuarios, tarefas, macrotarefas, movimentosBar, bilhetesRifa, rifas, vendasRifas, inscritos, integrantes, musicas, letrasCifras, enquetes, eventos, documentos, cores, artes, postsInstagram, configInstagram, temaAno, dbConnected]);
+  }, [usuarios, tarefas, macrotarefas, movimentosBar, bilhetesRifa, rifas, vendasRifas, inscritos, integrantes, musicas, letrasCifras, enquetes, eventos, documentos, cores, artes, postsInstagram, configInstagram, temaAno, dbConnected, dadosCarregadosDoBanco]);
 
   // Contagem de tarefas órfãs
   const orfasCount = tarefas.filter(
@@ -299,6 +335,9 @@ export default function Home() {
       localStorage.setItem('bicha_sessao_usuario_v4', JSON.stringify(usuario));
     } catch (e) {}
 
+    // Puxa as informações mais recentes do banco imediatamente ao trocar de usuário
+    recarregarDadosDoServidor(true);
+
     // Ao fazer login, direciona para o Mural de Tarefas caso estivesse em inscrições
     if (activeTab === 'inscricao') {
       setActiveTab('tarefas');
@@ -313,6 +352,9 @@ export default function Home() {
     try {
       localStorage.removeItem('bicha_sessao_usuario_v4');
     } catch (e) {}
+
+    // Puxa as informações mais recentes do banco ao deslogar
+    recarregarDadosDoServidor(true);
 
     const abasPublicas: TabId[] = ['inscricao', 'calendario', 'rifa', 'repertorio', 'documentos'];
     if (!abasPublicas.includes(activeTab)) {
@@ -339,7 +381,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F4EEDF] text-[#1A181B]">
-      {/* Cabeçalho Vintage com Autenticação */}
+      {/* Cabeçalho Vintage com Autenticação e Botão de Atualização em Tempo Real */}
       <Header
         usuarioLogado={usuarioLogado}
         onOpenLoginModal={() => setLoginModalOpen(true)}
@@ -347,6 +389,7 @@ export default function Home() {
         temaTitulo={temaAno.titulo}
         dbConnected={dbConnected}
         dbSyncing={dbSyncing}
+        onSync={() => recarregarDadosDoServidor(false)}
       />
 
       {/* Menu Fanzine de Navegação adaptado ao perfil */}
@@ -369,7 +412,7 @@ export default function Home() {
           />
         )}
 
-        {/* 2. Calendário de Ensaios & Datas */}
+        {/* 2. Calendário de Ensaios & Datas (Visível para Todos, Edição apenas Coordenador) */}
         {activeTab === 'calendario' && (
           <CalendarView
             eventos={eventos}
@@ -387,7 +430,7 @@ export default function Home() {
           />
         )}
 
-        {/* 4. Repertório Oficial & Letras/Cifras */}
+        {/* 4. Repertório Oficial & Letras/Cifras (Visível para Todos) */}
         {activeTab === 'repertorio' && (
           <RepertoireVoting
             musicas={musicas}
@@ -407,7 +450,7 @@ export default function Home() {
           />
         )}
 
-        {/* 5. Rifas Online */}
+        {/* 5. Rifas Online (Visível para Todos) */}
         {activeTab === 'rifa' && (
           <RaffleApp
             rifas={rifas}
@@ -478,7 +521,7 @@ export default function Home() {
           />
         )}
 
-        {/* 11. Documentos Oficiais */}
+        {/* 11. Documentos Oficiais (Visível para Todos) */}
         {activeTab === 'documentos' && (
           <DocumentsManager
             documentos={documentos}

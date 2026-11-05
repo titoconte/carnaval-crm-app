@@ -7,7 +7,8 @@ import {
   ShieldCheck, 
   User, 
   PartyPopper, 
-  Database 
+  Database,
+  RefreshCw
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { UsuarioBloco } from '../data/blocoData';
@@ -19,6 +20,7 @@ interface HeaderProps {
   temaTitulo?: string;
   dbConnected?: boolean | null;
   dbSyncing?: boolean;
+  onSync?: () => void;
 }
 
 /**
@@ -26,6 +28,7 @@ interface HeaderProps {
  * - Versão Desktop: Banner completo com contagem regressiva em destaque, logo oficial e autenticação.
  * - Versão Mobile: Painel compacto (~85px) sem sobrecarregar a tela.
  * - Autenticação: Mostra status de Folião Público (com botão Entrar / Login) ou crachá do usuário logado (Bicho ou Coordenador).
+ * - Sincronização: Indicador do status do Vercel Postgres e botão de atualização sem cache.
  */
 export default function Header({
   usuarioLogado,
@@ -33,7 +36,8 @@ export default function Header({
   onLogout,
   temaTitulo = 'Solta pelos Ares 🪽',
   dbConnected,
-  dbSyncing = false
+  dbSyncing = false,
+  onSync
 }: HeaderProps) {
   const [timeLeft, setTimeLeft] = useState<{ dias: number; horas: number; minutos: number }>({ dias: 0, horas: 0, minutos: 0 });
 
@@ -95,13 +99,13 @@ export default function Header({
                 title={
                   dbConnected
                     ? 'Conectado ao Vercel Postgres / Neon em Nuvem'
-                    : 'Modo Local (LocalStorage) - Ative POSTGRES_URL para sincronização em nuvem'
+                    : 'Modo Local (LocalStorage) - Ative POSTGRES_URL na Vercel para sincronização em nuvem'
                 }
               >
                 <Database className="w-3 h-3" />
                 <span>
                   {dbSyncing
-                    ? 'Salvando no Postgres...'
+                    ? 'Sincronizando...'
                     : dbConnected
                     ? 'Vercel Postgres Ativo'
                     : 'Modo Local (LocalStorage)'}
@@ -110,6 +114,18 @@ export default function Header({
                   <span className="w-1.5 h-1.5 rounded-full bg-[#1E1B2E] animate-pulse" />
                 )}
               </div>
+            )}
+
+            {onSync && (
+              <button
+                type="button"
+                onClick={onSync}
+                className="flex items-center gap-1 px-2 py-1 bg-white text-[#1E1B2E] hover:bg-stone-100 border-2 border-[#1E1B2E] font-mono font-bold text-[10px] uppercase shadow-[2px_2px_0px_#1E1B2E] cursor-pointer"
+                title="Buscar atualizações e sincronizar agora"
+              >
+                <RefreshCw className={`w-3 h-3 ${dbSyncing ? 'animate-spin text-[#E6007E]' : ''}`} />
+                <span>Atualizar</span>
+              </button>
             )}
           </div>
 
@@ -126,19 +142,16 @@ export default function Header({
                 ) : (
                   <User className="w-3.5 h-3.5 text-[#1E1B2E]" />
                 )}
-                <span>{usuarioLogado.username}</span>
-                <span className="text-[10px] opacity-80">
-                  [{usuarioLogado.perfil === 'coordenador' ? 'Coordenação' : 'Bicho'}]
-                </span>
+                <span>{usuarioLogado.username} ({usuarioLogado.perfil})</span>
               </span>
 
               <button
                 type="button"
                 onClick={onLogout}
-                className="flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-red-50 text-red-600 border-2 border-[#1E1B2E] text-xs font-black uppercase shadow-[2px_2px_0px_#1E1B2E] cursor-pointer"
-                title="Sair da conta"
+                className="vintage-button px-2.5 py-1 bg-red-100 hover:bg-red-200 text-red-700 border-2 border-[#1E1B2E] text-xs font-black uppercase flex items-center gap-1 shadow-[2px_2px_0px_#1E1B2E] cursor-pointer"
+                title="Encerrar sessão deste usuário"
               >
-                <LogOut className="w-3.5 h-3.5" />
+                <LogOut className="w-3.5 h-3.5 text-red-600" />
                 <span>Sair</span>
               </button>
             </div>
@@ -146,7 +159,8 @@ export default function Header({
             <button
               type="button"
               onClick={onOpenLoginModal}
-              className="flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-pink-50 text-[#1E1B2E] border-2 border-[#1E1B2E] text-xs font-black uppercase shadow-[2px_2px_0px_#1E1B2E] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
+              className="vintage-button px-3.5 py-1 bg-[#FBBF24] hover:bg-[#FDE047] text-[#1E1B2E] border-2 border-[#1E1B2E] text-xs font-black uppercase flex items-center gap-1.5 shadow-[2px_2px_0px_#1E1B2E] cursor-pointer"
+              title="Entrar com usuário de Bicho ou Coordenador"
             >
               <LogIn className="w-3.5 h-3.5 text-[#E6007E]" />
               <span>Entrar / Login</span>
@@ -154,20 +168,22 @@ export default function Header({
           )}
         </div>
 
-        {/* Estandarte / Logo Oficial */}
-        <div 
-          onClick={dispararConfetes}
-          className="cursor-pointer group select-none my-0.5"
-        >
-          <div className="inline-block px-3 py-0.5 bg-[#FBBF24] text-[#1E1B2E] border-2 border-[#1E1B2E] font-black text-xs uppercase tracking-widest rotate-1 shadow-[2px_2px_0px_#1E1B2E] mb-0.5">
-            ★ Bloco Carnavalesco ★
-          </div>
-
-          <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-white uppercase font-mono drop-shadow-[3px_3px_0px_#1E1B2E]">
-            BICHARADA
+        {/* Título e Estilo Fanzine Carnavalesco */}
+        <div className="relative inline-block mt-1">
+          <span className="font-mono text-xs font-black uppercase bg-[#00D287] text-[#1E1B2E] px-2 py-0.5 border border-black shadow-[2px_2px_0px_#000] rotate-[-2deg] inline-block mb-1">
+            Sistema Oficial de Gestão
+          </span>
+          <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tight text-white drop-shadow-[3px_3px_0px_#1E1B2E] flex items-center justify-center gap-3">
+            <span className="text-[#00D287]">Bloco</span>
+            <span className="text-[#FBBF24]">da</span>
+            <span className="text-[#E6007E]">Bicharada</span>
           </h1>
+        </div>
 
-          <div className="inline-block mt-0.5 px-4 py-1 bg-[#581C87] text-[#FBBF24] border-2 border-[#1E1B2E] font-black text-sm uppercase tracking-wider rotate-[-1.5deg] shadow-[2px_2px_0px_#1E1B2E] max-w-full truncate">
+        {/* Faixa do Tema do Carnaval */}
+        <div className="mt-2 flex items-center justify-center gap-2">
+          <div className="font-mono text-xs font-black uppercase tracking-wider text-[#FBBF24] bg-[#581C87] border-2 border-[#FBBF24] px-3 py-1 shadow-[2px_2px_0px_#1E1B2E] rotate-[0.5deg]">
+            <span className="text-white mr-1.5">Carnaval 2027:</span>
             {temaTitulo}
           </div>
         </div>
@@ -200,11 +216,21 @@ export default function Header({
                 className={`text-[9px] font-mono font-bold px-1.5 py-0.5 border border-black uppercase shadow-[1px_1px_0px_#000] flex items-center gap-1 shrink-0 ${
                   dbConnected ? 'bg-[#00D287] text-[#1E1B2E]' : 'bg-stone-200 text-stone-700'
                 }`}
-                title={dbConnected ? 'Vercel Postgres Ativo' : 'Modo Local'}
+                title={dbConnected ? 'Vercel Postgres Ativo' : 'Modo Local (LocalStorage)'}
               >
                 <Database className="w-2.5 h-2.5" />
                 <span>{dbConnected ? 'Postgres' : 'Local'}</span>
               </span>
+            )}
+            {onSync && (
+              <button
+                type="button"
+                onClick={onSync}
+                className="p-1 bg-white text-[#1E1B2E] border border-black shadow-[1px_1px_0px_#000] shrink-0"
+                title="Atualizar dados"
+              >
+                <RefreshCw className={`w-2.5 h-2.5 ${dbSyncing ? 'animate-spin text-[#E6007E]' : ''}`} />
+              </button>
             )}
           </div>
 
@@ -231,7 +257,7 @@ export default function Header({
             <button
               type="button"
               onClick={onOpenLoginModal}
-              className="flex items-center gap-1 px-2 py-1 bg-white text-[#1E1B2E] border border-[#1E1B2E] text-[10px] font-black uppercase shadow-[1px_1px_0px_#1E1B2E] cursor-pointer shrink-0 active:translate-y-0.5"
+              className="px-2 py-0.5 bg-[#FBBF24] text-[#1E1B2E] border border-black font-black uppercase text-[10px] shadow-[1px_1px_0px_#000] flex items-center gap-1 shrink-0 cursor-pointer"
             >
               <LogIn className="w-3 h-3 text-[#E6007E]" />
               <span>Entrar</span>
@@ -239,11 +265,14 @@ export default function Header({
           )}
         </div>
 
-        <div onClick={dispararConfetes} className="cursor-pointer flex items-center justify-between gap-2 pt-0.5">
-          <h1 className="text-xl font-black tracking-tight text-white uppercase font-mono drop-shadow-[2px_2px_0px_#1E1B2E]">
-            ★ BICHARADA ★
-          </h1>
-          <div className="px-2 py-0.5 bg-[#581C87] text-[#FBBF24] border border-[#1E1B2E] font-black text-[11px] uppercase tracking-wider shadow-[1px_1px_0px_#1E1B2E] truncate max-w-[180px]">
+        {/* Título e Tema Mobile Compactos */}
+        <div className="flex items-center justify-between gap-1 border-t border-white/20 pt-1">
+          <div className="font-black text-sm uppercase tracking-tight text-white flex items-center gap-1">
+            <span className="text-[#00D287]">Bloco</span>
+            <span className="text-[#FBBF24]">da</span>
+            <span className="text-[#E6007E]">Bicharada</span>
+          </div>
+          <div className="text-[10px] font-mono font-bold text-[#FBBF24] bg-[#581C87] border border-[#FBBF24] px-1.5 py-0.2 truncate max-w-[170px]">
             {temaTitulo}
           </div>
         </div>

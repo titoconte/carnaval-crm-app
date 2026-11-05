@@ -8,9 +8,12 @@ import {
   ENQUETES_WHATSAPP_INICIAIS 
 } from '@/data/blocoData';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 /**
  * Endpoint Serverless da Vercel (GET /api/bloco).
- * Retorna os dados consolidados do bloco com cache estático via edge CDN.
+ * Retorna os dados consolidados do bloco em tempo real sem cache estático.
  */
 export async function GET() {
   const orfas = TAREFAS_POSTIT_INICIAIS.filter(
@@ -28,7 +31,7 @@ export async function GET() {
     timestamp: new Date().toISOString()
   }, {
     headers: {
-      'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300'
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate'
     }
   });
 }

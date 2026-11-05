@@ -8,12 +8,14 @@
 import { Pool } from '@neondatabase/serverless';
 
 let cachedPool: Pool | null = null;
+let schemaInitialized = false;
 
 /**
  * Reseta o pool de conexão (útil para testes unitários ou reconexão).
  */
 export function resetDbPool(): void {
   cachedPool = null;
+  schemaInitialized = false;
 }
 
 /**
@@ -69,6 +71,26 @@ export async function executeSql<T = any>(query: string, params: any[] = []): Pr
 
   const result = await pool.query(query, params);
   return (result.rows || []) as T[];
+}
+
+/**
+ * Garante que a tabela central de estados bloco_state exista no banco
+ * antes de qualquer operação de leitura ou escrita.
+ */
+export async function ensureSchemaInitialized(): Promise<void> {
+  if (schemaInitialized || !isDatabaseConfigured()) return;
+  try {
+    await executeSql(`
+      CREATE TABLE IF NOT EXISTS bloco_state (
+        key VARCHAR(100) PRIMARY KEY,
+        data JSONB NOT NULL,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    schemaInitialized = true;
+  } catch (error) {
+    console.error('Erro ao verificar/criar tabela bloco_state:', error);
+  }
 }
 
 /**
@@ -182,6 +204,8 @@ export async function initDatabaseSchema(): Promise<{ success: boolean; message:
       );
     `);
 
+    schemaInitialized = true;
+
     return {
       success: true,
       message: 'Esquema de banco de dados Vercel Postgres inicializado com sucesso!'
@@ -208,6 +232,8 @@ export async function salvarEstadoNoBanco(key: string, data: any): Promise<boole
   }
 
   try {
+    await ensureSchemaInitialized();
+
     await executeSql(
       `
       INSERT INTO bloco_state (key, data, updated_at)
@@ -238,6 +264,8 @@ export async function obterEstadoDoBanco<T = any>(key: string): Promise<T | null
   }
 
   try {
+    await ensureSchemaInitialized();
+
     const rows = await executeSql<{ key: string; data: any }>(
       'SELECT data FROM bloco_state WHERE key = $1 LIMIT 1',
       [key]
@@ -264,6 +292,8 @@ export async function obterTodosEstadosDoBanco(): Promise<Record<string, any>> {
   }
 
   try {
+    await ensureSchemaInitialized();
+
     const rows = await executeSql<{ key: string; data: any }>(
       'SELECT key, data FROM bloco_state'
     );

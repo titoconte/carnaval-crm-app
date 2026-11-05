@@ -5,9 +5,13 @@ import {
   salvarEstadoNoBanco
 } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 /**
  * Endpoint para leitura de todos os estados sincronizados do banco (GET /api/db/sync).
- * Retorna os estados salvos no Vercel Postgres para carregar no cliente.
+ * Retorna os estados salvos no Vercel Postgres para carregar no cliente,
+ * com cabeçalhos rigorosos para desabilitar qualquer cache no CDN ou no browser.
  */
 export async function GET() {
   const configured = isDatabaseConfigured();
@@ -15,6 +19,12 @@ export async function GET() {
     return NextResponse.json({
       configured: false,
       estados: {}
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
     });
   }
 
@@ -23,11 +33,22 @@ export async function GET() {
     return NextResponse.json({
       configured: true,
       estados
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
     });
   } catch (error: any) {
     return NextResponse.json(
       { configured: true, error: error.message, estados: {} },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate'
+        }
+      }
     );
   }
 }
@@ -72,4 +93,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-
