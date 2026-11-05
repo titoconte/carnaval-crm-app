@@ -157,6 +157,54 @@ export interface EventoCalendario {
   observacoes?: string;
 }
 
+export const MACROCATEGORIAS_ELENCO: Integrante['grandeGrupo'][] = [
+  'Bateria',
+  'Sopros',
+  'Vozes',
+  'Outros Instrumentos',
+  'Brincantes & Dança',
+  'Organização & Apoio'
+];
+
+export interface ColunaMacrocategoria {
+  categoria: Integrante['grandeGrupo'];
+  total: number;
+  instrumentos: Record<string, Integrante[]>;
+}
+
+/**
+ * Agrupa os integrantes do elenco por macrocategoria (colunas) e subdivide por instrumentos/funções (linhas).
+ * 
+ * @param integrantes - Lista completa de integrantes
+ * @returns Mapeamento estruturado por macrocategoria
+ */
+export function agruparElencoPorMacrocategoria(
+  integrantes: Integrante[]
+): Record<Integrante['grandeGrupo'], ColunaMacrocategoria> {
+  const resultado: Record<Integrante['grandeGrupo'], ColunaMacrocategoria> = {
+    'Bateria': { categoria: 'Bateria', total: 0, instrumentos: {} },
+    'Sopros': { categoria: 'Sopros', total: 0, instrumentos: {} },
+    'Vozes': { categoria: 'Vozes', total: 0, instrumentos: {} },
+    'Outros Instrumentos': { categoria: 'Outros Instrumentos', total: 0, instrumentos: {} },
+    'Brincantes & Dança': { categoria: 'Brincantes & Dança', total: 0, instrumentos: {} },
+    'Organização & Apoio': { categoria: 'Organização & Apoio', total: 0, instrumentos: {} }
+  };
+
+  for (const integrante of integrantes) {
+    const grupo = resultado[integrante.grandeGrupo];
+    if (grupo) {
+      grupo.total += 1;
+      const inst = integrante.instrumentoOuFuncao || 'Geral';
+      if (!grupo.instrumentos[inst]) {
+        grupo.instrumentos[inst] = [];
+      }
+      grupo.instrumentos[inst].push(integrante);
+    }
+  }
+
+  return resultado;
+}
+
 /**
  * Elenco oficial reorganizado pelos Grandes Naipes.
  */
