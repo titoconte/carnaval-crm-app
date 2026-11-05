@@ -32,4 +32,12 @@ describe('Navegação e Fluxo de Letras & Cifras', () => {
     assert.strictEqual(abaDocumentos?.label, 'Documentos');
     assert.ok(tabs.length >= 10, 'O menu deve conter 10 opções para exibição completa');
   });
+
+  it('deve incluir a aba Mídia & Artes com gestão de cores e Instagram', () => {
+    const tabs = getVisibleNavigationTabs(0);
+    const abaMidia = tabs.find(t => t.id === 'midia');
+    assert.ok(abaMidia, 'Aba midia deve existir no menu');
+    assert.strictEqual(abaMidia?.label, 'Mídia & Artes');
+    assert.strictEqual(tabs.length, 11, 'O menu deve conter 11 abas completas');
+  });
 });

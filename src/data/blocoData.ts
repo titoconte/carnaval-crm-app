@@ -1257,3 +1257,346 @@ export function extrairTodasTagsDocumentos(documentos: DocumentoBloco[]): string
   });
   return Array.from(setTags);
 }
+
+/**
+ * Interface que representa uma cor oficial da paleta anual do bloco.
+ */
+export interface CorPaletaAnual {
+  id: string;
+  ano: number;
+  nome: string;
+  hex: string;
+  descricaoUso: string;
+  textoEscuro?: boolean;
+}
+
+/**
+ * Interface para arquivos e artes gráficas de identidade visual do bloco.
+ */
+export interface ArquivoArteMidia {
+  id: string;
+  titulo: string;
+  categoria: 'Logotipos' | 'Cartazes & Lambes' | 'Redes Sociais' | 'Camisetas & Fantasias' | 'Fontes & Tipografia';
+  nomeArquivo: string;
+  tamanhoFormatado: string;
+  formatoExtensao: string;
+  dataUpload: string;
+  dimensoesOuUso?: string;
+  urlDownload?: string;
+  conteudoBase64OuTexto?: string;
+}
+
+/**
+ * Interface para posts planejados ou publicados nas redes sociais (Instagram).
+ */
+export interface PostInstagramPlanejado {
+  id: string;
+  titulo: string;
+  tipo: 'Feed' | 'Carrossel' | 'Reels' | 'Stories';
+  legenda: string;
+  hashtags: string[];
+  imagemPreviewUrl?: string;
+  dataProgramada: string;
+  status: 'Planejado' | 'Pronto para Postar' | 'Publicado';
+}
+
+/**
+ * Interface de configuração do perfil e integração com a API do Instagram (Meta Graph API).
+ */
+export interface ConfiguracaoInstagram {
+  handle: string;
+  nomePerfil: string;
+  biografia: string;
+  linkBio: string;
+  totalSeguidores: number;
+  metaBusinessId?: string;
+  accessTokenConectado: boolean;
+  ultimaSincronizacao?: string;
+}
+
+/**
+ * Paleta oficial de cores carnavalescas do Bloco Bicharada 2027.
+ */
+export const CORES_PALETA_INICIAIS: CorPaletaAnual[] = [
+  {
+    id: 'cor-1',
+    ano: 2027,
+    nome: 'Rosa Choque Purpurina',
+    hex: '#E6007E',
+    descricaoUso: 'Estandarte principal, destaques no fanzine, crachás e fitilhos dos brincantes.',
+    textoEscuro: false
+  },
+  {
+    id: 'cor-2',
+    ano: 2027,
+    nome: 'Verde Menta Costeira',
+    hex: '#00D287',
+    descricaoUso: 'Ala de percussão, botões de ação do CRM, tiras dos surdos e pulseiras.',
+    textoEscuro: true
+  },
+  {
+    id: 'cor-3',
+    ano: 2027,
+    nome: 'Roxo Estandarte Real',
+    hex: '#581C87',
+    descricaoUso: 'Tipografia de impacto, contraste nos cartazes e bandeiras das comissões.',
+    textoEscuro: false
+  },
+  {
+    id: 'cor-4',
+    ano: 2027,
+    nome: 'Ouro Glitter & Confete',
+    hex: '#FBBF24',
+    descricaoUso: 'Adereços luminosos, estrelas da bateria, medalhas e carimbos comemorativos.',
+    textoEscuro: true
+  },
+  {
+    id: 'cor-5',
+    ano: 2027,
+    nome: 'Algodão Cru / Papel Fanzine',
+    hex: '#FFFDF9',
+    descricaoUso: 'Fundo dos lambe-lambes, camisas oficiais de algodão e miolo das publicações.',
+    textoEscuro: true
+  },
+  {
+    id: 'cor-6',
+    ano: 2027,
+    nome: 'Tinta Tipográfica Noturna',
+    hex: '#1E1B2E',
+    descricaoUso: 'Bordas neo-brutalistas, sombras sólidas e leitura de alto contraste.',
+    textoEscuro: false
+  }
+];
+
+/**
+ * Artes e arquivos de marca iniciais cadastrados no acervo gráfico.
+ */
+export const ARTES_MIDIA_INICIAIS: ArquivoArteMidia[] = [
+  {
+    id: 'arte-1',
+    titulo: 'Logotipo Vetorial Oficial Bicharada 2027 (Curvas)',
+    categoria: 'Logotipos',
+    nomeArquivo: 'Logo_Bicharada_2027_Vetor.svg',
+    tamanhoFormatado: '140 KB',
+    formatoExtensao: 'SVG',
+    dataUpload: '2026-10-15',
+    dimensoesOuUso: 'Vetor Escalável • CMYK / RGB'
+  },
+  {
+    id: 'arte-2',
+    titulo: 'Brasão Redondo para Adesivos e Bottons de Ensaio',
+    categoria: 'Logotipos',
+    nomeArquivo: 'Brasao_Adesivo_Redondo_300dpi.png',
+    tamanhoFormatado: '520 KB',
+    formatoExtensao: 'PNG',
+    dataUpload: '2026-10-20',
+    dimensoesOuUso: '1200 x 1200 px • 300 DPI Fundo Transparente'
+  },
+  {
+    id: 'arte-3',
+    titulo: 'Cartaz Lambe-Lambe Oficial A3 — Chamamento Foliões',
+    categoria: 'Cartazes & Lambes',
+    nomeArquivo: 'Cartaz_A3_Lambe_Lambe_Chamamento.pdf',
+    tamanhoFormatado: '2.8 MB',
+    formatoExtensao: 'PDF',
+    dataUpload: '2026-10-25',
+    dimensoesOuUso: 'Formato A3 • Pronto para Gráfica / Paste-up'
+  },
+  {
+    id: 'arte-4',
+    titulo: 'Mockup e Guia de Estamparia da Camiseta Oficial',
+    categoria: 'Camisetas & Fantasias',
+    nomeArquivo: 'Guia_Silk_Camiseta_Oficial_2027.pdf',
+    tamanhoFormatado: '1.9 MB',
+    formatoExtensao: 'PDF',
+    dataUpload: '2026-11-01',
+    dimensoesOuUso: 'Serigrafia 3 Cores • Frente e Costas'
+  },
+  {
+    id: 'arte-5',
+    titulo: 'Molduras & Stories Editáveis para Ensaios (Canva/PSD)',
+    categoria: 'Redes Sociais',
+    nomeArquivo: 'Templates_Stories_Instagram_Bicharada.zip',
+    tamanhoFormatado: '4.5 MB',
+    formatoExtensao: 'ZIP',
+    dataUpload: '2026-11-03',
+    dimensoesOuUso: '1080 x 1920 px • Stories e Reels'
+  }
+];
+
+/**
+ * Configuração inicial do perfil e integração Instagram.
+ */
+export const CONFIG_INSTAGRAM_INICIAL: ConfiguracaoInstagram = {
+  handle: '@bicharadafloripa',
+  nomePerfil: 'Bloco Bicharada • Floripa 2027 🐾🪽',
+  biografia: 'Carnaval de rua libertário, diverso e vibrante em Florianópolis! Desfile na Segunda de Carnaval (08/02). Bicharada solta pelos ares!',
+  linkBio: 'https://bicharada.org/inscricoes',
+  totalSeguidores: 3840,
+  metaBusinessId: 'act_1092837465',
+  accessTokenConectado: true,
+  ultimaSincronizacao: '2026-11-05 00:30'
+};
+
+/**
+ * Grade inicial de postagens planejadas para o Instagram do bloco.
+ */
+export const POSTS_INSTAGRAM_INICIAIS: PostInstagramPlanejado[] = [
+  {
+    id: 'post-ig-1',
+    titulo: 'Lançamento do Tema 2027: Bicharada Solta Pelos Ares',
+    tipo: 'Carrossel',
+    legenda: 'Preparem as asas, as garras e os tamborins! Nosso tema para 2027 está solto no ar! Vem ser bicho com a gente na avenida.',
+    hashtags: ['#Bicharada2027', '#CarnavalFloripa', '#BicharadaSoltaPelosAres', '#CarnavalDeRua'],
+    dataProgramada: '2026-11-10 18:00',
+    status: 'Pronto para Postar'
+  },
+  {
+    id: 'post-ig-2',
+    titulo: 'Edital Aberto de Inscrições para a Bateria e Sopros',
+    tipo: 'Feed',
+    legenda: 'Quer tocar na nossa bateria ou nos sopros com o mestre Fael? O edital de chamamento está no link da bio! Vagas abertas para todos os naipes.',
+    hashtags: ['#BateriaBicharada', '#SoprosCarnaval', '#OficinasCarnavalFloripa'],
+    dataProgramada: '2026-11-15 12:00',
+    status: 'Planejado'
+  },
+  {
+    id: 'post-ig-3',
+    titulo: 'Grande Rifa Solidária da Kombi Cora',
+    tipo: 'Reels',
+    legenda: 'Ajude nosso apoio móvel e concorra a prêmios especiais do Carnaval! Bilhetes a R$ 10 com chave Pix direta.',
+    hashtags: ['#RifaBicharada', '#KombiCora', '#ApoioCarnavalesco'],
+    dataProgramada: '2026-11-20 19:30',
+    status: 'Planejado'
+  }
+];
+
+/**
+ * Adiciona uma nova cor à paleta anual do bloco.
+ * 
+ * @param cores - Paleta atual
+ * @param nova - Dados da nova cor
+ * @returns Paleta atualizada com a nova cor inserida
+ */
+export function adicionarCorPaleta(
+  cores: CorPaletaAnual[],
+  nova: Omit<CorPaletaAnual, 'id'>
+): CorPaletaAnual[] {
+  const novaCor: CorPaletaAnual = {
+    id: `cor-${Date.now()}`,
+    ano: nova.ano || 2027,
+    nome: nova.nome.trim(),
+    hex: nova.hex.trim().toUpperCase(),
+    descricaoUso: nova.descricaoUso.trim(),
+    textoEscuro: nova.textoEscuro
+  };
+  return [...cores, novaCor];
+}
+
+/**
+ * Remove uma cor da paleta anual pelo identificador.
+ * 
+ * @param cores - Paleta atual
+ * @param id - Identificador da cor a ser removida
+ * @returns Paleta sem a cor especificada
+ */
+export function removerCorPaleta(cores: CorPaletaAnual[], id: string): CorPaletaAnual[] {
+  return cores.filter(c => c.id !== id);
+}
+
+/**
+ * Cadastra um novo arquivo de arte/marca na galeria de mídia do bloco.
+ * 
+ * @param artes - Lista atual de artes
+ * @param nova - Dados do arquivo de arte
+ * @returns Lista atualizada com o novo arquivo no topo
+ */
+export function adicionarArquivoArte(
+  artes: ArquivoArteMidia[],
+  nova: Omit<ArquivoArteMidia, 'id' | 'dataUpload'>
+): ArquivoArteMidia[] {
+  const novoArquivo: ArquivoArteMidia = {
+    id: `arte-${Date.now()}`,
+    titulo: nova.titulo.trim(),
+    categoria: nova.categoria,
+    nomeArquivo: nova.nomeArquivo.trim(),
+    tamanhoFormatado: nova.tamanhoFormatado || '200 KB',
+    formatoExtensao: nova.formatoExtensao.toUpperCase(),
+    dataUpload: new Date().toISOString().split('T')[0],
+    dimensoesOuUso: nova.dimensoesOuUso?.trim(),
+    conteudoBase64OuTexto: nova.conteudoBase64OuTexto
+  };
+  return [novoArquivo, ...artes];
+}
+
+/**
+ * Filtra os arquivos de arte por categoria e por busca textual.
+ * 
+ * @param artes - Lista de arquivos de arte
+ * @param categoria - Categoria selecionada ('Todas' ou categoria específica)
+ * @param busca - Termo de busca textual
+ * @returns Lista filtrada de artes
+ */
+export function filtrarArquivosArte(
+  artes: ArquivoArteMidia[],
+  categoria?: string,
+  busca?: string
+): ArquivoArteMidia[] {
+  return artes.filter(arte => {
+    const matchCat = !categoria || categoria === 'Todas' || arte.categoria === categoria;
+    if (!matchCat) return false;
+
+    if (!busca || !busca.trim()) return true;
+    const termo = busca.trim().toLowerCase();
+    return (
+      arte.titulo.toLowerCase().includes(termo) ||
+      arte.nomeArquivo.toLowerCase().includes(termo) ||
+      arte.formatoExtensao.toLowerCase().includes(termo)
+    );
+  });
+}
+
+/**
+ * Gera o texto de legenda formatado para o Instagram pronto para ser copiado.
+ * 
+ * @param post - Post planejado
+ * @param handleBloco - Handle oficial do bloco
+ * @returns Texto formatado com quebras e hashtags
+ */
+export function gerarTextoLegendaInstagram(
+  post: PostInstagramPlanejado,
+  handleBloco: string = '@bicharadafloripa'
+): string {
+  const hashtagsTexto = post.hashtags.map(h => (h.startsWith('#') ? h : `#${h}`)).join(' ');
+  return (
+    `${post.legenda}\n\n` +
+    `🐾 Siga ${handleBloco} para acompanhar todos os ensaios e oficinas!\n` +
+    `📍 Desfile Oficial: Segunda-feira de Carnaval (08/02/2027) no Centro Histórico de Floripa.\n\n` +
+    `.\n.\n` +
+    `${hashtagsTexto}`
+  );
+}
+
+/**
+ * Adiciona um novo post planejado à grade do Instagram do bloco.
+ * 
+ * @param posts - Lista atual de posts
+ * @param novo - Dados do novo post
+ * @returns Lista de posts com o novo item adicionado
+ */
+export function adicionarPostPlanejado(
+  posts: PostInstagramPlanejado[],
+  novo: Omit<PostInstagramPlanejado, 'id'>
+): PostInstagramPlanejado[] {
+  const postCriado: PostInstagramPlanejado = {
+    id: `post-ig-${Date.now()}`,
+    titulo: novo.titulo.trim(),
+    tipo: novo.tipo,
+    legenda: novo.legenda.trim(),
+    hashtags: novo.hashtags.map(h => h.trim()).filter(h => h.length > 0),
+    imagemPreviewUrl: novo.imagemPreviewUrl,
+    dataProgramada: novo.dataProgramada,
+    status: novo.status || 'Planejado'
+  };
+  return [postCriado, ...posts];
+}

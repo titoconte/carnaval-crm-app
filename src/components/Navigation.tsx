@@ -12,6 +12,7 @@ import {
   Calendar, 
   UserPlus,
   FolderDown,
+  Palette,
   Menu,
   X,
   ChevronDown,
@@ -30,7 +31,8 @@ export type TabId =
   | 'desfile' 
   | 'calendario' 
   | 'inscricao'
-  | 'documentos';
+  | 'documentos'
+  | 'midia';
 
 export interface TabItem {
   id: TabId;
@@ -43,7 +45,7 @@ export interface TabItem {
 /**
  * Retorna as abas visíveis no menu principal do aplicativo.
  * A aba 'Letras & Cifras' foi movida para dentro do Repertório.
- * Inclui agora a aba 'Documentos' para gestão de arquivos e tags do bloco.
+ * Inclui as abas 'Documentos' e 'Mídia & Artes' (com cores do ano e Instagram).
  * 
  * @param orfasCount - Quantidade de tarefas órfãs para exibição no badge
  * @returns Lista de abas a serem renderizadas na barra de navegação
@@ -59,7 +61,8 @@ export function getVisibleNavigationTabs(orfasCount: number = 0): TabItem[] {
     { id: 'desfile', label: 'Tarefas em Andamento', icon: Truck },
     { id: 'calendario', label: 'Calendário', icon: Calendar },
     { id: 'inscricao', label: 'Inscrições', icon: UserPlus },
-    { id: 'documentos', label: 'Documentos', icon: FolderDown }
+    { id: 'documentos', label: 'Documentos', icon: FolderDown },
+    { id: 'midia', label: 'Mídia & Artes', icon: Palette }
   ];
 }
 

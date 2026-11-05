@@ -14,6 +14,7 @@ import ParadeKanban from '../components/ParadeKanban';
 import CalendarView from '../components/CalendarView';
 import JoinForm from '../components/JoinForm';
 import DocumentsManager from '../components/DocumentsManager';
+import MediaManager from '../components/MediaManager';
 import AdminPinModal from '../components/AdminPinModal';
 
 import {
@@ -30,6 +31,10 @@ import {
   ENQUETES_WHATSAPP_INICIAIS,
   CALENDARIO_INICIAL,
   DOCUMENTOS_INICIAIS,
+  CORES_PALETA_INICIAIS,
+  ARTES_MIDIA_INICIAIS,
+  POSTS_INSTAGRAM_INICIAIS,
+  CONFIG_INSTAGRAM_INICIAL,
   converterTarefaEmMacrotarefa,
   Integrante,
   InscritoBloco,
@@ -43,7 +48,11 @@ import {
   ItemLetraCifra,
   EnqueteWhatsApp,
   EventoCalendario,
-  DocumentoBloco
+  DocumentoBloco,
+  CorPaletaAnual,
+  ArquivoArteMidia,
+  PostInstagramPlanejado,
+  ConfiguracaoInstagram
 } from '../data/blocoData';
 
 /**
@@ -69,6 +78,10 @@ export default function Home() {
   const [enquetes, setEnquetes] = useState<EnqueteWhatsApp[]>(ENQUETES_WHATSAPP_INICIAIS);
   const [eventos] = useState<EventoCalendario[]>(CALENDARIO_INICIAL);
   const [documentos, setDocumentos] = useState<DocumentoBloco[]>(DOCUMENTOS_INICIAIS);
+  const [cores, setCores] = useState<CorPaletaAnual[]>(CORES_PALETA_INICIAIS);
+  const [artes, setArtes] = useState<ArquivoArteMidia[]>(ARTES_MIDIA_INICIAIS);
+  const [postsInstagram, setPostsInstagram] = useState<PostInstagramPlanejado[]>(POSTS_INSTAGRAM_INICIAIS);
+  const [configInstagram, setConfigInstagram] = useState<ConfiguracaoInstagram>(CONFIG_INSTAGRAM_INICIAL);
 
   // Carrega dados salvos no LocalStorage
   useEffect(() => {
@@ -108,6 +121,18 @@ export default function Home() {
 
       const sDocs = localStorage.getItem('bicha_documentos_v2');
       if (sDocs) setDocumentos(JSON.parse(sDocs));
+
+      const sCores = localStorage.getItem('bicha_midia_cores_v1');
+      if (sCores) setCores(JSON.parse(sCores));
+
+      const sArtes = localStorage.getItem('bicha_midia_artes_v1');
+      if (sArtes) setArtes(JSON.parse(sArtes));
+
+      const sPostsIg = localStorage.getItem('bicha_midia_posts_v1');
+      if (sPostsIg) setPostsInstagram(JSON.parse(sPostsIg));
+
+      const sConfigIg = localStorage.getItem('bicha_midia_config_ig_v1');
+      if (sConfigIg) setConfigInstagram(JSON.parse(sConfigIg));
     } catch (e) {
       console.error('Erro ao ler LocalStorage:', e);
     }
@@ -128,10 +153,14 @@ export default function Home() {
       localStorage.setItem('bicha_letras_v2', JSON.stringify(letrasCifras));
       localStorage.setItem('bicha_enquetes_v2', JSON.stringify(enquetes));
       localStorage.setItem('bicha_documentos_v2', JSON.stringify(documentos));
+      localStorage.setItem('bicha_midia_cores_v1', JSON.stringify(cores));
+      localStorage.setItem('bicha_midia_artes_v1', JSON.stringify(artes));
+      localStorage.setItem('bicha_midia_posts_v1', JSON.stringify(postsInstagram));
+      localStorage.setItem('bicha_midia_config_ig_v1', JSON.stringify(configInstagram));
     } catch (e) {
       console.error('Erro ao salvar LocalStorage:', e);
     }
-  }, [tarefas, macrotarefas, movimentosBar, bilhetesRifa, rifas, vendasRifas, inscritos, integrantes, musicas, letrasCifras, enquetes, documentos]);
+  }, [tarefas, macrotarefas, movimentosBar, bilhetesRifa, rifas, vendasRifas, inscritos, integrantes, musicas, letrasCifras, enquetes, documentos, cores, artes, postsInstagram, configInstagram]);
 
   // Contagem de tarefas órfãs
   const orfasCount = tarefas.filter(
@@ -257,6 +286,20 @@ export default function Home() {
           <DocumentsManager
             documentos={documentos}
             setDocumentos={setDocumentos}
+            isAdmin={isAdmin}
+          />
+        )}
+
+        {activeTab === 'midia' && (
+          <MediaManager
+            cores={cores}
+            setCores={setCores}
+            artes={artes}
+            setArtes={setArtes}
+            postsInstagram={postsInstagram}
+            setPostsInstagram={setPostsInstagram}
+            configInstagram={configInstagram}
+            setConfigInstagram={setConfigInstagram}
             isAdmin={isAdmin}
           />
         )}
