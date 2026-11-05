@@ -3,7 +3,6 @@
 import React from 'react';
 import { 
   Music, 
-  FileText, 
   ClipboardList, 
   Users, 
   BarChart2, 
@@ -11,7 +10,8 @@ import {
   Gift, 
   Truck, 
   Calendar, 
-  UserPlus 
+  UserPlus,
+  LucideIcon 
 } from 'lucide-react';
 
 export type TabId = 
@@ -26,6 +26,35 @@ export type TabId =
   | 'calendario' 
   | 'inscricao';
 
+export interface TabItem {
+  id: TabId;
+  label: string;
+  icon: LucideIcon;
+  badge?: string;
+  highlight?: boolean;
+}
+
+/**
+ * Retorna as abas visíveis no menu principal do aplicativo.
+ * A aba 'Letras & Cifras' foi removida do menu e agora é acessada via Repertório.
+ * 
+ * @param orfasCount - Quantidade de tarefas órfãs para exibição no badge
+ * @returns Lista de abas a serem renderizadas na barra de navegação
+ */
+export function getVisibleNavigationTabs(orfasCount: number = 0): TabItem[] {
+  return [
+    { id: 'repertorio', label: 'Repertório', icon: Music },
+    { id: 'tarefas', label: 'Mural de Tarefas', icon: ClipboardList, badge: orfasCount > 0 ? `${orfasCount} órfãs` : undefined },
+    { id: 'elenco', label: 'Elenco & Naipes', icon: Users },
+    { id: 'enquetes', label: 'Enquetes WhatsApp', icon: BarChart2 },
+    { id: 'bar', label: 'Bar dos Ensaios', icon: Beer },
+    { id: 'rifa', label: 'Rifa Online 🎟️', icon: Gift, highlight: true },
+    { id: 'desfile', label: 'Tarefas em Andamento', icon: Truck },
+    { id: 'calendario', label: 'Calendário', icon: Calendar },
+    { id: 'inscricao', label: 'Inscrições', icon: UserPlus }
+  ];
+}
+
 interface NavigationProps {
   activeTab: TabId;
   setActiveTab: (tab: TabId) => void;
@@ -33,21 +62,10 @@ interface NavigationProps {
 }
 
 /**
- * Menu de Navegação Horizontal com as Cores Vivas Oficiais do Bloco.
+ * Menu de Navegação Horizontal com as Cores Vivas Oficiais do Bloco Bicharada.
  */
 export default function Navigation({ activeTab, setActiveTab, orfasCount }: NavigationProps) {
-  const tabs = [
-    { id: 'repertorio' as TabId, label: 'Repertório', icon: Music },
-    { id: 'letras' as TabId, label: 'Letras & Cifras', icon: FileText },
-    { id: 'tarefas' as TabId, label: 'Mural de Tarefas', icon: ClipboardList, badge: orfasCount > 0 ? `${orfasCount} órfãs` : undefined },
-    { id: 'elenco' as TabId, label: 'Elenco & Naipes', icon: Users },
-    { id: 'enquetes' as TabId, label: 'Enquetes WhatsApp', icon: BarChart2 },
-    { id: 'bar' as TabId, label: 'Bar dos Ensaios', icon: Beer },
-    { id: 'rifa' as TabId, label: 'Rifa Online 🎟️', icon: Gift, highlight: true },
-    { id: 'desfile' as TabId, label: 'Desfile & Kombi', icon: Truck },
-    { id: 'calendario' as TabId, label: 'Calendário', icon: Calendar },
-    { id: 'inscricao' as TabId, label: 'Inscrições', icon: UserPlus }
-  ];
+  const tabs = getVisibleNavigationTabs(orfasCount);
 
   return (
     <nav className="sticky top-0 z-30 bg-white border-b-3 border-[#1E1B2E] py-2.5 px-3 shadow-md">

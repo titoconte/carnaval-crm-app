@@ -156,6 +156,7 @@ export default function Home() {
             musicas={musicas}
             setMusicas={setMusicas}
             isAdmin={isAdmin}
+            onOpenLetras={() => setActiveTab('letras')}
           />
         )}
 
@@ -164,6 +165,7 @@ export default function Home() {
             items={letrasCifras}
             setItems={setLetrasCifras}
             isAdmin={isAdmin}
+            onBackToRepertorio={() => setActiveTab('repertorio')}
           />
         )}
 

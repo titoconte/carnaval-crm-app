@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { FileText, Upload, Copy, Check, Search, Music } from 'lucide-react';
+import { FileText, Upload, Copy, Check, Search, Music, ArrowLeft } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { ItemLetraCifra } from '../data/blocoData';
 
@@ -9,12 +9,13 @@ interface LyricsAndChordsProps {
   items: ItemLetraCifra[];
   setItems: React.Dispatch<React.SetStateAction<ItemLetraCifra[]>>;
   isAdmin: boolean;
+  onBackToRepertorio?: () => void;
 }
 
 /**
  * Caderno de Letras e Cifras em Estilo Fanzine Impresso.
  */
-export default function LyricsAndChords({ items, setItems, isAdmin }: LyricsAndChordsProps) {
+export default function LyricsAndChords({ items, setItems, isAdmin, onBackToRepertorio }: LyricsAndChordsProps) {
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'Todos' | 'Letra' | 'Cifra' | 'Partitura'>('Todos');
   const [modalUpload, setModalUpload] = useState(false);
@@ -27,6 +28,9 @@ export default function LyricsAndChords({ items, setItems, isAdmin }: LyricsAndC
   const [autorUpload, setAutorUpload] = useState('');
   const [conteudoTexto, setConteudoTexto] = useState('');
 
+  /**
+   * Registra uma nova cifra, letra ou partitura no caderno oficial do bloco.
+   */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!titulo.trim()) return;
@@ -54,6 +58,9 @@ export default function LyricsAndChords({ items, setItems, isAdmin }: LyricsAndC
     });
   };
 
+  /**
+   * Copia o texto da cifra ou letra para a área de transferência.
+   */
   const copyToClipboard = () => {
     if (selectedItem?.conteudoTexto) {
       navigator.clipboard.writeText(selectedItem.conteudoTexto);
@@ -71,9 +78,18 @@ export default function LyricsAndChords({ items, setItems, isAdmin }: LyricsAndC
 
   return (
     <div className="space-y-4">
-      {/* Banner Principal */}
+      {/* Banner Principal com Botão de Retorno ao Repertório */}
       <div className="bg-[#FAF6EC] border-2 border-[#1A181B] p-4 shadow-[3px_3px_0px_#1A181B] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
+          {onBackToRepertorio && (
+            <button
+              onClick={onBackToRepertorio}
+              className="inline-flex items-center gap-1 text-xs font-mono font-black uppercase text-[#E6007E] hover:underline mb-1"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Voltar ao Repertório</span>
+            </button>
+          )}
           <h2 className="text-xl font-black uppercase text-[#1A181B] flex items-center gap-2">
             <FileText className="w-5 h-5 text-[#581C87]" />
             <span>Caderno de Letras & Cifras</span>
