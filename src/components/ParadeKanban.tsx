@@ -27,6 +27,9 @@ export default function ParadeKanban({ macrotarefas, setMacrotarefas, isAdmin }:
 
   const colunas: MacrotarefaDesfile['coluna'][] = ['A Fazer', 'No Dia do Desfile', 'Concluído na Avenida'];
 
+  /**
+   * Alterna a conclusão de um item de checklist da macrotarefa.
+   */
   const toggleCheck = (macroId: string, checkId: string) => {
     setMacrotarefas(prev => prev.map(macro => {
       if (macro.id === macroId) {
@@ -40,6 +43,9 @@ export default function ParadeKanban({ macrotarefas, setMacrotarefas, isAdmin }:
     }));
   };
 
+  /**
+   * Move uma macrotarefa entre as colunas do kanban de tarefas em andamento.
+   */
   const moverColuna = (macroId: string, direcao: 'avancar' | 'voltar') => {
     setMacrotarefas(prev => prev.map(macro => {
       if (macro.id === macroId) {
@@ -59,6 +65,9 @@ export default function ParadeKanban({ macrotarefas, setMacrotarefas, isAdmin }:
     }
   };
 
+  /**
+   * Adiciona uma nova etapa/subitem na checklist da macrotarefa.
+   */
   const handleAddSubitem = (macroId: string, e: React.FormEvent) => {
     e.preventDefault();
     if (!textoNovoSubitem.trim()) return;
@@ -84,6 +93,9 @@ export default function ParadeKanban({ macrotarefas, setMacrotarefas, isAdmin }:
     setCardAdicionandoSubitem(null);
   };
 
+  /**
+   * Cria uma nova macrotarefa com múltiplos itens de checklist.
+   */
   const handleCriarMacro = (e: React.FormEvent) => {
     e.preventDefault();
     if (!novoTitulo.trim()) return;
@@ -125,14 +137,14 @@ export default function ParadeKanban({ macrotarefas, setMacrotarefas, isAdmin }:
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="stamp stamp-urgent text-xs">Cortejo de Carnaval</span>
-              <span className="font-mono text-xs font-bold text-stone-600">08/02/2027 • Praça Oliva</span>
+              <span className="stamp stamp-urgent text-xs">Operação Carnavalesca</span>
+              <span className="font-mono text-xs font-bold text-stone-600">Kombi Cora • 08/02/2027</span>
             </div>
             <h2 className="text-2xl font-black uppercase text-[#1E1B2E] font-mono leading-tight">
-              Desfile na Avenida & Suporte da Kombi Cora 🚚
+              Tarefas em Andamento 🚚
             </h2>
             <p className="text-xs text-stone-700 mt-1 max-w-lg font-serif">
-              Quadro de macrotarefas com checklists operacionais para o dia do desfile. A Kombi do Renato Cartola transportará nossos isopores de bebidas do open bar e suporte médico.
+              Quadro kanban de macrotarefas com checklists em execução para o cortejo e o suporte móvel da Kombi Cora.
             </p>
           </div>
 

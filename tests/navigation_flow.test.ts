@@ -17,4 +17,11 @@ describe('Navegação e Fluxo de Letras & Cifras', () => {
     assert.ok(ids.includes('elenco'));
     assert.ok(ids.includes('rifa'));
   });
+
+  it('deve ter a aba desfile renomeada para "Tarefas em Andamento"', () => {
+    const tabs = getVisibleNavigationTabs(0);
+    const abaDesfile = tabs.find(t => t.id === 'desfile');
+    assert.ok(abaDesfile, 'Aba desfile deve existir');
+    assert.strictEqual(abaDesfile?.label, 'Tarefas em Andamento');
+  });
 });
