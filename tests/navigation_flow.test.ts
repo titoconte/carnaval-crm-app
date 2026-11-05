@@ -24,4 +24,12 @@ describe('Navegação e Fluxo de Letras & Cifras', () => {
     assert.ok(abaDesfile, 'Aba desfile deve existir');
     assert.strictEqual(abaDesfile?.label, 'Tarefas em Andamento');
   });
+
+  it('deve incluir a aba de Documentos e conter pelo menos 10 opções no menu', () => {
+    const tabs = getVisibleNavigationTabs(0);
+    const abaDocumentos = tabs.find(t => t.id === 'documentos');
+    assert.ok(abaDocumentos, 'Aba documentos deve existir no menu');
+    assert.strictEqual(abaDocumentos?.label, 'Documentos');
+    assert.ok(tabs.length >= 10, 'O menu deve conter 10 opções para exibição completa');
+  });
 });

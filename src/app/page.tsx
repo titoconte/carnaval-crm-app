@@ -161,7 +161,7 @@ export default function Home() {
       />
 
       {/* Área de Conteúdo da Aba Ativa */}
-      <main className="flex-1 max-w-5xl w-full mx-auto p-3 sm:p-6 mb-16">
+      <main id="conteudo-principal" className="flex-1 max-w-5xl w-full mx-auto p-3 sm:p-6 mb-16">
         {activeTab === 'repertorio' && (
           <RepertoireVoting
             musicas={musicas}
