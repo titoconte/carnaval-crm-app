@@ -388,6 +388,35 @@ export function calcularProgressoChecklist(checklists?: ItemChecklistTarefa[]): 
 }
 
 /**
+ * Ordena tarefas colocando as marcadas como urgente no topo da lista.
+ * 
+ * @param tarefas - Lista de tarefas a serem ordenadas
+ * @returns Nova lista com tarefas urgentes no topo
+ */
+export function ordenarTarefasPorUrgencia(tarefas: TarefaPostIt[]): TarefaPostIt[] {
+  return [...tarefas].sort((a, b) => {
+    if (a.urgente && !b.urgente) return -1;
+    if (!a.urgente && b.urgente) return 1;
+    return 0;
+  });
+}
+
+/**
+ * Valida se uma tarefa possui um responsável definido para permitir acionar 'Equipe Pronta'.
+ * 
+ * @param tarefa - Tarefa a ser validada
+ * @returns True se possuir dono atribuído e válido, False caso contrário
+ */
+export function podeAcionarEquipePronta(tarefa: TarefaPostIt): boolean {
+  if (!tarefa.responsavel) return false;
+  const resp = tarefa.responsavel.trim().toLowerCase();
+  if (resp === '' || resp === 'a definir' || resp === 'órfã' || resp === 'orfa' || resp === 'sem dono') {
+    return false;
+  }
+  return true;
+}
+
+/**
  * Converte um post-it do mural em uma macrotarefa do desfile quando a equipe está pronta.
  * 
  * @param tarefa - Tarefa do mural

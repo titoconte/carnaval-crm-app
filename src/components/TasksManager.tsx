@@ -18,7 +18,9 @@ import confetti from 'canvas-confetti';
 import {
   TarefaPostIt,
   ItemChecklistTarefa,
-  calcularProgressoChecklist
+  calcularProgressoChecklist,
+  ordenarTarefasPorUrgencia,
+  podeAcionarEquipePronta
 } from '../data/blocoData';
 
 interface TasksManagerProps {
@@ -43,7 +45,7 @@ export default function TasksManager({
   isAdmin,
   onEquipePronta
 }: TasksManagerProps) {
-  const [filtro, setFiltro] = useState<'todas' | 'orfas' | 'andamento'>('orfas');
+  const [filtro, setFiltro] = useState<'todas' | 'orfas' | 'andamento'>('todas');
   const [modalAssumir, setModalAssumir] = useState<TarefaPostIt | null>(null);
   const [nomeVoluntario, setNomeVoluntario] = useState('');
   const [modalNovoPostIt, setModalNovoPostIt] = useState(false);
@@ -62,12 +64,15 @@ export default function TasksManager({
   const [itemTexto, setItemTexto] = useState('');
   const [itemData, setItemData] = useState('');
 
-  const isOrfa = (t: TarefaPostIt) => !t.responsavel || t.responsavel.trim() === '' || t.responsavel.toLowerCase().includes('definir');
+  const isOrfa = (t: TarefaPostIt) => !podeAcionarEquipePronta(t);
 
   const tarefasFiltradas = tarefas.filter(t => {
     if (filtro === 'orfas') return isOrfa(t);
     return true;
   });
+
+  // Sempre exibe todos os post-its juntos ordenados com urgentes no topo
+  const tarefasExibidas = ordenarTarefasPorUrgencia(tarefasFiltradas);
 
   /**
    * Associa o nome de um folião voluntário à tarefa órfã selecionada.
@@ -183,8 +188,11 @@ export default function TasksManager({
 
   /**
    * Dispara o fluxo "Equipe Pronta", promovendo a tarefa para a aba de Tarefas em Andamento (Desfile).
+   * Regra: Só permite disparar quando a tarefa já possui dono/responsável atribuído.
    */
   const handleEquipePronta = (tarefa: TarefaPostIt) => {
+    if (!podeAcionarEquipePronta(tarefa)) return;
+
     if (onEquipePronta) {
       onEquipePronta(tarefa);
     }
@@ -230,6 +238,17 @@ export default function TasksManager({
       {/* Filtros em Estilo Carimbos Coloridos */}
       <div className="flex items-center gap-2 pb-1 overflow-x-auto no-scrollbar">
         <button
+          onClick={() => setFiltro('todas')}
+          className={`px-3 py-1.5 border-2 border-[#1E1B2E] text-xs font-black uppercase transition-all shadow-[2px_2px_0px_#1E1B2E] ${
+            filtro === 'todas'
+              ? 'bg-[#581C87] text-[#FBBF24]'
+              : 'bg-white text-[#1E1B2E] hover:bg-purple-50'
+          }`}
+        >
+          📌 Todos os Post-its [{tarefas.length}]
+        </button>
+
+        <button
           onClick={() => setFiltro('orfas')}
           className={`px-3 py-1.5 border-2 border-[#1E1B2E] text-xs font-black uppercase transition-all shadow-[2px_2px_0px_#1E1B2E] ${
             filtro === 'orfas'
@@ -239,22 +258,11 @@ export default function TasksManager({
         >
           🚨 Vagas Abertas (Órfãs) [{tarefas.filter(t => isOrfa(t)).length}]
         </button>
-
-        <button
-          onClick={() => setFiltro('todas')}
-          className={`px-3 py-1.5 border-2 border-[#1E1B2E] text-xs font-black uppercase transition-all shadow-[2px_2px_0px_#1E1B2E] ${
-            filtro === 'todas'
-              ? 'bg-[#581C87] text-[#FBBF24]'
-              : 'bg-white text-[#1E1B2E] hover:bg-purple-50'
-          }`}
-        >
-          Todos os Post-its [{tarefas.length}]
-        </button>
       </div>
 
       {/* Quadro de Cortiça Visual com Cores Carnavalescas */}
       <div className="cork-texture p-4 sm:p-6 rounded-2xl min-h-[420px]">
-        {tarefasFiltradas.length === 0 ? (
+        {tarefasExibidas.length === 0 ? (
           <div className="bg-white border-2 border-[#1E1B2E] p-8 text-center max-w-sm mx-auto shadow-[4px_4px_0px_#1E1B2E] rotate-[-1deg]">
             <p className="font-mono text-sm font-black uppercase text-[#1E1B2E]">
               Nenhum bilhete pregado nesta seção no momento!
@@ -262,7 +270,7 @@ export default function TasksManager({
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 pt-3">
-            {tarefasFiltradas.map((tarefa, idx) => {
+            {tarefasExibidas.map((tarefa, idx) => {
               const semDono = isOrfa(tarefa);
               const rotation = idx % 3 === 0 ? '-rotate-1' : idx % 3 === 1 ? 'rotate-1' : 'rotate-[-0.5deg]';
               const temChecklist = tarefa.checklists && tarefa.checklists.length > 0;
@@ -383,15 +391,30 @@ export default function TasksManager({
                         </button>
                       )}
 
-                      {/* Botão Equipe Pronta (passa para a aba de Desfile / Tarefas em Andamento) */}
-                      <button
-                        onClick={() => handleEquipePronta(tarefa)}
-                        className="px-2.5 py-1 bg-[#00D287] hover:bg-[#34EEA0] text-[#1E1B2E] text-[10px] font-black uppercase border border-black shadow-[2px_2px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 flex items-center gap-1"
-                        title="Equipe mobilizada: passar para Tarefas em Andamento"
-                      >
-                        <Users className="w-3 h-3" />
-                        <span>Equipe Pronta</span>
-                      </button>
+                      {/* Botão Equipe Pronta (só habilitado quando tiver dono) */}
+                      {(() => {
+                        const podeEquipe = podeAcionarEquipePronta(tarefa);
+                        return (
+                          <button
+                            type="button"
+                            disabled={!podeEquipe}
+                            onClick={() => podeEquipe && handleEquipePronta(tarefa)}
+                            className={`px-2.5 py-1 text-[10px] font-black uppercase border border-black flex items-center gap-1 transition-all ${
+                              podeEquipe
+                                ? 'bg-[#00D287] hover:bg-[#34EEA0] text-[#1E1B2E] shadow-[2px_2px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer'
+                                : 'bg-stone-300 text-stone-500 border-stone-400 opacity-60 cursor-not-allowed shadow-none'
+                            }`}
+                            title={
+                              podeEquipe
+                                ? 'Equipe mobilizada: passar para Tarefas em Andamento'
+                                : 'Defina um responsável antes de acionar Equipe Pronta'
+                            }
+                          >
+                            <Users className="w-3 h-3" />
+                            <span>Equipe Pronta</span>
+                          </button>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>

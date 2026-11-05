@@ -3,7 +3,9 @@ import assert from 'node:assert';
 import {
   TarefaPostIt,
   calcularProgressoChecklist,
-  converterTarefaEmMacrotarefa
+  converterTarefaEmMacrotarefa,
+  ordenarTarefasPorUrgencia,
+  podeAcionarEquipePronta
 } from '../src/data/blocoData';
 
 describe('Mural de Tarefas e Checklists com Prazos', () => {
@@ -43,4 +45,55 @@ describe('Mural de Tarefas e Checklists com Prazos', () => {
     assert.strictEqual(macro.checklists.length, 4);
     assert.strictEqual(macro.checklists[0].texto, 'Comprar fitas coloridas (Prazo: 2026-11-10)');
   });
+
+  it('deve ordenar post-its colocando os urgentes no topo da lista', () => {
+    const tarefas: TarefaPostIt[] = [
+      { id: '1', titulo: 'Comprar fita', descricao: '', categoria: 'Geral', urgente: false, concluida: false },
+      { id: '2', titulo: 'Socorro elétrico', descricao: '', categoria: 'Geral', urgente: true, concluida: false },
+      { id: '3', titulo: 'Pintar faixa', descricao: '', categoria: 'Geral', urgente: false, concluida: false },
+      { id: '4', titulo: 'Alvará urgente', descricao: '', categoria: 'Geral', urgente: true, concluida: false }
+    ];
+
+    const ordenadas = ordenarTarefasPorUrgencia(tarefas);
+    assert.strictEqual(ordenadas[0].urgente, true);
+    assert.strictEqual(ordenadas[1].urgente, true);
+    assert.strictEqual(ordenadas[2].urgente, false);
+    assert.strictEqual(ordenadas[3].urgente, false);
+  });
+
+  it('deve permitir acionar equipe pronta apenas se a tarefa tiver dono atribuído', () => {
+    const tarefaSemDono: TarefaPostIt = {
+      id: '1',
+      titulo: 'Sem dono',
+      descricao: '',
+      categoria: 'Geral',
+      urgente: false,
+      concluida: false
+    };
+
+    const tarefaADefinir: TarefaPostIt = {
+      id: '2',
+      titulo: 'A definir',
+      descricao: '',
+      categoria: 'Geral',
+      responsavel: 'A Definir',
+      urgente: false,
+      concluida: false
+    };
+
+    const tarefaComDono: TarefaPostIt = {
+      id: '3',
+      titulo: 'Com dono',
+      descricao: '',
+      categoria: 'Geral',
+      responsavel: 'Regina',
+      urgente: false,
+      concluida: false
+    };
+
+    assert.strictEqual(podeAcionarEquipePronta(tarefaSemDono), false);
+    assert.strictEqual(podeAcionarEquipePronta(tarefaADefinir), false);
+    assert.strictEqual(podeAcionarEquipePronta(tarefaComDono), true);
+  });
 });
+
