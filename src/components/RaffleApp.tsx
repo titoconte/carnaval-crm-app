@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Gift, Sparkles, Check, Copy, MessageSquare, ShoppingBag, Search, Plus, AlertCircle, Calendar, UserCheck } from 'lucide-react';
+import { Gift, Sparkles, Check, Copy, MessageSquare, ShoppingBag, Search, Plus, AlertCircle, Calendar, UserCheck, Trash2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import {
   Rifa,
@@ -189,12 +189,30 @@ export default function RaffleApp({
    * Atualiza a quantidade de prêmios e ajusta o array de descritivos.
    */
   const handleAlterarQuantidadePremios = (qtd: number) => {
-    setFormNumeroPremios(qtd);
+    const qtdAjustada = Math.max(1, qtd);
+    setFormNumeroPremios(qtdAjustada);
     setFormDescritivosPremios(prev => {
       const novo = [...prev];
-      while (novo.length < qtd) novo.push('');
-      return novo.slice(0, qtd);
+      while (novo.length < qtdAjustada) novo.push('');
+      return novo.slice(0, qtdAjustada);
     });
+  };
+
+  /**
+   * Adiciona dinamicamente mais um prêmio à rifa que está sendo criada.
+   */
+  const handleAdicionarMaisUmPremio = () => {
+    setFormDescritivosPremios(prev => [...prev, '']);
+    setFormNumeroPremios(prev => prev + 1);
+  };
+
+  /**
+   * Remove um prêmio específico da lista de prêmios.
+   */
+  const handleRemoverPremio = (index: number) => {
+    if (formDescritivosPremios.length <= 1) return;
+    setFormDescritivosPremios(prev => prev.filter((_, idx) => idx !== index));
+    setFormNumeroPremios(prev => Math.max(1, prev - 1));
   };
 
   /**
@@ -670,43 +688,54 @@ export default function RaffleApp({
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Número de Prêmios</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={10}
-                  value={formNumeroPremios}
-                  onChange={(e) => handleAlterarQuantidadePremios(Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none"
-                />
-              </div>
+              {/* Gestão e Descritivo de Prêmios Dinâmicos */}
+              <div className="space-y-2 pt-2 border-t border-stone-200">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-xs font-black uppercase text-[#581C87] block">
+                    Prêmios da Rifa ({formDescritivosPremios.length} cadastrados):
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleAdicionarMaisUmPremio}
+                    className="px-2.5 py-1 bg-[#00D287] hover:bg-[#34EEA0] text-[#1E1B2E] border-2 border-[#1E1B2E] text-[10px] font-black uppercase flex items-center gap-1 shadow-[1px_1px_0px_#000] cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>+ Adicionar Prêmio</span>
+                  </button>
+                </div>
 
-              {/* Descritivo de cada prêmio */}
-              <div className="space-y-2 pt-1 border-t border-stone-200">
-                <span className="font-mono text-xs font-black uppercase text-[#581C87] block">
-                  Descritivo de Cada Prêmio:
-                </span>
-                {Array.from({ length: formNumeroPremios }).map((_, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold w-20 shrink-0">{idx + 1}º Prêmio:</span>
-                    <input
-                      type="text"
-                      required
-                      placeholder={`Descrição do ${idx + 1}º prêmio...`}
-                      value={formDescritivosPremios[idx] || ''}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setFormDescritivosPremios(prev => {
-                          const novo = [...prev];
-                          novo[idx] = val;
-                          return novo;
-                        });
-                      }}
-                      className="flex-1 px-3 py-1.5 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none"
-                    />
-                  </div>
-                ))}
+                <div className="space-y-2 max-h-56 overflow-y-auto no-scrollbar pr-1">
+                  {formDescritivosPremios.map((desc, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-bold w-18 shrink-0">{idx + 1}º Prêmio:</span>
+                      <input
+                        type="text"
+                        required
+                        placeholder={`Descreva o ${idx + 1}º prêmio...`}
+                        value={desc}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setFormDescritivosPremios(prev => {
+                            const novo = [...prev];
+                            novo[idx] = val;
+                            return novo;
+                          });
+                        }}
+                        className="flex-1 px-3 py-1.5 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none"
+                      />
+                      {formDescritivosPremios.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoverPremio(idx)}
+                          className="p-1.5 text-stone-500 hover:text-red-600 hover:bg-red-50 border border-stone-300 transition-colors cursor-pointer"
+                          title="Remover este prêmio"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-200">

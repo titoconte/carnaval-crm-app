@@ -94,4 +94,28 @@ describe('Sistema de Rifas do Bloco Bicharada', () => {
     assert.strictEqual(resultado.sucesso, false);
     assert.strictEqual(resultado.vendasAtualizadas[0].status, 'Disponível');
   });
+
+  it('deve suportar criação de rifa com mais de 3 prêmios dinâmicos', () => {
+    const premiosLivres = [
+      { posicao: 1, descricao: '1º Prêmio: Bicicleta Vintage' },
+      { posicao: 2, descricao: '2º Prêmio: Cesta de Cervejas' },
+      { posicao: 3, descricao: '3º Prêmio: Camiseta do Bloco' },
+      { posicao: 4, descricao: '4º Prêmio: Kit Glitter & Óculos' },
+      { posicao: 5, descricao: '5º Prêmio: Vale Bar de R$ 100' }
+    ];
+
+    const rifaCincoPremios = criarNovaRifa({
+      titulo: 'Super Rifa 5 Prêmios',
+      nomeCoordenador: 'Regina',
+      quantidadeNumeros: 200,
+      precoNumero: 10,
+      dataLimite: '2026-12-31',
+      premios: premiosLivres
+    });
+
+    assert.strictEqual(rifaCincoPremios.numeroPremios, 5);
+    assert.strictEqual(rifaCincoPremios.premios.length, 5);
+    assert.strictEqual(rifaCincoPremios.premios[4].descricao, '5º Prêmio: Vale Bar de R$ 100');
+  });
 });
+
