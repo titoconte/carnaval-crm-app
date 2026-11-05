@@ -158,6 +158,8 @@ export default function MediaManager({
   const [tamanhoArte, setTamanhoArte] = useState('');
   const [extensaoArte, setExtensaoArte] = useState('PNG');
   const [conteudoArquivoArte, setConteudoArquivoArte] = useState<string | undefined>(undefined);
+  const [urlBlobArte, setUrlBlobArte] = useState<string | undefined>(undefined);
+  const [enviandoBlobArte, setEnviandoBlobArte] = useState(false);
 
   // Estados de Posts do Instagram
   const [modalNovoPost, setModalNovoPost] = useState(false);
@@ -255,7 +257,8 @@ export default function MediaManager({
   };
 
   /**
-   * Processa o upload de arquivo de arte gráfica.
+   * Processa o upload de arquivo de arte gráfica, gerando preview
+   * local em Base64 e enviando diretamente para o Vercel Blob.
    */
   const handleArteFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -271,11 +274,32 @@ export default function MediaManager({
         setConteudoArquivoArte(event.target?.result as string);
       };
       reader.readAsDataURL(file);
+
+      // Upload em tempo real para o Vercel Blob
+      setEnviandoBlobArte(true);
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('pasta', 'artes');
+
+      fetch('/api/blob/upload', {
+        method: 'POST',
+        body: formData
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.sucesso && data.url) {
+            setUrlBlobArte(data.url);
+          }
+        })
+        .catch(err => {
+          console.warn('Falha no upload do Blob para arte, mantendo fallback Base64:', err);
+        })
+        .finally(() => setEnviandoBlobArte(false));
     }
   };
 
   /**
-   * Salva o novo arquivo de arte gráfica na galeria.
+   * Salva o novo arquivo de arte gráfica na galeria com a URL permanente do Blob.
    */
   const handleSalvarArte = (e: React.FormEvent) => {
     e.preventDefault();
@@ -290,7 +314,7 @@ export default function MediaManager({
       tamanhoFormatado: tamanhoArte || '300 KB',
       formatoExtensao: extensaoArte,
       dimensoesOuUso: dimensoesArte || 'Uso geral',
-      conteudoBase64OuTexto: conteudoArquivoArte
+      conteudoBase64OuTexto: urlBlobArte || conteudoArquivoArte
     });
 
     setArtes(atualizadas);
@@ -299,6 +323,7 @@ export default function MediaManager({
     setDimensoesArte('');
     setNomeArquivoArte('');
     setConteudoArquivoArte(undefined);
+    setUrlBlobArte(undefined);
 
     confetti({
       particleCount: 50,
@@ -1362,9 +1387,15 @@ export default function MediaManager({
                   onChange={handleArteFileChange}
                   className="w-full text-xs font-mono file:mr-2 file:py-1 file:px-2.5 file:border-2 file:border-[#1E1B2E] file:text-xs file:font-black file:uppercase file:bg-[#00D287] file:cursor-pointer"
                 />
-                {nomeArquivoArte && (
+                {enviandoBlobArte && (
+                  <span className="block mt-1.5 text-[11px] font-mono text-[#E6007E] font-bold animate-pulse">
+                    Enviando arte gráfica diretamente para o Vercel Blob...
+                  </span>
+                )}
+                {nomeArquivoArte && !enviandoBlobArte && (
                   <span className="block mt-1.5 text-[11px] font-mono text-[#00A868] font-bold">
                     ✓ {nomeArquivoArte} ({tamanhoArte})
+                    {urlBlobArte && ' • Nuvem Conectada'}
                   </span>
                 )}
               </div>

@@ -71,6 +71,8 @@ export default function RepertoireVoting({
   const [novoRitmo, setNovoRitmo] = useState('Axé / Samba-Reggae');
   const [novoYoutube, setNovoYoutube] = useState('');
   const [novoArquivoNome, setNovoArquivoNome] = useState('');
+  const [novoArquivoUrl, setNovoArquivoUrl] = useState('');
+  const [enviandoBlob, setEnviandoBlob] = useState(false);
   const [novoTextoPartitura, setNovoTextoPartitura] = useState('');
 
   // Modal de Leitura de Partitura
@@ -282,12 +284,33 @@ export default function RepertoireVoting({
   };
 
   /**
-   * Captura o upload de arquivo de repertório (partitura/cifra) do dispositivo do usuário.
+   * Captura o upload de arquivo de repertório (partitura/cifra) do dispositivo do usuário
+   * e faz o upload em tempo real para o Vercel Blob Storage.
    */
   const handleArquivoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setNovoArquivoNome(file.name);
+      setEnviandoBlob(true);
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('pasta', 'partituras');
+
+      fetch('/api/blob/upload', {
+        method: 'POST',
+        body: formData
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.sucesso && data.url) {
+            setNovoArquivoUrl(data.url);
+          }
+        })
+        .catch(err => {
+          console.warn('Falha no upload do Blob, mantendo arquivo local:', err);
+        })
+        .finally(() => setEnviandoBlob(false));
     }
   };
 
@@ -304,6 +327,7 @@ export default function RepertoireVoting({
       ritmo: novoRitmo,
       youtubeUrl: novoYoutube.trim() || undefined,
       arquivoRepertorio: novoArquivoNome || undefined,
+      partituraUrl: novoArquivoUrl || undefined,
       partituraTexto: novoTextoPartitura.trim() || undefined,
       ordemDesfile: musicas.length + 1
     });
@@ -316,6 +340,7 @@ export default function RepertoireVoting({
     setNovoArtista('');
     setNovoYoutube('');
     setNovoArquivoNome('');
+    setNovoArquivoUrl('');
     setNovoTextoPartitura('');
     setModalNovaMusica(false);
 
@@ -617,7 +642,7 @@ export default function RepertoireVoting({
                 />
                 {novoArquivoNome && (
                   <span className="text-[11px] font-mono text-[#00A868] mt-1 block">
-                    ✓ Arquivo selecionado: {novoArquivoNome}
+                    ✓ Arquivo: {novoArquivoNome} {enviandoBlob ? '(Subindo para o Vercel Blob...)' : '(Pronto)'}
                   </span>
                 )}
               </div>

@@ -157,6 +157,20 @@ export async function initDatabaseSchema(): Promise<{ success: boolean; message:
       );
     `);
 
+    // 6. Tabela de Eventos e Ensaios do Calendário
+    await executeSql(`
+      CREATE TABLE IF NOT EXISTS eventos_calendario (
+        id VARCHAR(100) PRIMARY KEY,
+        data VARCHAR(50) NOT NULL,
+        dia_semana VARCHAR(50) NOT NULL,
+        tipo VARCHAR(50) NOT NULL,
+        local VARCHAR(200) NOT NULL,
+        horario VARCHAR(50) NOT NULL,
+        observacoes TEXT,
+        criado_em TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     return {
       success: true,
       message: 'Esquema de banco de dados Vercel Postgres inicializado com sucesso!'

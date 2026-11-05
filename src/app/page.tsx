@@ -78,7 +78,7 @@ export default function Home() {
   const [musicas, setMusicas] = useState<MusicaRepertorio[]>(REPERTORIO_INICIAL);
   const [letrasCifras, setLetrasCifras] = useState<ItemLetraCifra[]>(LETRAS_CIFRAS_INICIAIS);
   const [enquetes, setEnquetes] = useState<EnqueteWhatsApp[]>(ENQUETES_WHATSAPP_INICIAIS);
-  const [eventos] = useState<EventoCalendario[]>(CALENDARIO_INICIAL);
+  const [eventos, setEventos] = useState<EventoCalendario[]>(CALENDARIO_INICIAL);
   const [documentos, setDocumentos] = useState<DocumentoBloco[]>(DOCUMENTOS_INICIAIS);
   const [cores, setCores] = useState<CorPaletaAnual[]>(CORES_PALETA_INICIAIS);
   const [artes, setArtes] = useState<ArquivoArteMidia[]>(ARTES_MIDIA_INICIAIS);
@@ -94,55 +94,58 @@ export default function Home() {
   useEffect(() => {
     // 1. Carregamento inicial rápido via LocalStorage (offline-first)
     try {
-      const sTarefas = localStorage.getItem('bicha_tarefas_v2');
+      const sTarefas = localStorage.getItem('bicha_tarefas_v4');
       if (sTarefas) setTarefas(JSON.parse(sTarefas));
 
-      const sMacros = localStorage.getItem('bicha_macros_v2');
+      const sMacros = localStorage.getItem('bicha_macros_v4');
       if (sMacros) setMacrotarefas(JSON.parse(sMacros));
 
-      const sBar = localStorage.getItem('bicha_bar_v2');
+      const sBar = localStorage.getItem('bicha_bar_v4');
       if (sBar) setMovimentosBar(JSON.parse(sBar));
 
-      const sRifa = localStorage.getItem('bicha_rifa_v2');
+      const sRifa = localStorage.getItem('bicha_rifa_v4');
       if (sRifa) setBilhetesRifa(JSON.parse(sRifa));
 
-      const sRifasTab = localStorage.getItem('bicha_rifas_tab_v3');
+      const sRifasTab = localStorage.getItem('bicha_rifas_tab_v4');
       if (sRifasTab) setRifas(JSON.parse(sRifasTab));
 
-      const sVendasRifas = localStorage.getItem('bicha_rifas_vendas_v3');
+      const sVendasRifas = localStorage.getItem('bicha_rifas_vendas_v4');
       if (sVendasRifas) setVendasRifas(JSON.parse(sVendasRifas));
 
-      const sInscritos = localStorage.getItem('bicha_inscritos_v2');
+      const sInscritos = localStorage.getItem('bicha_inscritos_v4');
       if (sInscritos) setInscritos(JSON.parse(sInscritos));
 
-      const sIntegrantes = localStorage.getItem('bicha_integrantes_v2');
+      const sIntegrantes = localStorage.getItem('bicha_integrantes_v4');
       if (sIntegrantes) setIntegrantes(JSON.parse(sIntegrantes));
 
-      const sMusicas = localStorage.getItem('bicha_musicas_v2');
+      const sMusicas = localStorage.getItem('bicha_musicas_v4');
       if (sMusicas) setMusicas(JSON.parse(sMusicas));
 
-      const sLetras = localStorage.getItem('bicha_letras_v2');
+      const sLetras = localStorage.getItem('bicha_letras_v4');
       if (sLetras) setLetrasCifras(JSON.parse(sLetras));
 
-      const sEnquetes = localStorage.getItem('bicha_enquetes_v2');
+      const sEnquetes = localStorage.getItem('bicha_enquetes_v4');
       if (sEnquetes) setEnquetes(JSON.parse(sEnquetes));
 
-      const sDocs = localStorage.getItem('bicha_documentos_v2');
+      const sEventos = localStorage.getItem('bicha_calendario_v4');
+      if (sEventos) setEventos(JSON.parse(sEventos));
+
+      const sDocs = localStorage.getItem('bicha_documentos_v4');
       if (sDocs) setDocumentos(JSON.parse(sDocs));
 
-      const sCores = localStorage.getItem('bicha_midia_cores_v1');
+      const sCores = localStorage.getItem('bicha_midia_cores_v4');
       if (sCores) setCores(JSON.parse(sCores));
 
-      const sArtes = localStorage.getItem('bicha_midia_artes_v1');
+      const sArtes = localStorage.getItem('bicha_midia_artes_v4');
       if (sArtes) setArtes(JSON.parse(sArtes));
 
-      const sPostsIg = localStorage.getItem('bicha_midia_posts_v1');
+      const sPostsIg = localStorage.getItem('bicha_midia_posts_v4');
       if (sPostsIg) setPostsInstagram(JSON.parse(sPostsIg));
 
-      const sConfigIg = localStorage.getItem('bicha_midia_config_ig_v1');
+      const sConfigIg = localStorage.getItem('bicha_midia_config_ig_v4');
       if (sConfigIg) setConfigInstagram(JSON.parse(sConfigIg));
 
-      const sTema = localStorage.getItem('bicha_tema_ano_v1');
+      const sTema = localStorage.getItem('bicha_tema_ano_v4');
       if (sTema) setTemaAno(JSON.parse(sTema));
     } catch (e) {
       console.error('Erro ao ler LocalStorage:', e);
@@ -166,6 +169,7 @@ export default function Home() {
           if (est.musicas) setMusicas(est.musicas);
           if (est.letrasCifras) setLetrasCifras(est.letrasCifras);
           if (est.enquetes) setEnquetes(est.enquetes);
+          if (est.eventos) setEventos(est.eventos);
           if (est.documentos) setDocumentos(est.documentos);
           if (est.cores) setCores(est.cores);
           if (est.artes) setArtes(est.artes);
@@ -185,23 +189,24 @@ export default function Home() {
   // Salva no LocalStorage e envia atualização debounced ao Vercel Postgres
   useEffect(() => {
     try {
-      localStorage.setItem('bicha_tarefas_v2', JSON.stringify(tarefas));
-      localStorage.setItem('bicha_macros_v2', JSON.stringify(macrotarefas));
-      localStorage.setItem('bicha_bar_v2', JSON.stringify(movimentosBar));
-      localStorage.setItem('bicha_rifa_v2', JSON.stringify(bilhetesRifa));
-      localStorage.setItem('bicha_rifas_tab_v3', JSON.stringify(rifas));
-      localStorage.setItem('bicha_rifas_vendas_v3', JSON.stringify(vendasRifas));
-      localStorage.setItem('bicha_inscritos_v2', JSON.stringify(inscritos));
-      localStorage.setItem('bicha_integrantes_v2', JSON.stringify(integrantes));
-      localStorage.setItem('bicha_musicas_v2', JSON.stringify(musicas));
-      localStorage.setItem('bicha_letras_v2', JSON.stringify(letrasCifras));
-      localStorage.setItem('bicha_enquetes_v2', JSON.stringify(enquetes));
-      localStorage.setItem('bicha_documentos_v2', JSON.stringify(documentos));
-      localStorage.setItem('bicha_midia_cores_v1', JSON.stringify(cores));
-      localStorage.setItem('bicha_midia_artes_v1', JSON.stringify(artes));
-      localStorage.setItem('bicha_midia_posts_v1', JSON.stringify(postsInstagram));
-      localStorage.setItem('bicha_midia_config_ig_v1', JSON.stringify(configInstagram));
-      localStorage.setItem('bicha_tema_ano_v1', JSON.stringify(temaAno));
+      localStorage.setItem('bicha_tarefas_v4', JSON.stringify(tarefas));
+      localStorage.setItem('bicha_macros_v4', JSON.stringify(macrotarefas));
+      localStorage.setItem('bicha_bar_v4', JSON.stringify(movimentosBar));
+      localStorage.setItem('bicha_rifa_v4', JSON.stringify(bilhetesRifa));
+      localStorage.setItem('bicha_rifas_tab_v4', JSON.stringify(rifas));
+      localStorage.setItem('bicha_rifas_vendas_v4', JSON.stringify(vendasRifas));
+      localStorage.setItem('bicha_inscritos_v4', JSON.stringify(inscritos));
+      localStorage.setItem('bicha_integrantes_v4', JSON.stringify(integrantes));
+      localStorage.setItem('bicha_musicas_v4', JSON.stringify(musicas));
+      localStorage.setItem('bicha_letras_v4', JSON.stringify(letrasCifras));
+      localStorage.setItem('bicha_enquetes_v4', JSON.stringify(enquetes));
+      localStorage.setItem('bicha_calendario_v4', JSON.stringify(eventos));
+      localStorage.setItem('bicha_documentos_v4', JSON.stringify(documentos));
+      localStorage.setItem('bicha_midia_cores_v4', JSON.stringify(cores));
+      localStorage.setItem('bicha_midia_artes_v4', JSON.stringify(artes));
+      localStorage.setItem('bicha_midia_posts_v4', JSON.stringify(postsInstagram));
+      localStorage.setItem('bicha_midia_config_ig_v4', JSON.stringify(configInstagram));
+      localStorage.setItem('bicha_tema_ano_v4', JSON.stringify(temaAno));
     } catch (e) {
       console.error('Erro ao salvar LocalStorage:', e);
     }
@@ -226,6 +231,7 @@ export default function Home() {
             musicas,
             letrasCifras,
             enquetes,
+            eventos,
             documentos,
             cores,
             artes,
@@ -240,7 +246,7 @@ export default function Home() {
     }, 1500);
 
     return () => clearTimeout(timer);
-  }, [tarefas, macrotarefas, movimentosBar, bilhetesRifa, rifas, vendasRifas, inscritos, integrantes, musicas, letrasCifras, enquetes, documentos, cores, artes, postsInstagram, configInstagram, temaAno, dbConnected]);
+  }, [tarefas, macrotarefas, movimentosBar, bilhetesRifa, rifas, vendasRifas, inscritos, integrantes, musicas, letrasCifras, enquetes, eventos, documentos, cores, artes, postsInstagram, configInstagram, temaAno, dbConnected]);
 
   // Contagem de tarefas órfãs
   const orfasCount = tarefas.filter(
@@ -353,7 +359,11 @@ export default function Home() {
         )}
 
         {activeTab === 'calendario' && (
-          <CalendarView eventos={eventos} />
+          <CalendarView
+            eventos={eventos}
+            setEventos={setEventos}
+            isAdmin={isAdmin}
+          />
         )}
 
         {activeTab === 'inscricao' && (
@@ -398,6 +408,21 @@ export default function Home() {
         <p className="mt-1 font-serif text-[11px] text-stone-400">
           Florianópolis / SC • Sistema Comunitário Aberto e 100% Gratuito na Vercel
         </p>
+        {isAdmin && (
+          <div className="mt-3 flex justify-center">
+            <button
+              onClick={() => {
+                if (confirm('Atenção: deseja limpar o cache local deste navegador para reiniciar com os dados oficiais limpos?')) {
+                  localStorage.clear();
+                  window.location.reload();
+                }
+              }}
+              className="px-2.5 py-1 text-[11px] font-mono font-bold uppercase bg-stone-900 border border-stone-600 text-stone-300 hover:text-red-400 hover:border-red-500 transition-colors cursor-pointer"
+            >
+              Limpar Cache Local do Navegador (Reset de Mocks)
+            </button>
+          </div>
+        )}
       </footer>
 
       {/* Modal de PIN da Coordenação */}

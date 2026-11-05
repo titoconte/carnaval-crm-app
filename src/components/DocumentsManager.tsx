@@ -52,6 +52,8 @@ export default function DocumentsManager({
   const [arquivoTamanho, setArquivoTamanho] = useState('');
   const [arquivoTipo, setArquivoTipo] = useState('');
   const [arquivoConteudo, setArquivoConteudo] = useState<string | undefined>(undefined);
+  const [urlDownloadBlob, setUrlDownloadBlob] = useState<string | undefined>(undefined);
+  const [enviandoBlob, setEnviandoBlob] = useState(false);
 
   const todasAsTags = extrairTodasTagsDocumentos(documentos);
   const documentosFiltrados = filtrarDocumentos(documentos, tagSelecionada, busca);
@@ -87,7 +89,9 @@ export default function DocumentsManager({
   };
 
   /**
-   * Captura o arquivo anexado pelo usuário via input de arquivo.
+   * Captura o arquivo anexado pelo usuário via input de arquivo,
+   * armazena em Base64 para visualização local imediata e envia
+   * em tempo real para o Vercel Blob Storage.
    */
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -97,16 +101,38 @@ export default function DocumentsManager({
       setArquivoTamanho(kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb} KB`);
       setArquivoTipo(file.type || 'application/octet-stream');
 
+      // Leitura em DataURL para fallback ou preview offline
       const reader = new FileReader();
       reader.onload = (event) => {
         setArquivoConteudo(event.target?.result as string);
       };
       reader.readAsDataURL(file);
+
+      // Upload em tempo real para o Vercel Blob
+      setEnviandoBlob(true);
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('pasta', 'documentos');
+
+      fetch('/api/blob/upload', {
+        method: 'POST',
+        body: formData
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.sucesso && data.url) {
+            setUrlDownloadBlob(data.url);
+          }
+        })
+        .catch(err => {
+          console.warn('Falha no upload do Blob, mantendo fallback Base64:', err);
+        })
+        .finally(() => setEnviandoBlob(false));
     }
   };
 
   /**
-   * Salva o novo documento e fecha o modal.
+   * Salva o novo documento com a URL remota do Blob ou fallback Base64 e fecha o modal.
    */
   const handleSalvarDocumento = (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,7 +151,8 @@ export default function DocumentsManager({
       nomeArquivo: nomeFinal,
       tamanhoFormatado: tamanhoFinal,
       tipoArquivo: arquivoTipo,
-      conteudoBase64OuTexto: arquivoConteudo
+      urlDownload: urlDownloadBlob,
+      conteudoBase64OuTexto: urlDownloadBlob || arquivoConteudo
     });
 
     setDocumentos(atualizados);
@@ -140,6 +167,7 @@ export default function DocumentsManager({
     setArquivoTamanho('');
     setArquivoTipo('');
     setArquivoConteudo(undefined);
+    setUrlDownloadBlob(undefined);
 
     confetti({
       particleCount: 50,
@@ -487,10 +515,18 @@ export default function DocumentsManager({
                   onChange={handleFileChange}
                   className="w-full text-xs font-mono file:mr-3 file:py-1 file:px-2.5 file:border-2 file:border-[#1E1B2E] file:text-xs file:font-black file:uppercase file:bg-[#FBBF24] file:cursor-pointer"
                 />
-                {arquivoNome && (
+                {enviandoBlob && (
+                  <div className="mt-2 text-[11px] font-mono font-bold text-[#E6007E] animate-pulse flex items-center gap-1">
+                    <span>Enviando arquivo diretamente para a nuvem Vercel Blob...</span>
+                  </div>
+                )}
+                {arquivoNome && !enviandoBlob && (
                   <div className="mt-2 text-[11px] font-mono font-bold text-[#00A868] flex items-center gap-1">
                     <Check className="w-3.5 h-3.5" />
-                    <span>Arquivo selecionado: {arquivoNome} ({arquivoTamanho})</span>
+                    <span>
+                      Arquivo pronto: {arquivoNome} ({arquivoTamanho})
+                      {urlDownloadBlob && ' • Nuvem Conectada'}
+                    </span>
                   </div>
                 )}
               </div>
