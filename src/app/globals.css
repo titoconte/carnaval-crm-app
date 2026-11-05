@@ -1,0 +1,158 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bicha-pink: #E6007E;
+  --color-bicha-pink-light: #FF4DA6;
+  --color-bicha-pink-dark: #C2006A;
+  --color-bicha-green: #00D287;
+  --color-bicha-green-light: #34EEA0;
+  --color-bicha-green-dark: #00A868;
+  --color-bicha-purple: #581C87;
+  --color-bicha-purple-light: #7E22CE;
+  --color-bicha-yellow: #FBBF24;
+  --color-bicha-cream: #FFFDF9;
+  --color-bicha-ink: #1E1B2E;
+}
+
+@layer base {
+  body {
+    background-color: #FFFDF9;
+    color: #1E1B2E;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Courier New", Courier, monospace, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Identidade Visual Oficial do Bloco Bicharada */
+.carnival-banner {
+  background: linear-gradient(135deg, #E6007E 0%, #581C87 50%, #00D287 100%);
+}
+
+.carnival-badge-pink {
+  background-color: #E6007E;
+  color: #FFFFFF;
+  border: 2px solid #1E1B2E;
+  box-shadow: 2px 2px 0px #1E1B2E;
+}
+
+.carnival-badge-green {
+  background-color: #00D287;
+  color: #1E1B2E;
+  border: 2px solid #1E1B2E;
+  box-shadow: 2px 2px 0px #1E1B2E;
+}
+
+.carnival-badge-purple {
+  background-color: #581C87;
+  color: #FBBF24;
+  border: 2px solid #1E1B2E;
+  box-shadow: 2px 2px 0px #1E1B2E;
+}
+
+.carnival-badge-yellow {
+  background-color: #FBBF24;
+  color: #1E1B2E;
+  border: 2px solid #1E1B2E;
+  box-shadow: 2px 2px 0px #1E1B2E;
+}
+
+/* Estilo Neo-Brutalista Fanzine com Cores Vivas */
+.vintage-card {
+  background-color: #FFFFFF;
+  border: 2.5px solid #1E1B2E;
+  box-shadow: 4px 4px 0px #1E1B2E;
+  transition: all 0.15s ease-in-out;
+}
+
+.vintage-card:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0px #1E1B2E;
+}
+
+.vintage-button {
+  border: 2px solid #1E1B2E;
+  box-shadow: 3px 3px 0px #1E1B2E;
+  font-weight: 900;
+  transition: all 0.1s ease-in-out;
+}
+
+.vintage-button:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px #1E1B2E;
+}
+
+/* Fita Adesiva / Crepe simulada */
+.tape-top {
+  position: relative;
+}
+.tape-top::before {
+  content: "";
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-1.5deg);
+  width: 90px;
+  height: 22px;
+  background-color: rgba(254, 240, 138, 0.8);
+  border: 1px dashed rgba(202, 138, 4, 0.4);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  z-index: 10;
+}
+
+/* Efeito Carimbo de Jornal / Edital com Cores Vivas */
+.stamp {
+  display: inline-block;
+  text-transform: uppercase;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border: 2px solid currentColor;
+  transform: rotate(-2deg);
+  border-radius: 4px;
+}
+
+.stamp-urgent {
+  color: #E6007E;
+  border-color: #E6007E;
+  background-color: #FDF2F8;
+  box-shadow: 2px 2px 0px #E6007E;
+}
+
+.stamp-open {
+  color: #581C87;
+  border-color: #581C87;
+  background-color: #FAF5FF;
+  box-shadow: 2px 2px 0px #581C87;
+  transform: rotate(2deg);
+}
+
+.stamp-confirmed {
+  color: #00A868;
+  border-color: #00A868;
+  background-color: #ECFDF5;
+  box-shadow: 2px 2px 0px #00A868;
+}
+
+/* Textura suave e ensolarada do quadro de cortiça */
+.cork-texture {
+  background-color: #FDF4DC;
+  background-image: radial-gradient(#F59E0B 10%, transparent 11%), radial-gradient(#E6007E 10%, transparent 11%);
+  background-size: 24px 24px;
+  background-position: 0 0, 12px 12px;
+  border: 3px solid #1E1B2E;
+  box-shadow: inset 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Scrollbar retrô estilizada nas cores oficiais */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #FFFDF9;
+  border-left: 2px solid #1E1B2E;
+}
+::-webkit-scrollbar-thumb {
+  background: #E6007E;
+  border: 1px solid #1E1B2E;
+}

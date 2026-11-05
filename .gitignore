@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# WhatsApp Browser Session & Data
+data/whatsapp_session/
+data/bicharada/raw/*.json
+data/test_*
+
+# Node & Next.js
+node_modules/
+npm-debug.log*
+.next/
+out/
+.env*.local

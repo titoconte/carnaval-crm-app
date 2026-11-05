@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Bicharada Sync</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 16px;
+      width: 320px;
+      background-color: #f7f9fa;
+      color: #111b21;
+    }
+    h2 {
+      font-size: 16px;
+      margin-top: 0;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #008069;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .badge-ok {
+      background-color: #d1f4e0;
+      color: #0b7042;
+    }
+    .badge-warn {
+      background-color: #fde8e8;
+      color: #9b1c1c;
+    }
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      margin-bottom: 12px;
+      font-size: 13px;
+    }
+    .card p {
+      margin: 6px 0;
+    }
+    .btn {
+      width: 100%;
+      background-color: #00a884;
+      color: white;
+      border: none;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .btn:hover {
+      background-color: #008069;
+    }
+    .btn:disabled {
+      background-color: #a0a0a0;
+      cursor: not-allowed;
+    }
+    #status-msg {
+      margin-top: 10px;
+      font-size: 12px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h2>🐾 Bicharada Sync</h2>
+  <div id="badge-status" class="badge badge-warn">Verificando...</div>
+
+  <div class="card">
+    <p><strong>Chat Ativo:</strong> <span id="chat-name">-</span></p>
+    <p><strong>Mensagens (desde 04/11):</strong> <span id="msg-count">0</span></p>
+    <p><strong>Servidor Local:</strong> <span id="collector-status">localhost:3141</span></p>
+  </div>
+
+  <button id="btn-sync" class="btn" disabled>Sincronizar Agora</button>
+  <div id="status-msg"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
+
