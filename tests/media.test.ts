@@ -8,6 +8,7 @@ import {
   TEMA_ANO_INICIAL,
   adicionarCorPaleta,
   removerCorPaleta,
+  editarCorPaleta,
   adicionarArquivoArte,
   filtrarArquivosArte,
   gerarTextoLegendaInstagram,
@@ -38,6 +39,40 @@ describe('Gestão de Mídia, Cores do Ano e Instagram', () => {
     const atualizadas = removerCorPaleta(coresMock, 'c1');
     assert.strictEqual(atualizadas.length, 1);
     assert.strictEqual(atualizadas[0].id, 'c2');
+  });
+
+  it('deve editar uma cor existente na paleta anual com novos atributos', () => {
+    const atualizadas = editarCorPaleta(coresMock, 'c1', {
+      nome: 'Rosa Choque Neon',
+      hex: '#ff007f',
+      ano: 2028,
+      descricaoUso: 'Estandarte e Faixas Oficiais'
+    });
+
+    assert.strictEqual(atualizadas.length, 2);
+    const corEditada = atualizadas.find(c => c.id === 'c1');
+    assert.ok(corEditada);
+    assert.strictEqual(corEditada.nome, 'Rosa Choque Neon');
+    assert.strictEqual(corEditada.hex, '#FF007F'); // convertido para uppercase
+    assert.strictEqual(corEditada.ano, 2028);
+    assert.strictEqual(corEditada.descricaoUso, 'Estandarte e Faixas Oficiais');
+
+    // A outra cor não deve ser alterada
+    const outraCor = atualizadas.find(c => c.id === 'c2');
+    assert.strictEqual(outraCor?.nome, 'Verde Menta');
+  });
+
+  it('deve manter valores originais ao editar apenas campos específicos', () => {
+    const atualizadas = editarCorPaleta(coresMock, 'c2', {
+      hex: '#00FFAA'
+    });
+
+    const cor = atualizadas.find(c => c.id === 'c2');
+    assert.ok(cor);
+    assert.strictEqual(cor.hex, '#00FFAA');
+    assert.strictEqual(cor.nome, 'Verde Menta');
+    assert.strictEqual(cor.ano, 2027);
+    assert.strictEqual(cor.descricaoUso, 'Bateria');
   });
 
   it('deve cadastrar um novo arquivo de arte gráfica', () => {

@@ -1620,6 +1620,34 @@ export function removerCorPaleta(cores: CorPaletaAnual[], id: string): CorPaleta
 }
 
 /**
+ * Atualiza os dados de uma cor existente na paleta anual do bloco.
+ * 
+ * @param cores - Paleta atual
+ * @param id - Identificador da cor a ser editada
+ * @param dadosAtualizados - Novos valores para nome, hex, ano ou descricaoUso
+ * @returns Paleta atualizada com a cor modificada
+ */
+export function editarCorPaleta(
+  cores: CorPaletaAnual[],
+  id: string,
+  dadosAtualizados: Partial<Omit<CorPaletaAnual, 'id'>>
+): CorPaletaAnual[] {
+  return cores.map(cor => {
+    if (cor.id === id) {
+      return {
+        ...cor,
+        ...dadosAtualizados,
+        nome: dadosAtualizados.nome !== undefined ? dadosAtualizados.nome.trim() : cor.nome,
+        hex: dadosAtualizados.hex !== undefined ? dadosAtualizados.hex.trim().toUpperCase() : cor.hex,
+        descricaoUso: dadosAtualizados.descricaoUso !== undefined ? dadosAtualizados.descricaoUso.trim() : cor.descricaoUso,
+        ano: dadosAtualizados.ano !== undefined ? dadosAtualizados.ano : cor.ano
+      };
+    }
+    return cor;
+  });
+}
+
+/**
  * Cadastra um novo arquivo de arte/marca na galeria de mídia do bloco.
  * 
  * @param artes - Lista atual de artes

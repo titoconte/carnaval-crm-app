@@ -21,7 +21,8 @@ import {
   Grid3X3,
   Layers,
   Video,
-  Eye
+  Eye,
+  Edit3
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -45,6 +46,7 @@ import {
   TemaAnoBloco,
   adicionarCorPaleta,
   removerCorPaleta,
+  editarCorPaleta,
   adicionarArquivoArte,
   filtrarArquivosArte,
   gerarTextoLegendaInstagram,
@@ -138,6 +140,13 @@ export default function MediaManager({
   const [anoCor, setAnoCor] = useState(2027);
   const [usoCor, setUsoCor] = useState('');
 
+  // Estados de Edição de Cor Existente
+  const [modalEditarCor, setModalEditarCor] = useState<CorPaletaAnual | null>(null);
+  const [nomeCorEdit, setNomeCorEdit] = useState('');
+  const [hexCorEdit, setHexCorEdit] = useState('#E6007E');
+  const [anoCorEdit, setAnoCorEdit] = useState(2027);
+  const [usoCorEdit, setUsoCorEdit] = useState('');
+
   // Estados de Artes e Filtros
   const [categoriaArte, setCategoriaArte] = useState('Todas');
   const [buscaArte, setBuscaArte] = useState('');
@@ -204,6 +213,45 @@ export default function MediaManager({
     if (confirm('Deseja realmente remover esta cor da paleta oficial?')) {
       setCores(removerCorPaleta(cores, id));
     }
+  };
+
+  /**
+   * Abre o modal de edição carregando os dados da cor selecionada.
+   * 
+   * @param cor - Objeto da cor da paleta a ser editada
+   */
+  const handleAbrirEditarCor = (cor: CorPaletaAnual) => {
+    setModalEditarCor(cor);
+    setNomeCorEdit(cor.nome);
+    setHexCorEdit(cor.hex);
+    setAnoCorEdit(cor.ano);
+    setUsoCorEdit(cor.descricaoUso);
+  };
+
+  /**
+   * Salva as alterações da cor editada na paleta oficial carnavalesca.
+   * 
+   * @param e - Evento de submissão do formulário
+   */
+  const handleSalvarEdicaoCor = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!modalEditarCor || !nomeCorEdit.trim() || !hexCorEdit.trim()) return;
+
+    const atualizadas = editarCorPaleta(cores, modalEditarCor.id, {
+      nome: nomeCorEdit.trim(),
+      hex: hexCorEdit.trim(),
+      ano: anoCorEdit,
+      descricaoUso: usoCorEdit.trim()
+    });
+
+    setCores(atualizadas);
+    setModalEditarCor(null);
+
+    confetti({
+      particleCount: 40,
+      spread: 60,
+      colors: [hexCorEdit, '#00D287', '#FBBF24']
+    });
   };
 
   /**
@@ -559,16 +607,28 @@ export default function MediaManager({
                       <span>Copiar {cor.hex}</span>
                     </button>
 
-                    {isAdmin && cores.length > 1 && (
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => handleRemoverCor(cor.id)}
-                        className="text-stone-400 hover:text-red-600 p-1 cursor-pointer"
-                        title="Remover cor da paleta"
+                        onClick={() => handleAbrirEditarCor(cor)}
+                        className="text-[11px] font-mono font-bold text-[#E6007E] hover:underline flex items-center gap-1 cursor-pointer"
+                        title="Editar esta cor da paleta"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>Editar</span>
                       </button>
-                    )}
+
+                      {isAdmin && cores.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoverCor(cor.id)}
+                          className="text-stone-400 hover:text-red-600 p-1 cursor-pointer"
+                          title="Remover cor da paleta"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -1132,6 +1192,100 @@ export default function MediaManager({
                   className="vintage-button px-4 py-1.5 bg-[#E6007E] text-white text-xs uppercase cursor-pointer"
                 >
                   Salvar Cor
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDITAR COR DA PALETA OFICIAL */}
+      {modalEditarCor && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border-4 border-[#1E1B2E] p-6 max-w-md w-full shadow-[6px_6px_0px_#1E1B2E]">
+            <div className="stamp stamp-urgent text-xs mb-2">Identidade Visual</div>
+            <h3 className="text-base font-black uppercase text-[#1E1B2E] flex items-center gap-2 font-mono">
+              <Palette className="w-5 h-5 text-[#E6007E]" />
+              <span>Editar Cor da Paleta Oficial</span>
+            </h3>
+
+            <form onSubmit={handleSalvarEdicaoCor} className="space-y-3.5 mt-4">
+              <div>
+                <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">
+                  Nome da Cor *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Rosa Choque, Amarelo Ouro..."
+                  value={nomeCorEdit}
+                  onChange={(e) => setNomeCorEdit(e.target.value)}
+                  className="w-full px-3 py-2 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">
+                    Código HEX *
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={hexCorEdit}
+                      onChange={(e) => setHexCorEdit(e.target.value)}
+                      className="w-10 h-9 p-0.5 border-2 border-[#1E1B2E] cursor-pointer"
+                    />
+                    <input
+                      type="text"
+                      required
+                      value={hexCorEdit}
+                      onChange={(e) => setHexCorEdit(e.target.value)}
+                      className="w-full px-2 py-1.5 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono uppercase focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">
+                    Ano Carnavalesco *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    value={anoCorEdit}
+                    onChange={(e) => setAnoCorEdit(Number(e.target.value))}
+                    className="w-full px-3 py-1.5 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">
+                  Aplicação / Descrição de Uso
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Ex: Para fantasias dos brincantes, estandarte, faixas de rua..."
+                  value={usoCorEdit}
+                  onChange={(e) => setUsoCorEdit(e.target.value)}
+                  className="w-full px-3 py-2 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none"
+                />
+              </div>
+
+              <div className="pt-3 border-t-2 border-stone-200 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setModalEditarCor(null)}
+                  className="px-3.5 py-1.5 border-2 border-[#1E1B2E] text-xs font-bold uppercase hover:bg-stone-200 cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="vintage-button px-4 py-1.5 bg-[#E6007E] text-white text-xs uppercase cursor-pointer"
+                >
+                  Salvar Alterações
                 </button>
               </div>
             </form>
