@@ -32,6 +32,7 @@ export default function ParadeKanban({ macrotarefas, setMacrotarefas, isAdmin }:
 
   const [cardAdicionandoSubitem, setCardAdicionandoSubitem] = useState<string | null>(null);
   const [textoNovoSubitem, setTextoNovoSubitem] = useState('');
+  const [responsavelNovoSubitem, setResponsavelNovoSubitem] = useState('');
 
   const colunas: MacrotarefaDesfile['coluna'][] = ['A Fazer', 'No Dia do Desfile', 'Concluído na Avenida'];
 
@@ -76,12 +77,16 @@ export default function ParadeKanban({ macrotarefas, setMacrotarefas, isAdmin }:
   /**
    * Adiciona uma nova etapa/subitem na checklist da macrotarefa.
    */
+  /**
+   * Adiciona uma nova etapa/subitem na checklist da macrotarefa com responsável atribuído.
+   */
   const handleAddSubitem = (macroId: string, e: React.FormEvent) => {
     e.preventDefault();
     if (!textoNovoSubitem.trim()) return;
 
     setMacrotarefas(prev => prev.map(macro => {
       if (macro.id === macroId) {
+        const respItem = responsavelNovoSubitem.trim() || macro.responsavelPrincipal;
         return {
           ...macro,
           checklists: [
@@ -89,7 +94,8 @@ export default function ParadeKanban({ macrotarefas, setMacrotarefas, isAdmin }:
             {
               id: `c-${Date.now()}`,
               texto: textoNovoSubitem.trim(),
-              concluido: false
+              concluido: false,
+              responsavel: respItem
             }
           ]
         };
@@ -98,6 +104,7 @@ export default function ParadeKanban({ macrotarefas, setMacrotarefas, isAdmin }:
     }));
 
     setTextoNovoSubitem('');
+    setResponsavelNovoSubitem('');
     setCardAdicionandoSubitem(null);
   };
 
@@ -112,7 +119,8 @@ export default function ParadeKanban({ macrotarefas, setMacrotarefas, isAdmin }:
     const checks = linhas.map((linha, i) => ({
       id: `c-new-${Date.now()}-${i}`,
       texto: linha.trim(),
-      concluido: false
+      concluido: false,
+      responsavel: novoResponsavel.trim() || 'Apoio Geral'
     }));
 
     const nova: MacrotarefaDesfile = {
@@ -121,7 +129,7 @@ export default function ParadeKanban({ macrotarefas, setMacrotarefas, isAdmin }:
       coluna: novaColuna,
       responsavelPrincipal: novoResponsavel.trim() || 'Apoio Geral',
       descricao: novaDescricao.trim() || undefined,
-      checklists: checks.length > 0 ? checks : [{ id: `c-${Date.now()}`, texto: 'Planejar execução', concluido: false }]
+      checklists: checks.length > 0 ? checks : [{ id: `c-${Date.now()}`, texto: 'Planejar execução', concluido: false, responsavel: novoResponsavel.trim() || 'Apoio Geral' }]
     };
 
     setMacrotarefas(prev => [...prev, nova]);
@@ -308,37 +316,55 @@ export default function ParadeKanban({ macrotarefas, setMacrotarefas, isAdmin }:
                                   <Square className="w-3.5 h-3.5 text-stone-400" />
                                 )}
                               </button>
-                              <span className={`leading-tight ${check.concluido ? 'line-through text-stone-400' : 'text-stone-800'}`}>
-                                {check.texto}
-                              </span>
+                              <div className="flex-1">
+                                <span className={`leading-tight ${check.concluido ? 'line-through text-stone-400' : 'text-stone-800'}`}>
+                                  {check.texto}
+                                </span>
+                                <span className="block text-[10px] text-[#581C87] font-mono font-bold mt-0.5">
+                                  👤 {check.responsavel || macro.responsavelPrincipal}
+                                </span>
+                              </div>
                             </div>
                           ))}
                         </div>
 
                         {/* Adicionar subitem */}
                         {cardAdicionandoSubitem === macro.id ? (
-                          <form onSubmit={(e) => handleAddSubitem(macro.id, e)} className="pt-1 flex gap-1">
+                          <form onSubmit={(e) => handleAddSubitem(macro.id, e)} className="pt-1 space-y-1">
+                            <div className="flex gap-1">
+                              <input
+                                type="text"
+                                autoFocus
+                                placeholder="Nova sub-tarefa..."
+                                value={textoNovoSubitem}
+                                onChange={(e) => setTextoNovoSubitem(e.target.value)}
+                                className="flex-1 px-2 py-1 bg-stone-50 border border-black text-xs font-mono focus:outline-none"
+                              />
+                              <button
+                                type="submit"
+                                className="px-2 py-1 bg-[#1E1B2E] text-white text-[10px] font-black uppercase cursor-pointer"
+                              >
+                                +
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCardAdicionandoSubitem(null);
+                                  setTextoNovoSubitem('');
+                                  setResponsavelNovoSubitem('');
+                                }}
+                                className="px-1.5 py-1 text-stone-500 text-[10px] cursor-pointer"
+                              >
+                                ✕
+                              </button>
+                            </div>
                             <input
                               type="text"
-                              autoFocus
-                              placeholder="Nova sub-tarefa..."
-                              value={textoNovoSubitem}
-                              onChange={(e) => setTextoNovoSubitem(e.target.value)}
-                              className="flex-1 px-2 py-1 bg-stone-50 border border-black text-xs font-mono focus:outline-none"
+                              placeholder={`Resp. do item (padrão: ${macro.responsavelPrincipal})`}
+                              value={responsavelNovoSubitem}
+                              onChange={(e) => setResponsavelNovoSubitem(e.target.value)}
+                              className="w-full px-2 py-1 bg-stone-50 border border-stone-300 text-[10px] font-mono focus:outline-none placeholder:text-stone-400"
                             />
-                            <button
-                              type="submit"
-                              className="px-2 py-1 bg-[#1E1B2E] text-white text-[10px] font-black uppercase cursor-pointer"
-                            >
-                              +
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setCardAdicionandoSubitem(null)}
-                              className="px-1.5 py-1 text-stone-500 text-[10px] cursor-pointer"
-                            >
-                              ✕
-                            </button>
                           </form>
                         ) : (
                           <button

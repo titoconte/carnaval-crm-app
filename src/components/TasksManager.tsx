@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   Plus,
   Users,
+  User,
   Calendar,
   CheckSquare,
   Square,
@@ -24,7 +25,8 @@ import {
   podeAcionarEquipePronta,
   formatarDataBrasileira,
   atualizarTarefaPostIt,
-  removerTarefaPostIt
+  removerTarefaPostIt,
+  obterResponsavelItemChecklist
 } from '../data/blocoData';
 
 interface TasksManagerProps {
@@ -40,7 +42,8 @@ interface TasksManagerProps {
  * Funcionalidades:
  * - "Quero Ajudar" para assumir tarefas órfãs;
  * - Edição completa e deleção de tarefas do mural;
- * - Checklists individuais com datas limites por item e % de progresso da tarefa;
+ * - Checklists individuais com responsável específico por item (se não tiver, herda o da tarefa pai);
+ * - Prazos e datas limites por item e % de progresso da tarefa;
  * - Data final global da tarefa;
  * - Botão "Equipe Pronta" que transfere a tarefa para a aba Tarefas em Andamento (Desfile).
  */
@@ -67,6 +70,10 @@ export default function TasksManager({
   const [editCor, setEditCor] = useState<TarefaPostIt['corPostIt']>('rosa');
   const [editUrgente, setEditUrgente] = useState(false);
   const [editDataFinal, setEditDataFinal] = useState('');
+  const [editChecklists, setEditChecklists] = useState<ItemChecklistTarefa[]>([]);
+  const [editItemTexto, setEditItemTexto] = useState('');
+  const [editItemResponsavel, setEditItemResponsavel] = useState('');
+  const [editItemData, setEditItemData] = useState('');
 
   // Estados do formulário de novo Post-it
   const [novoTitulo, setNovoTitulo] = useState('');
@@ -78,8 +85,9 @@ export default function TasksManager({
   const [novaDataFinal, setNovaDataFinal] = useState('');
 
   // Checklist dinâmica no cadastro
-  const [checklistTemp, setChecklistTemp] = useState<{ id: string; texto: string; dataLimite?: string }[]>([]);
+  const [checklistTemp, setChecklistTemp] = useState<{ id: string; texto: string; dataLimite?: string; responsavel?: string }[]>([]);
   const [itemTexto, setItemTexto] = useState('');
+  const [itemResponsavel, setItemResponsavel] = useState('');
   const [itemData, setItemData] = useState('');
 
   const isOrfa = (t: TarefaPostIt) => !podeAcionarEquipePronta(t);
@@ -103,6 +111,7 @@ export default function TasksManager({
 
   /**
    * Associa o nome do voluntário e a data de entrega definida à tarefa órfã.
+   * Se os itens da checklist não tiverem responsável próprio, passam a ter o voluntário.
    */
   const handleAssumir = (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,10 +119,17 @@ export default function TasksManager({
 
     setTarefas(prev => prev.map(t => {
       if (t.id === modalAssumir.id) {
+        const respFinal = nomeVoluntario.trim();
+        const checksAtualizados = t.checklists?.map(c => ({
+          ...c,
+          responsavel: c.responsavel?.trim() ? c.responsavel.trim() : respFinal
+        }));
+
         return {
           ...t,
-          responsavel: nomeVoluntario.trim(),
-          dataFinal: dataAssumir.trim() ? dataAssumir.trim() : t.dataFinal
+          responsavel: respFinal,
+          dataFinal: dataAssumir.trim() ? dataAssumir.trim() : t.dataFinal,
+          checklists: checksAtualizados
         };
       }
       return t;
@@ -171,14 +187,52 @@ export default function TasksManager({
     setEditCor(tarefa.corPostIt);
     setEditUrgente(!!tarefa.urgente);
     setEditDataFinal(tarefa.dataFinal || '');
+    setEditChecklists(tarefa.checklists || []);
+    setEditItemTexto('');
+    setEditItemResponsavel('');
+    setEditItemData('');
+  };
+
+  /**
+   * Adiciona um novo item à checklist no modal de edição de tarefa.
+   */
+  const handleAdicionarItemChecklistEdicao = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!editItemTexto.trim()) return;
+
+    const novoItem: ItemChecklistTarefa = {
+      id: `chk-${Date.now()}-${editChecklists.length}`,
+      texto: editItemTexto.trim(),
+      concluido: false,
+      dataLimite: editItemData.trim() ? editItemData.trim() : undefined,
+      responsavel: editItemResponsavel.trim() || editResponsavel.trim() || undefined
+    };
+
+    setEditChecklists(prev => [...prev, novoItem]);
+    setEditItemTexto('');
+    setEditItemResponsavel('');
+    setEditItemData('');
+  };
+
+  /**
+   * Remove um item da checklist durante a edição.
+   */
+  const handleRemoverItemChecklistEdicao = (id: string) => {
+    setEditChecklists(prev => prev.filter(c => c.id !== id));
   };
 
   /**
    * Salva as alterações da tarefa em edição.
+   * Aplica a regra: se o item da checklist não tiver responsável, herda o da tarefa pai.
    */
   const handleSalvarEdicaoTarefa = (e: React.FormEvent) => {
     e.preventDefault();
     if (!modalEditarTarefa || !editTitulo.trim()) return;
+
+    const checklistsTratadas = editChecklists.map(c => ({
+      ...c,
+      responsavel: obterResponsavelItemChecklist(c.responsavel, editResponsavel) || undefined
+    }));
 
     const atualizada: TarefaPostIt = {
       ...modalEditarTarefa,
@@ -188,7 +242,8 @@ export default function TasksManager({
       responsavel: editResponsavel.trim(),
       corPostIt: editCor,
       urgente: editUrgente,
-      dataFinal: editDataFinal.trim() ? editDataFinal.trim() : undefined
+      dataFinal: editDataFinal.trim() ? editDataFinal.trim() : undefined,
+      checklists: checklistsTratadas.length > 0 ? checklistsTratadas : undefined
     };
 
     setTarefas(prev => atualizarTarefaPostIt(prev, atualizada));
@@ -220,11 +275,13 @@ export default function TasksManager({
       {
         id: `chk-new-${Date.now()}-${prev.length}`,
         texto: itemTexto.trim(),
-        dataLimite: itemData ? itemData : undefined
+        dataLimite: itemData ? itemData : undefined,
+        responsavel: itemResponsavel.trim() || novoResponsavel.trim() || undefined
       }
     ]);
 
     setItemTexto('');
+    setItemResponsavel('');
     setItemData('');
   };
 
@@ -237,6 +294,7 @@ export default function TasksManager({
 
   /**
    * Cria um novo post-it com checklist opcional, percentual e prazos.
+   * Regra: Se o item não tiver responsável especificado, herda o da tarefa pai.
    */
   const handleCriarPostIt = (e: React.FormEvent) => {
     e.preventDefault();
@@ -246,7 +304,8 @@ export default function TasksManager({
       id: item.id,
       texto: item.texto,
       dataLimite: item.dataLimite,
-      concluido: false
+      concluido: false,
+      responsavel: obterResponsavelItemChecklist(item.responsavel, novoResponsavel) || undefined
     }));
 
     const nova: TarefaPostIt = {
@@ -269,6 +328,7 @@ export default function TasksManager({
     setNovoResponsavel('');
     setNovaDataFinal('');
     setChecklistTemp([]);
+    setItemResponsavel('');
 
     confetti({
       particleCount: 40,
@@ -329,7 +389,7 @@ export default function TasksManager({
             <span>Mural de Recados & Apoio da Bicharada</span>
           </h2>
           <p className="text-xs text-stone-600 mt-0.5">
-            Quadro comunitário: ofereça ajuda nas tarefas abertas ou monte um plano com checklist e prazos!
+            Quadro comunitário: ofereça ajuda nas tarefas abertas ou monte um plano com checklist, responsáveis por item e prazos!
           </p>
         </div>
 
@@ -461,7 +521,7 @@ export default function TasksManager({
                       {tarefa.descricao}
                     </p>
 
-                    {/* Exibição e Interação da Checklist com % de Conclusão */}
+                    {/* Exibição e Interação da Checklist com % de Conclusão e Responsável do Item */}
                     {temChecklist && (
                       <div className="mt-3 pt-2 border-t border-black/15">
                         <div className="flex items-center justify-between text-[11px] font-mono font-bold mb-1">
@@ -480,30 +540,43 @@ export default function TasksManager({
                           />
                         </div>
 
-                        <div className="space-y-1.5 max-h-36 overflow-y-auto no-scrollbar">
-                          {tarefa.checklists!.map((item) => (
-                            <div
-                              key={item.id}
-                              onClick={() => toggleItemChecklist(tarefa.id, item.id)}
-                              className="flex items-start gap-1.5 text-xs font-mono cursor-pointer hover:bg-black/5 p-1 rounded transition-colors"
-                            >
-                              {item.concluido ? (
-                                <CheckSquare className="w-3.5 h-3.5 text-[#00A868] shrink-0 mt-0.5" />
-                              ) : (
-                                <Square className="w-3.5 h-3.5 text-stone-500 shrink-0 mt-0.5" />
-                              )}
-                              <div className="flex-1 min-w-0">
-                                <span className={item.concluido ? 'line-through text-stone-500' : 'text-stone-900'}>
-                                  {item.texto}
-                                </span>
-                                {item.dataLimite && (
-                                  <span className="block text-[10px] text-stone-600 font-mono font-bold mt-0.5">
-                                    📅 Prazo item: {formatarDataBrasileira(item.dataLimite)}
-                                  </span>
+                        <div className="space-y-1.5 max-h-40 overflow-y-auto no-scrollbar">
+                          {tarefa.checklists!.map((item) => {
+                            const respItem = obterResponsavelItemChecklist(item.responsavel, tarefa.responsavel);
+
+                            return (
+                              <div
+                                key={item.id}
+                                onClick={() => toggleItemChecklist(tarefa.id, item.id)}
+                                className="flex items-start gap-1.5 text-xs font-mono cursor-pointer hover:bg-black/5 p-1 rounded transition-colors"
+                              >
+                                {item.concluido ? (
+                                  <CheckSquare className="w-3.5 h-3.5 text-[#00A868] shrink-0 mt-0.5" />
+                                ) : (
+                                  <Square className="w-3.5 h-3.5 text-stone-500 shrink-0 mt-0.5" />
                                 )}
+                                <div className="flex-1 min-w-0">
+                                  <span className={item.concluido ? 'line-through text-stone-500' : 'text-stone-900 font-medium'}>
+                                    {item.texto}
+                                  </span>
+
+                                  {/* Badges de Responsável e Prazo do Item da Checklist */}
+                                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-[#581C87] bg-purple-100/90 px-1.5 py-0.2 border border-purple-300">
+                                      <User className="w-2.5 h-2.5 text-[#581C87]" />
+                                      <span>{respItem || 'Apoio Geral'}</span>
+                                    </span>
+
+                                    {item.dataLimite && (
+                                      <span className="text-[10px] text-stone-600 font-mono font-bold">
+                                        📅 {formatarDataBrasileira(item.dataLimite)}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     )}
@@ -674,16 +747,16 @@ export default function TasksManager({
         </div>
       )}
 
-      {/* Modal para Edição Completa da Tarefa / Post-it */}
+      {/* Modal para Edição Completa da Tarefa / Post-it com Checklist e Responsáveis por Item */}
       {modalEditarTarefa && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border-4 border-[#1E1B2E] p-6 max-w-md w-full shadow-[6px_6px_0px_#1E1B2E] max-h-[90vh] overflow-y-auto">
+          <div className="bg-white border-4 border-[#1E1B2E] p-6 max-w-lg w-full shadow-[6px_6px_0px_#1E1B2E] max-h-[90vh] overflow-y-auto">
             <div className="stamp stamp-urgent text-xs mb-2">Editar Tarefa</div>
             <h3 className="text-base font-black uppercase text-[#1E1B2E]">
               Editar Post-It do Mural
             </h3>
             <p className="text-xs text-stone-600 mt-1 mb-4 font-serif">
-              Atualize as informações, o responsável e os prazos desta demanda.
+              Atualize as informações, o responsável geral e gerencie os itens da checklist com seus respectivos responsáveis.
             </p>
 
             <form onSubmit={handleSalvarEdicaoTarefa} className="space-y-3">
@@ -724,7 +797,7 @@ export default function TasksManager({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Prazo Final</label>
+                  <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Prazo Final da Tarefa</label>
                   <input
                     type="date"
                     value={editDataFinal}
@@ -752,7 +825,7 @@ export default function TasksManager({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Responsável</label>
+                  <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Responsável da Tarefa</label>
                   <input
                     type="text"
                     placeholder="Vazio para Vaga Aberta"
@@ -761,6 +834,72 @@ export default function TasksManager({
                     className="w-full px-2 py-1.5 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-bold font-mono focus:outline-none"
                   />
                 </div>
+              </div>
+
+              {/* Seção de Gerenciamento da Checklist em Edição */}
+              <div className="pt-2 border-t border-stone-200">
+                <label className="block text-xs font-black uppercase text-[#581C87] mb-1">
+                  Checklist da Tarefa (com Responsável por Item)
+                </label>
+                <div className="flex flex-col sm:flex-row gap-2 mb-2">
+                  <input
+                    type="text"
+                    placeholder="Etapa ou sub-tarefa..."
+                    value={editItemTexto}
+                    onChange={(e) => setEditItemTexto(e.target.value)}
+                    className="flex-1 px-2 py-1 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Resp. (padrão: da tarefa)"
+                    value={editItemResponsavel}
+                    onChange={(e) => setEditItemResponsavel(e.target.value)}
+                    className="w-full sm:w-36 px-2 py-1 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono"
+                    title="Responsável deste item (se vazio, assume o responsável da tarefa)"
+                  />
+                  <input
+                    type="date"
+                    value={editItemData}
+                    onChange={(e) => setEditItemData(e.target.value)}
+                    className="w-full sm:w-28 px-1 py-1 bg-stone-50 border-2 border-[#1E1B2E] text-[11px] font-mono"
+                    title="Prazo limite para este item"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAdicionarItemChecklistEdicao}
+                    className="px-2.5 py-1 bg-[#00D287] text-[#1E1B2E] text-xs font-black uppercase border border-black shadow-[1px_1px_0px_#000] cursor-pointer"
+                  >
+                    +
+                  </button>
+                </div>
+
+                {editChecklists.length > 0 && (
+                  <div className="space-y-1 bg-stone-100 p-2 border border-stone-300 max-h-36 overflow-y-auto">
+                    {editChecklists.map((item) => {
+                      const respEfetivo = item.responsavel?.trim() || editResponsavel.trim();
+                      return (
+                        <div key={item.id} className="flex items-center justify-between text-xs font-mono bg-white p-1 border">
+                          <span className="truncate flex-1">{item.texto}</span>
+                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                            <span className="text-[10px] text-[#581C87] bg-purple-50 px-1.5 py-0.5 border border-purple-200">
+                              👤 {respEfetivo || 'Apoio Geral'}
+                            </span>
+                            {item.dataLimite && (
+                              <span className="text-[10px] text-stone-500 font-sans">📅 {item.dataLimite}</span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoverItemChecklistEdicao(item.id)}
+                              className="text-red-500 hover:text-red-700 cursor-pointer"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-2 pt-1">
@@ -796,16 +935,16 @@ export default function TasksManager({
         </div>
       )}
 
-      {/* Modal para Pregar Novo Post-It com Checklists e Prazos */}
+      {/* Modal para Pregar Novo Post-It com Checklists, Responsáveis por Item e Prazos */}
       {modalNovoPostIt && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border-4 border-[#1E1B2E] p-6 max-w-md w-full shadow-[6px_6px_0px_#1E1B2E] max-h-[90vh] overflow-y-auto">
+          <div className="bg-white border-4 border-[#1E1B2E] p-6 max-w-lg w-full shadow-[6px_6px_0px_#1E1B2E] max-h-[90vh] overflow-y-auto">
             <div className="stamp stamp-urgent text-xs mb-2">Novo Bilhete de Apoio</div>
             <h3 className="text-base font-black uppercase text-[#1E1B2E]">
               Pregar Demanda no Mural
             </h3>
             <p className="text-xs text-stone-600 mt-1 mb-4 font-serif">
-              Configure os detalhes da missão, checklists operacionais e prazos finais.
+              Configure os detalhes da missão, checklists operacionais com responsáveis por item e prazos finais.
             </p>
 
             <form onSubmit={handleCriarPostIt} className="space-y-3">
@@ -878,7 +1017,7 @@ export default function TasksManager({
 
                 <div>
                   <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">
-                    Responsável (opcional)
+                    Responsável Geral da Tarefa (opcional)
                   </label>
                   <input
                     type="text"
@@ -890,12 +1029,12 @@ export default function TasksManager({
                 </div>
               </div>
 
-              {/* Seção de Checklist da Tarefa */}
+              {/* Seção de Checklist da Tarefa com Responsável por Item */}
               <div className="pt-2 border-t border-stone-200">
                 <label className="block text-xs font-black uppercase text-[#581C87] mb-1">
-                  Adicionar Itens na Checklist (com Data por Tarefa)
+                  Adicionar Itens na Checklist (com Responsável e Prazo)
                 </label>
-                <div className="flex gap-2 mb-2">
+                <div className="flex flex-col sm:flex-row gap-2 mb-2">
                   <input
                     type="text"
                     placeholder="Etapa ou sub-tarefa..."
@@ -904,39 +1043,54 @@ export default function TasksManager({
                     className="flex-1 px-2 py-1 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono"
                   />
                   <input
+                    type="text"
+                    placeholder="Resp. (padrão: da tarefa)"
+                    value={itemResponsavel}
+                    onChange={(e) => setItemResponsavel(e.target.value)}
+                    className="w-full sm:w-36 px-2 py-1 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono"
+                    title="Responsável deste item (se vazio, assume o responsável da tarefa)"
+                  />
+                  <input
                     type="date"
                     value={itemData}
                     onChange={(e) => setItemData(e.target.value)}
-                    className="w-32 px-1 py-1 bg-stone-50 border-2 border-[#1E1B2E] text-[11px] font-mono"
+                    className="w-full sm:w-28 px-1 py-1 bg-stone-50 border-2 border-[#1E1B2E] text-[11px] font-mono"
                     title="Data limite para este item da checklist"
                   />
                   <button
+                    type="button"
                     onClick={handleAdicionarItemChecklist}
-                    className="px-2.5 py-1 bg-[#00D287] text-[#1E1B2E] text-xs font-black uppercase border border-black shadow-[1px_1px_0px_#000]"
+                    className="px-2.5 py-1 bg-[#00D287] text-[#1E1B2E] text-xs font-black uppercase border border-black shadow-[1px_1px_0px_#000] cursor-pointer"
                   >
                     +
                   </button>
                 </div>
 
                 {checklistTemp.length > 0 && (
-                  <div className="space-y-1 bg-stone-100 p-2 border border-stone-300 max-h-32 overflow-y-auto">
-                    {checklistTemp.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between text-xs font-mono bg-white p-1 border">
-                        <span className="truncate">{item.texto}</span>
-                        <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                          {item.dataLimite && (
-                            <span className="text-[10px] text-stone-500 font-sans">{item.dataLimite}</span>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoverItemChecklist(item.id)}
-                            className="text-red-500 hover:text-red-700 cursor-pointer"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
+                  <div className="space-y-1 bg-stone-100 p-2 border border-stone-300 max-h-36 overflow-y-auto">
+                    {checklistTemp.map((item) => {
+                      const respEfetivo = item.responsavel?.trim() || novoResponsavel.trim();
+                      return (
+                        <div key={item.id} className="flex items-center justify-between text-xs font-mono bg-white p-1 border">
+                          <span className="truncate flex-1">{item.texto}</span>
+                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                            <span className="text-[10px] text-[#581C87] bg-purple-50 px-1.5 py-0.5 border border-purple-200">
+                              👤 {respEfetivo || 'Apoio Geral'}
+                            </span>
+                            {item.dataLimite && (
+                              <span className="text-[10px] text-stone-500 font-sans">📅 {item.dataLimite}</span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoverItemChecklist(item.id)}
+                              className="text-red-500 hover:text-red-700 cursor-pointer"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

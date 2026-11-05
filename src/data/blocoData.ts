@@ -41,6 +41,7 @@ export interface ItemChecklistTarefa {
   texto: string;
   dataLimite?: string; // Data por tarefa da checklist
   concluido: boolean;
+  responsavel?: string; // Responsavel especifico pelo item da checklist
 }
 
 export interface TarefaPostIt {
@@ -105,6 +106,7 @@ export interface MacrotarefaDesfile {
     id: string;
     texto: string;
     concluido: boolean;
+    responsavel?: string;
   }[];
 }
 
@@ -350,18 +352,43 @@ export function podeAcionarEquipePronta(tarefa: TarefaPostIt): boolean {
  * @param tarefa - Tarefa do mural
  * @returns Macrotarefa estruturada para a coluna 'A Fazer' do desfile
  */
+/**
+ * Retorna o responsavel de um item de checklist.
+ * Se o item nao tiver responsavel proprio definido, herda o responsavel da tarefa pai.
+ * 
+ * @param itemResponsavel - Responsavel especifico do item
+ * @param tarefaResponsavel - Responsavel geral da tarefa
+ * @returns Responsavel aplicavel ao item
+ */
+export function obterResponsavelItemChecklist(
+  itemResponsavel?: string,
+  tarefaResponsavel?: string
+): string {
+  if (itemResponsavel && itemResponsavel.trim().length > 0) {
+    return itemResponsavel.trim();
+  }
+  if (tarefaResponsavel && tarefaResponsavel.trim().length > 0) {
+    return tarefaResponsavel.trim();
+  }
+  return '';
+}
+
 export function converterTarefaEmMacrotarefa(tarefa: TarefaPostIt): MacrotarefaDesfile {
+  const responsavelPrincipal = tarefa.responsavel?.trim() || 'Equipe Voluntária Mobilizada';
+
   const checks = tarefa.checklists && tarefa.checklists.length > 0
     ? tarefa.checklists.map(c => ({
         id: c.id,
         texto: c.dataLimite ? `${c.texto} (Prazo: ${c.dataLimite})` : c.texto,
-        concluido: c.concluido
+        concluido: c.concluido,
+        responsavel: obterResponsavelItemChecklist(c.responsavel, responsavelPrincipal)
       }))
     : [
         {
           id: `chk-${Date.now()}`,
           texto: 'Mobilização e execução pela equipe',
-          concluido: false
+          concluido: false,
+          responsavel: responsavelPrincipal
         }
       ];
 
@@ -369,7 +396,7 @@ export function converterTarefaEmMacrotarefa(tarefa: TarefaPostIt): MacrotarefaD
     id: `macro-${tarefa.id}`,
     titulo: tarefa.titulo,
     coluna: 'A Fazer',
-    responsavelPrincipal: tarefa.responsavel || 'Equipe Voluntária Mobilizada',
+    responsavelPrincipal,
     descricao: tarefa.descricao + (tarefa.dataFinal ? ` | Prazo final: ${tarefa.dataFinal}` : ''),
     checklists: checks
   };
