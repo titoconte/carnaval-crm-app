@@ -15,24 +15,22 @@ import {
   Palette, 
   Menu, 
   X, 
-  ChevronDown, 
-  ChevronUp, 
   LucideIcon 
 } from 'lucide-react';
 
 export type TabId = 
+  | 'tarefas' 
+  | 'calendario' 
+  | 'desfile' 
   | 'repertorio' 
   | 'letras' 
-  | 'tarefas' 
+  | 'rifa' 
+  | 'inscricao' 
+  | 'midia' 
+  | 'bar' 
   | 'elenco' 
   | 'enquetes' 
-  | 'bar' 
-  | 'rifa' 
-  | 'desfile' 
-  | 'calendario' 
-  | 'inscricao' 
-  | 'documentos' 
-  | 'midia';
+  | 'documentos';
 
 export interface TabItem {
   id: TabId;
@@ -43,26 +41,35 @@ export interface TabItem {
 }
 
 /**
- * Retorna as abas visíveis no menu principal do aplicativo.
- * A aba 'Letras & Cifras' foi movida para dentro do Repertório.
- * Inclui as abas 'Documentos' e 'Mídia & Artes' (com cores do ano, Instagram e tema).
+ * Retorna as abas visíveis no menu principal na ordem oficial estrita:
+ * 1. Mural de Tarefas (tarefas)
+ * 2. Calendário (calendario)
+ * 3. Tarefas em Andamento (desfile)
+ * 4. Repertório (repertorio)
+ * 5. Rifas (rifa)
+ * 6. Inscrições (inscricao)
+ * 7. Mídia & Artes (midia)
+ * 8. Bar dos Ensaios (bar)
+ * 9. Elenco & Naipes (elenco)
+ * 10. Enquetes WhatsApp (enquetes)
+ * 11. Documentos (documentos)
  * 
  * @param orfasCount - Quantidade de tarefas órfãs para exibição no badge
  * @returns Lista de abas a serem renderizadas na barra de navegação
  */
 export function getVisibleNavigationTabs(orfasCount: number = 0): TabItem[] {
   return [
-    { id: 'repertorio', label: 'Repertório', icon: Music },
     { id: 'tarefas', label: 'Mural de Tarefas', icon: ClipboardList, badge: orfasCount > 0 ? `${orfasCount} órfãs` : undefined },
+    { id: 'calendario', label: 'Calendário', icon: Calendar },
+    { id: 'desfile', label: 'Tarefas em Andamento', icon: Truck },
+    { id: 'repertorio', label: 'Repertório', icon: Music },
+    { id: 'rifa', label: 'Rifas 🎟️', icon: Gift, highlight: true },
+    { id: 'inscricao', label: 'Inscrições', icon: UserPlus },
+    { id: 'midia', label: 'Mídia & Artes', icon: Palette },
+    { id: 'bar', label: 'Bar dos Ensaios', icon: Beer },
     { id: 'elenco', label: 'Elenco & Naipes', icon: Users },
     { id: 'enquetes', label: 'Enquetes WhatsApp', icon: BarChart2 },
-    { id: 'bar', label: 'Bar dos Ensaios', icon: Beer },
-    { id: 'rifa', label: 'Rifa Online 🎟️', icon: Gift, highlight: true },
-    { id: 'desfile', label: 'Tarefas em Andamento', icon: Truck },
-    { id: 'calendario', label: 'Calendário', icon: Calendar },
-    { id: 'inscricao', label: 'Inscrições', icon: UserPlus },
-    { id: 'documentos', label: 'Documentos', icon: FolderDown },
-    { id: 'midia', label: 'Mídia & Artes', icon: Palette }
+    { id: 'documentos', label: 'Documentos', icon: FolderDown }
   ];
 }
 
@@ -73,18 +80,18 @@ interface NavigationProps {
 }
 
 /**
- * Menu de Navegação do Bloco Bicharada.
- * - Versão Desktop: Disposição expandida com quebra fluida (flex-wrap), exibindo todas as opções de forma clara.
- * - Versão Mobile: Barra de navegação fixa inferior de 1-toque + Gaveta completa de abas com rolagem instantânea para o topo.
+ * Menu de Navegação Oficial do Bloco Bicharada.
+ * - Versão Desktop: Barra superior horizontal fixa (hidden md:block) com todas as 11 abas em ordem oficial.
+ * - Versão Mobile: Barra de menu superior 100% OCULTA, mantendo unicamente a barra inferior fixa (Bottom Navigation).
  */
 export default function Navigation({ activeTab, setActiveTab, orfasCount }: NavigationProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const tabs = getVisibleNavigationTabs(orfasCount);
-  const currentTab = tabs.find(t => t.id === activeTab) || tabs[0];
-  const CurrentIcon = currentTab.icon;
 
   /**
-   * Seleciona uma aba, fecha o menu mobile e rola suavemente para o topo limpo da página.
+   * Seleciona uma aba, fecha o menu mobile e rola suavemente para o topo da página.
+   * 
+   * @param tabId - Identificador da aba selecionada
    */
   const handleSelectTab = (tabId: TabId) => {
     setActiveTab(tabId);
@@ -96,10 +103,10 @@ export default function Navigation({ activeTab, setActiveTab, orfasCount }: Navi
 
   return (
     <>
-      <nav className="sticky top-0 z-30 bg-white border-b-3 border-[#1E1B2E] py-2 px-3 shadow-md">
-        {/* VERSÃO DESKTOP: Todas as opções visíveis em layout flex-wrap elegante */}
-        <div className="hidden md:flex flex-wrap items-center justify-center gap-2 max-w-5xl mx-auto">
-          {tabs.map((tab) => {
+      {/* VERSÃO DESKTOP: Barra superior visível apenas em telas médias e grandes (md:block) */}
+      <nav className="hidden md:block sticky top-0 z-30 bg-white border-b-3 border-[#1E1B2E] py-2 px-3 shadow-md">
+        <div className="flex flex-wrap items-center justify-center gap-1.5 max-w-5xl mx-auto">
+          {tabs.map((tab, idx) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
 
@@ -116,6 +123,9 @@ export default function Navigation({ activeTab, setActiveTab, orfasCount }: Navi
                     : 'bg-[#FFFDF9] text-[#1E1B2E] hover:bg-pink-50/70 shadow-[2px_2px_0px_#1E1B2E]'
                 }`}
               >
+                <span className="text-[10px] font-mono font-bold opacity-75">
+                  {idx + 1}.
+                </span>
                 <Icon className={`w-3.5 h-3.5 ${
                   isActive ? 'text-white' : tab.highlight ? 'text-[#1E1B2E]' : 'text-[#E6007E]'
                 }`} />
@@ -130,55 +140,9 @@ export default function Navigation({ activeTab, setActiveTab, orfasCount }: Navi
             );
           })}
         </div>
-
-        {/* VERSÃO MOBILE TOPO: Seletor Rápido e Botão para Abrir Todas as Abas */}
-        <div className="md:hidden space-y-1.5">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 bg-[#FFFDF9] border-2 border-[#1E1B2E] px-2.5 py-1 text-xs font-black uppercase shadow-[1px_1px_0px_#1E1B2E] truncate">
-              <CurrentIcon className="w-3.5 h-3.5 text-[#E6007E] shrink-0" />
-              <span className="truncate">{currentTab.label}</span>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="flex items-center gap-1 px-3 py-1.5 bg-[#581C87] text-[#FBBF24] border-2 border-[#1E1B2E] text-xs font-black uppercase shadow-[2px_2px_0px_#1E1B2E] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer shrink-0"
-            >
-              {mobileMenuOpen ? <X className="w-3.5 h-3.5" /> : <Menu className="w-3.5 h-3.5" />}
-              <span>{mobileMenuOpen ? 'Fechar' : 'Todas as Abas'}</span>
-              {mobileMenuOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-            </button>
-          </div>
-
-          {/* Barra de rolagem horizontal mobile rápida */}
-          <div className="overflow-x-auto no-scrollbar pt-0.5">
-            <div className="flex items-center gap-1.5 min-w-max pb-0.5">
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => handleSelectTab(tab.id)}
-                    className={`flex items-center gap-1 px-2.5 py-1 border-2 border-[#1E1B2E] text-[11px] font-black uppercase whitespace-nowrap cursor-pointer transition-all ${
-                      isActive
-                        ? 'bg-[#E6007E] text-white shadow-[2px_2px_0px_#1E1B2E]'
-                        : 'bg-white text-[#1E1B2E] shadow-[1px_1px_0px_#1E1B2E]'
-                    }`}
-                  >
-                    <Icon className={`w-3 h-3 ${isActive ? 'text-white' : 'text-[#E6007E]'}`} />
-                    <span>{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
       </nav>
 
-      {/* MODAL / GAVETA MOBILE DE TODAS AS ABAS */}
+      {/* MODAL / GAVETA MOBILE DE TODAS AS 11 ABAS EM ORDEM OFICIAL */}
       {mobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col justify-end p-3 animate-fadeIn">
           <div className="bg-[#FAF6EC] border-4 border-[#1E1B2E] p-4 shadow-[6px_6px_0px_#1E1B2E] max-h-[85vh] flex flex-col">
@@ -186,7 +150,7 @@ export default function Navigation({ activeTab, setActiveTab, orfasCount }: Navi
               <div>
                 <span className="stamp stamp-urgent text-[10px]">Navegação Oficial</span>
                 <h3 className="font-mono font-black text-sm uppercase text-[#1E1B2E] mt-0.5">
-                  Todas as Seções do Bloco
+                  Todas as 11 Seções do Bloco
                 </h3>
               </div>
               <button
@@ -199,7 +163,7 @@ export default function Navigation({ activeTab, setActiveTab, orfasCount }: Navi
             </div>
 
             <div className="grid grid-cols-2 gap-2 overflow-y-auto flex-1 p-1">
-              {tabs.map((tab) => {
+              {tabs.map((tab, idx) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
 
@@ -208,7 +172,7 @@ export default function Navigation({ activeTab, setActiveTab, orfasCount }: Navi
                     key={tab.id}
                     type="button"
                     onClick={() => handleSelectTab(tab.id)}
-                    className={`flex items-center gap-2 p-3 border-2 border-[#1E1B2E] text-left text-xs font-black uppercase transition-all cursor-pointer min-h-[48px] ${
+                    className={`flex items-center gap-2 p-2.5 border-2 border-[#1E1B2E] text-left text-xs font-black uppercase transition-all cursor-pointer min-h-[48px] ${
                       isActive
                         ? 'bg-[#E6007E] text-white shadow-[2px_2px_0px_#1E1B2E]'
                         : tab.highlight
@@ -216,6 +180,11 @@ export default function Navigation({ activeTab, setActiveTab, orfasCount }: Navi
                         : 'bg-white text-[#1E1B2E] hover:bg-pink-50 shadow-[1px_1px_0px_#1E1B2E]'
                     }`}
                   >
+                    <span className={`text-[11px] font-mono font-black px-1.5 py-0.5 border border-[#1E1B2E] ${
+                      isActive ? 'bg-[#581C87] text-[#FBBF24]' : 'bg-stone-100 text-[#1E1B2E]'
+                    }`}>
+                      #{idx + 1}
+                    </span>
                     <Icon className={`w-4 h-4 shrink-0 ${
                       isActive ? 'text-white' : tab.highlight ? 'text-[#1E1B2E]' : 'text-[#E6007E]'
                     }`} />
@@ -235,60 +204,64 @@ export default function Navigation({ activeTab, setActiveTab, orfasCount }: Navi
         </div>
       )}
 
-      {/* BARRA FIXA INFERIOR MOBILE (Bottom Navigation Bar) */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t-3 border-[#1E1B2E] shadow-[0_-3px_10px_rgba(0,0,0,0.15)] flex items-stretch justify-around px-1 py-1">
-        {[
-          { id: 'repertorio', label: 'Músicas', icon: Music },
-          { id: 'tarefas', label: 'Tarefas', icon: ClipboardList, badge: orfasCount > 0 ? `${orfasCount}` : undefined },
-          { id: 'elenco', label: 'Elenco', icon: Users },
-          { id: 'rifa', label: 'Rifa', icon: Gift, highlight: true },
-          { id: 'documentos', label: 'Docs', icon: FolderDown },
-          { id: 'midia', label: 'Mídia', icon: Palette }
-        ].map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => handleSelectTab(tab.id as TabId)}
-              className={`flex-1 py-1.5 px-0.5 flex flex-col items-center justify-center relative transition-colors cursor-pointer rounded-xs min-h-[44px] ${
-                isActive ? 'bg-[#FAF5FF] text-[#E6007E]' : 'text-[#1E1B2E] hover:bg-stone-50'
-              }`}
-            >
-              <div className="relative">
-                <Icon className={`w-4 h-4 ${isActive ? 'text-[#E6007E] scale-110' : tab.highlight ? 'text-[#00A868]' : 'text-[#1E1B2E]'}`} />
-                {tab.badge && (
-                  <span className="absolute -top-1 -right-2 bg-red-600 text-white text-[8px] font-black rounded-full px-1 leading-tight font-mono">
-                    {tab.badge}
-                  </span>
-                )}
-              </div>
-              <span className={`text-[9px] font-black uppercase font-mono mt-0.5 truncate max-w-full ${
-                isActive ? 'text-[#E6007E]' : 'text-stone-700'
-              }`}>
-                {tab.label}
-              </span>
-              {isActive && (
-                <div className="w-4 h-0.5 bg-[#E6007E] mt-0.5 rounded-full" />
-              )}
-            </button>
-          );
-        })}
+      {/* BARRA FIXA INFERIOR MOBILE EXCLUSIVA (Bottom Navigation Bar com as 11 abas) */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t-3 border-[#1E1B2E] shadow-[0_-3px_12px_rgba(0,0,0,0.18)]">
+        <div className="flex items-center overflow-x-auto no-scrollbar px-1 py-1 gap-1">
+          {tabs.map((tab, idx) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => handleSelectTab(tab.id)}
+                className={`shrink-0 min-w-[62px] max-w-[76px] py-1.5 px-1 flex flex-col items-center justify-center relative transition-all cursor-pointer border ${
+                  isActive
+                    ? 'bg-[#581C87] text-[#FBBF24] border-[#1E1B2E] shadow-[1px_1px_0px_#1E1B2E]'
+                    : tab.highlight
+                    ? 'bg-emerald-50 text-[#1E1B2E] border-stone-200'
+                    : 'bg-white text-stone-700 border-transparent hover:bg-stone-50'
+                }`}
+              >
+                <div className="relative">
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-[#FBBF24]' : tab.highlight ? 'text-[#00A868]' : 'text-[#E6007E]'}`} />
+                  {tab.badge && (
+                    <span className="absolute -top-1 -right-2 bg-red-600 text-white text-[8px] font-black rounded-full px-1 leading-tight font-mono">
+                      {tab.badge}
+                    </span>
+                  )}
+                </div>
+                <span className={`text-[9px] font-black uppercase font-mono mt-0.5 truncate max-w-full ${
+                  isActive ? 'text-[#FBBF24]' : 'text-stone-800'
+                }`}>
+                  {tab.label.replace(/^\d+\.\s*/, '')}
+                </span>
+                <span className="text-[7.5px] font-mono text-stone-400 leading-none">
+                  #{idx + 1}
+                </span>
+              </button>
+            );
+          })}
 
-        {/* Botão de Menu Mais */}
-        <button
-          type="button"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className={`flex-1 py-1.5 px-0.5 flex flex-col items-center justify-center relative cursor-pointer min-h-[44px] ${
-            mobileMenuOpen ? 'bg-[#581C87] text-[#FBBF24]' : 'text-[#1E1B2E] hover:bg-stone-50'
-          }`}
-        >
-          <Menu className="w-4 h-4" />
-          <span className="text-[9px] font-black uppercase font-mono mt-0.5">
-            Mais
-          </span>
-        </button>
+          {/* Botão para Abrir Menu Completo em Grade */}
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className={`shrink-0 min-w-[56px] py-1.5 px-1 flex flex-col items-center justify-center relative cursor-pointer border transition-all ${
+              mobileMenuOpen 
+                ? 'bg-[#E6007E] text-white border-[#1E1B2E]' 
+                : 'bg-stone-100 text-[#1E1B2E] border-stone-300'
+            }`}
+          >
+            <Menu className="w-4 h-4" />
+            <span className="text-[9px] font-black uppercase font-mono mt-0.5">
+              Grade
+            </span>
+            <span className="text-[7.5px] font-mono text-stone-500 leading-none">
+              11 abas
+            </span>
+          </button>
+        </div>
       </div>
     </>
   );

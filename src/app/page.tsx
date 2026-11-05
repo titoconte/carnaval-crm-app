@@ -3,18 +3,18 @@
 import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import Navigation, { TabId } from '../components/Navigation';
+import TasksManager from '../components/TasksManager';
+import CalendarView from '../components/CalendarView';
+import ParadeKanban from '../components/ParadeKanban';
 import RepertoireVoting from '../components/RepertoireVoting';
 import LyricsAndChords from '../components/LyricsAndChords';
-import TasksManager from '../components/TasksManager';
+import RaffleApp from '../components/RaffleApp';
+import JoinForm from '../components/JoinForm';
+import MediaManager from '../components/MediaManager';
+import BarManager from '../components/BarManager';
 import RosterView from '../components/RosterView';
 import WhatsAppPolls from '../components/WhatsAppPolls';
-import BarManager from '../components/BarManager';
-import RaffleApp from '../components/RaffleApp';
-import ParadeKanban from '../components/ParadeKanban';
-import CalendarView from '../components/CalendarView';
-import JoinForm from '../components/JoinForm';
 import DocumentsManager from '../components/DocumentsManager';
-import MediaManager from '../components/MediaManager';
 import AdminPinModal from '../components/AdminPinModal';
 
 import {
@@ -60,9 +60,22 @@ import {
 /**
  * Aplicação Oficial do Bloco Bicharada / Bixarada Floripa 2027.
  * Estilo Fanzine Vintage, Lambe-lambe e Quadro de Cortiça.
+ * 
+ * Ordem Oficial das Abas:
+ * 1. Mural de Tarefas
+ * 2. Calendário
+ * 3. Tarefas em Andamento
+ * 4. Repertório
+ * 5. Rifas
+ * 6. Inscrições
+ * 7. Mídia & Artes
+ * 8. Bar dos Ensaios
+ * 9. Elenco & Naipes
+ * 10. Enquetes WhatsApp
+ * 11. Documentos
  */
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<TabId>('repertorio');
+  const [activeTab, setActiveTab] = useState<TabId>('tarefas');
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminModalOpen, setAdminModalOpen] = useState(false);
 
@@ -253,6 +266,9 @@ export default function Home() {
     t => (!t.responsavel || t.responsavel.trim() === '' || t.responsavel.toLowerCase().includes('definir')) && !t.concluida
   ).length;
 
+  /**
+   * Adiciona um novo integrante aprovado à listagem oficial.
+   */
   const handleAddIntegrante = (novo: Integrante) => {
     setIntegrantes(prev => [novo, ...prev]);
   };
@@ -286,8 +302,37 @@ export default function Home() {
         orfasCount={orfasCount}
       />
 
-      {/* Área de Conteúdo da Aba Ativa */}
+      {/* Área de Conteúdo da Aba Ativa na Ordem Oficial */}
       <main id="conteudo-principal" className="flex-1 max-w-5xl w-full mx-auto p-3 sm:p-6 mb-8 pb-28 md:pb-16">
+        {/* 1. Mural de Tarefas */}
+        {activeTab === 'tarefas' && (
+          <TasksManager
+            tarefas={tarefas}
+            setTarefas={setTarefas}
+            isAdmin={isAdmin}
+            onEquipePronta={handlePromoverTarefaParaDesfile}
+          />
+        )}
+
+        {/* 2. Calendário de Ensaios & Datas */}
+        {activeTab === 'calendario' && (
+          <CalendarView
+            eventos={eventos}
+            setEventos={setEventos}
+            isAdmin={isAdmin}
+          />
+        )}
+
+        {/* 3. Tarefas em Andamento */}
+        {activeTab === 'desfile' && (
+          <ParadeKanban
+            macrotarefas={macrotarefas}
+            setMacrotarefas={setMacrotarefas}
+            isAdmin={isAdmin}
+          />
+        )}
+
+        {/* 4. Repertório Oficial & Letras/Cifras */}
         {activeTab === 'repertorio' && (
           <RepertoireVoting
             musicas={musicas}
@@ -306,38 +351,7 @@ export default function Home() {
           />
         )}
 
-        {activeTab === 'tarefas' && (
-          <TasksManager
-            tarefas={tarefas}
-            setTarefas={setTarefas}
-            isAdmin={isAdmin}
-            onEquipePronta={handlePromoverTarefaParaDesfile}
-          />
-        )}
-
-        {activeTab === 'elenco' && (
-          <RosterView
-            integrantes={integrantes}
-            setIntegrantes={setIntegrantes}
-          />
-        )}
-
-        {activeTab === 'enquetes' && (
-          <WhatsAppPolls
-            enquetes={enquetes}
-            setEnquetes={setEnquetes}
-            isAdmin={isAdmin}
-          />
-        )}
-
-        {activeTab === 'bar' && (
-          <BarManager
-            movimentos={movimentosBar}
-            setMovimentos={setMovimentosBar}
-            isAdmin={isAdmin}
-          />
-        )}
-
+        {/* 5. Rifas Online */}
         {activeTab === 'rifa' && (
           <RaffleApp
             rifas={rifas}
@@ -350,22 +364,7 @@ export default function Home() {
           />
         )}
 
-        {activeTab === 'desfile' && (
-          <ParadeKanban
-            macrotarefas={macrotarefas}
-            setMacrotarefas={setMacrotarefas}
-            isAdmin={isAdmin}
-          />
-        )}
-
-        {activeTab === 'calendario' && (
-          <CalendarView
-            eventos={eventos}
-            setEventos={setEventos}
-            isAdmin={isAdmin}
-          />
-        )}
-
+        {/* 6. Inscrições de Foliões */}
         {activeTab === 'inscricao' && (
           <JoinForm
             inscritos={inscritos}
@@ -375,14 +374,7 @@ export default function Home() {
           />
         )}
 
-        {activeTab === 'documentos' && (
-          <DocumentsManager
-            documentos={documentos}
-            setDocumentos={setDocumentos}
-            isAdmin={isAdmin}
-          />
-        )}
-
+        {/* 7. Mídia & Artes */}
         {activeTab === 'midia' && (
           <MediaManager
             cores={cores}
@@ -395,6 +387,41 @@ export default function Home() {
             setConfigInstagram={setConfigInstagram}
             temaAno={temaAno}
             setTemaAno={setTemaAno}
+            isAdmin={isAdmin}
+          />
+        )}
+
+        {/* 8. Bar dos Ensaios */}
+        {activeTab === 'bar' && (
+          <BarManager
+            movimentos={movimentosBar}
+            setMovimentos={setMovimentosBar}
+            isAdmin={isAdmin}
+          />
+        )}
+
+        {/* 9. Elenco & Naipes */}
+        {activeTab === 'elenco' && (
+          <RosterView
+            integrantes={integrantes}
+            setIntegrantes={setIntegrantes}
+          />
+        )}
+
+        {/* 10. Enquetes WhatsApp */}
+        {activeTab === 'enquetes' && (
+          <WhatsAppPolls
+            enquetes={enquetes}
+            setEnquetes={setEnquetes}
+            isAdmin={isAdmin}
+          />
+        )}
+
+        {/* 11. Documentos Oficiais */}
+        {activeTab === 'documentos' && (
+          <DocumentsManager
+            documentos={documentos}
+            setDocumentos={setDocumentos}
             isAdmin={isAdmin}
           />
         )}
