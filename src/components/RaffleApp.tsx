@@ -1,20 +1,46 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Gift, Sparkles, Check, Copy, MessageSquare, ShoppingBag, Search } from 'lucide-react';
+import { Gift, Sparkles, Check, Copy, MessageSquare, ShoppingBag, Search, Plus, AlertCircle, Calendar, UserCheck } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { BilheteRifa } from '../data/blocoData';
+import {
+  Rifa,
+  RifaVenda,
+  PremioRifa,
+  validarVendaRifa,
+  criarNovaRifa,
+  gerarVendasIniciaisParaRifa,
+  BilheteRifa
+} from '../data/blocoData';
 
 interface RaffleAppProps {
-  bilhetes: BilheteRifa[];
-  setBilhetes: React.Dispatch<React.SetStateAction<BilheteRifa[]>>;
+  rifas: Rifa[];
+  setRifas: React.Dispatch<React.SetStateAction<Rifa[]>>;
+  vendas: RifaVenda[];
+  setVendas: React.Dispatch<React.SetStateAction<RifaVenda[]>>;
   isAdmin: boolean;
+  // Compatibilidade caso bilhetes legados sejam passados
+  bilhetes?: BilheteRifa[];
+  setBilhetes?: React.Dispatch<React.SetStateAction<BilheteRifa[]>>;
 }
 
 /**
- * Aplicativo de Venda 100% Online da Rifa com as Cores Oficiais da Bicharada.
+ * Aplicativo Oficial de Rifas do Bloco Bicharada.
+ * Suporta múltiplas rifas estruturadas, criação pelo administrador,
+ * tabela fato de vendas e validação de data limite (+1 dia).
  */
-export default function RaffleApp({ bilhetes, setBilhetes, isAdmin }: RaffleAppProps) {
+export default function RaffleApp({
+  rifas,
+  setRifas,
+  vendas,
+  setVendas,
+  isAdmin
+}: RaffleAppProps) {
+  // Rifa selecionada no momento
+  const [activeRifaId, setActiveRifaId] = useState<string>(rifas[0]?.id || 'rifa-oficial-2027');
+  const currentRifa = rifas.find(r => r.id === activeRifaId) || rifas[0];
+
+  // Estados de navegação e filtros
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
   const [faixaAtiva, setFaixaAtiva] = useState<number>(1);
   const [buscaNumero, setBuscaNumero] = useState('');
@@ -24,18 +50,43 @@ export default function RaffleApp({ bilhetes, setBilhetes, isAdmin }: RaffleAppP
   const [copiadoPix, setCopiadoPix] = useState(false);
   const [filtroStatus, setFiltroStatus] = useState<'Todos' | 'Disponível' | 'Reservado' | 'Pago'>('Todos');
 
-  const VALOR_BILHETE = 10.0;
-  const CHAVE_PIX = 'apoio@bicharada.org';
-  const TELEFONE_REGINA = '5548999999999';
+  // Modal de Criação de Nova Rifa (Exclusivo Administrador)
+  const [modalCriarRifa, setModalCriarRifa] = useState(false);
+  const [formTitulo, setFormTitulo] = useState('');
+  const [formCoordenador, setFormCoordenador] = useState('Regina');
+  const [formQuantidade, setFormQuantidade] = useState<number>(200);
+  const [formPreco, setFormPreco] = useState<number>(10);
+  const [formDataLimite, setFormDataLimite] = useState('');
+  const [formNumeroPremios, setFormNumeroPremios] = useState<number>(3);
+  const [formDescritivosPremios, setFormDescritivosPremios] = useState<string[]>([
+    'Cesta Artesanal Carnavalesca',
+    'Camiseta Oficial + Copo',
+    'Kit Cervejas Artesanais'
+  ]);
 
-  const totalPagos = bilhetes.filter(b => b.status === 'Pago').length;
-  const totalReservados = bilhetes.filter(b => b.status === 'Reservado').length;
-  const totalDisponiveis = bilhetes.filter(b => b.status === 'Disponível').length;
-  const valorTotalArrecadado = totalPagos * VALOR_BILHETE;
-  const metaTotal = 500 * VALOR_BILHETE;
+  if (!currentRifa) {
+    return <div className="p-8 text-center font-mono">Nenhuma rifa disponível no momento.</div>;
+  }
 
+  // Vendas pertencentes à rifa ativa
+  const vendasDaRifa = vendas.filter(v => v.rifaId === currentRifa.id);
+
+  // Validação da data limite (+1 dia de tolerância máxima)
+  const statusVenda = validarVendaRifa(currentRifa, new Date());
+  const vendasEncerradas = !statusVenda.permitida;
+
+  const totalPagos = vendasDaRifa.filter(b => b.status === 'Pago').length;
+  const totalReservados = vendasDaRifa.filter(b => b.status === 'Reservado').length;
+  const totalDisponiveis = vendasDaRifa.filter(b => b.status === 'Disponível').length;
+  const valorTotalArrecadado = totalPagos * currentRifa.precoNumero;
+  const metaTotal = currentRifa.quantidadeNumeros * currentRifa.precoNumero;
+
+  /**
+   * Alterna a seleção de um número para compra pelo folião.
+   */
   const toggleSelectNumber = (num: number) => {
-    const bilhete = bilhetes.find(b => b.numero === num);
+    if (vendasEncerradas) return;
+    const bilhete = vendasDaRifa.find(b => b.numero === num);
     if (!bilhete || bilhete.status === 'Pago') return;
 
     if (selectedNumbers.includes(num)) {
@@ -45,42 +96,57 @@ export default function RaffleApp({ bilhetes, setBilhetes, isAdmin }: RaffleAppP
     }
   };
 
+  /**
+   * Abre o modal de checkout caso haja números selecionados.
+   */
   const handleAbrirCheckout = () => {
-    if (selectedNumbers.length === 0) return;
+    if (selectedNumbers.length === 0 || vendasEncerradas) return;
     setModalCheckout(true);
   };
 
+  /**
+   * Copia a chave Pix oficial para a área de transferência.
+   */
   const copiarPix = () => {
-    navigator.clipboard.writeText(CHAVE_PIX);
+    navigator.clipboard.writeText(currentRifa.chavePix || 'apoio@bicharada.org');
     setCopiadoPix(true);
     setTimeout(() => setCopiadoPix(false), 2000);
   };
 
+  /**
+   * Conclui a reserva de números, salvando na tabela fato de vendas e gerando o link do WhatsApp.
+   */
   const handleFinalizarReserva = (e: React.FormEvent) => {
     e.preventDefault();
     if (!nomeComprador.trim() || !whatsComprador.trim() || selectedNumbers.length === 0) return;
 
-    const dataAtual = new Date().toISOString().split('T')[0];
+    if (vendasEncerradas) {
+      alert('Prazo de vendas para esta rifa já se encerrou (limite de 1 dia após a data final ultrapassado).');
+      return;
+    }
 
-    setBilhetes(prev => prev.map(b => {
-      if (selectedNumbers.includes(b.numero)) {
+    const dataAtual = new Date().toISOString();
+
+    setVendas(prev => prev.map(v => {
+      if (v.rifaId === currentRifa.id && selectedNumbers.includes(v.numero)) {
         return {
-          ...b,
+          ...v,
           status: 'Reservado',
           compradorNome: nomeComprador.trim(),
           compradorWhats: whatsComprador.trim(),
-          dataReserva: dataAtual
+          dataVenda: dataAtual,
+          valorPago: currentRifa.precoNumero
         };
       }
-      return b;
+      return v;
     }));
 
     const textoNumeros = selectedNumbers.map(n => `#${String(n).padStart(3, '0')}`).join(', ');
-    const totalPagar = (selectedNumbers.length * VALOR_BILHETE).toFixed(2);
+    const totalPagar = (selectedNumbers.length * currentRifa.precoNumero).toFixed(2);
     
     const mensagemWhatsapp = encodeURIComponent(
-      `🦁 *RIFA DO BLOCO BICHARADA 2027* 🪽\n\n` +
-      `Oi Regina! Acabei de reservar meus bilhetes da sorte no aplicativo:\n\n` +
+      `🦁 *RIFA DO BLOCO BICHARADA - ${currentRifa.titulo.toUpperCase()}* 🪽\n\n` +
+      `Oi ${currentRifa.nomeCoordenador}! Acabei de reservar meus bilhetes no app do bloco:\n\n` +
       `👤 *Nome:* ${nomeComprador.trim()}\n` +
       `📱 *WhatsApp:* ${whatsComprador.trim()}\n` +
       `🎟️ *Números Escolhidos:* ${textoNumeros}\n` +
@@ -88,7 +154,8 @@ export default function RaffleApp({ bilhetes, setBilhetes, isAdmin }: RaffleAppP
       `Estou enviando o comprovante do Pix em anexo logo abaixo!`
     );
 
-    const linkWhatsapp = `https://wa.me/${TELEFONE_REGINA}?text=${mensagemWhatsapp}`;
+    const telefone = currentRifa.telefoneContato || '5548999999999';
+    const linkWhatsapp = `https://wa.me/${telefone}?text=${mensagemWhatsapp}`;
 
     confetti({
       particleCount: 50,
@@ -104,10 +171,13 @@ export default function RaffleApp({ bilhetes, setBilhetes, isAdmin }: RaffleAppP
     setWhatsComprador('');
   };
 
+  /**
+   * Alterna status do bilhete (Apenas Coordenação com PIN ativo).
+   */
   const alternarStatusCoord = (num: number) => {
     if (!isAdmin) return;
-    setBilhetes(prev => prev.map(b => {
-      if (b.numero === num) {
+    setVendas(prev => prev.map(b => {
+      if (b.rifaId === currentRifa.id && b.numero === num) {
         const prox = b.status === 'Disponível' ? 'Reservado' : b.status === 'Reservado' ? 'Pago' : 'Disponível';
         return { ...b, status: prox };
       }
@@ -115,10 +185,64 @@ export default function RaffleApp({ bilhetes, setBilhetes, isAdmin }: RaffleAppP
     }));
   };
 
-  const inicioFaixa = (faixaAtiva - 1) * 100 + 1;
-  const fimFaixa = faixaAtiva * 100;
+  /**
+   * Atualiza a quantidade de prêmios e ajusta o array de descritivos.
+   */
+  const handleAlterarQuantidadePremios = (qtd: number) => {
+    setFormNumeroPremios(qtd);
+    setFormDescritivosPremios(prev => {
+      const novo = [...prev];
+      while (novo.length < qtd) novo.push('');
+      return novo.slice(0, qtd);
+    });
+  };
 
-  const bilhetesExibidos = bilhetes.filter(b => {
+  /**
+   * Salva a criação de uma nova rifa pelo administrador.
+   */
+  const handleCriarNovaRifa = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formTitulo.trim() || !formCoordenador.trim() || !formDataLimite) return;
+
+    const premios: PremioRifa[] = formDescritivosPremios.map((desc, idx) => ({
+      posicao: idx + 1,
+      descricao: desc.trim() || `${idx + 1}º Prêmio a definir`
+    }));
+
+    const novaRifa = criarNovaRifa({
+      titulo: formTitulo.trim(),
+      nomeCoordenador: formCoordenador.trim(),
+      quantidadeNumeros: Number(formQuantidade) || 100,
+      precoNumero: Number(formPreco) || 10,
+      dataLimite: formDataLimite,
+      premios
+    });
+
+    // Gera os bilhetes na tabela fato de vendas
+    const novasVendas = gerarVendasIniciaisParaRifa(novaRifa);
+
+    setRifas(prev => [novaRifa, ...prev]);
+    setVendas(prev => [...novasVendas, ...prev]);
+    setActiveRifaId(novaRifa.id);
+    setModalCriarRifa(false);
+
+    // Reset formulário
+    setFormTitulo('');
+    setFormDataLimite('');
+
+    confetti({
+      particleCount: 60,
+      spread: 80,
+      colors: ['#00D287', '#E6007E', '#FBBF24']
+    });
+  };
+
+  // Faixa de números para paginação (100 por faixa)
+  const inicioFaixa = (faixaAtiva - 1) * 100 + 1;
+  const fimFaixa = Math.min(faixaAtiva * 100, currentRifa.quantidadeNumeros);
+  const totalFaixas = Math.ceil(currentRifa.quantidadeNumeros / 100);
+
+  const bilhetesExibidos = vendasDaRifa.filter(b => {
     if (buscaNumero.trim()) {
       return String(b.numero).includes(buscaNumero.trim());
     }
@@ -129,19 +253,72 @@ export default function RaffleApp({ bilhetes, setBilhetes, isAdmin }: RaffleAppP
 
   return (
     <div className="space-y-4">
-      {/* Banner da Rifa nas Cores Oficiais */}
+      {/* Barra de Seleção de Rifa e Botão Admin Criar Rifa */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border-2 border-[#1E1B2E] p-3 shadow-[2px_2px_0px_#1E1B2E]">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+          <span className="font-mono text-xs font-black uppercase text-[#1E1B2E] shrink-0">Rifa Ativa:</span>
+          {rifas.map(r => (
+            <button
+              key={r.id}
+              onClick={() => {
+                setActiveRifaId(r.id);
+                setSelectedNumbers([]);
+                setFaixaAtiva(1);
+              }}
+              className={`px-3 py-1 border-2 border-[#1E1B2E] text-xs font-mono font-black uppercase transition-all whitespace-nowrap ${
+                activeRifaId === r.id
+                  ? 'bg-[#E6007E] text-white shadow-[2px_2px_0px_#1E1B2E]'
+                  : 'bg-stone-100 hover:bg-stone-200 text-stone-800'
+              }`}
+            >
+              {r.titulo}
+            </button>
+          ))}
+        </div>
+
+        {/* Botão exclusivo de Administrador */}
+        {isAdmin && (
+          <button
+            onClick={() => setModalCriarRifa(true)}
+            className="vintage-button px-3.5 py-1.5 bg-[#00D287] text-[#1E1B2E] hover:bg-[#34EEA0] text-xs font-black uppercase flex items-center gap-1.5 shrink-0 shadow-[2px_2px_0px_#1E1B2E]"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Criar Rifa</span>
+          </button>
+        )}
+      </div>
+
+      {/* Alerta de Vendas Encerradas caso passe de 1 dia da data limite */}
+      {vendasEncerradas && (
+        <div className="p-3 bg-red-100 border-2 border-red-600 text-red-900 text-xs font-mono flex items-center gap-2 shadow-[2px_2px_0px_#DC2626]">
+          <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+          <div>
+            <strong>Vendas Encerradas!</strong> A data limite desta rifa era {currentRifa.dataLimite}. A regra oficial do bloco veda vendas após 1 dia da data limite.
+          </div>
+        </div>
+      )}
+
+      {/* Banner da Rifa com as Informações Estruturadas */}
       <div className="vintage-card p-5 border-l-8 border-[#00D287]">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="stamp stamp-urgent text-xs">Venda 100% Online</span>
-              <span className="font-mono text-xs font-bold text-stone-600">Coordenação: Regina</span>
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className={`stamp text-xs ${vendasEncerradas ? 'stamp-urgent' : 'stamp-open'}`}>
+                {vendasEncerradas ? 'Vendas Encerradas' : 'Venda 100% Online'}
+              </span>
+              <span className="font-mono text-xs font-bold text-stone-600">
+                Coordenação: {currentRifa.nomeCoordenador}
+              </span>
+              <span className="font-mono text-xs text-stone-600 flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5 text-[#E6007E]" />
+                Limite: <strong>{currentRifa.dataLimite}</strong> (tolerância: +1 dia)
+              </span>
             </div>
             <h2 className="text-2xl font-black uppercase text-[#1E1B2E] font-mono leading-tight">
-              Grande Rifa Carnavalesca 2027 🎟️
+              {currentRifa.titulo} 🎟️
             </h2>
             <p className="text-xs text-stone-700 mt-1 max-w-lg font-serif">
-              Escolha seus números da sorte abaixo. Cada bilhete custa apenas <strong>R$ 10,00</strong> e todo o dinheiro arrecadado banca a Kombi Cora, o som e as bebidas do nosso desfile!
+              Escolha seus números da sorte abaixo. Cada bilhete custa apenas <strong>R$ {currentRifa.precoNumero.toFixed(2).replace('.', ',')}</strong> e todo o dinheiro arrecadado banca as necessidades do nosso cortejo!
             </p>
           </div>
 
@@ -150,7 +327,7 @@ export default function RaffleApp({ bilhetes, setBilhetes, isAdmin }: RaffleAppP
             <span className="font-black text-[#581C87] block text-[10px] uppercase">Chave Pix Oficial:</span>
             <div className="flex items-center gap-2 mt-1">
               <code className="bg-white px-2 py-1 font-bold text-stone-900 border border-[#581C87]">
-                {CHAVE_PIX}
+                {currentRifa.chavePix || 'apoio@bicharada.org'}
               </code>
               <button
                 onClick={copiarPix}
@@ -166,14 +343,14 @@ export default function RaffleApp({ bilhetes, setBilhetes, isAdmin }: RaffleAppP
         {/* Termômetro da Rifa */}
         <div className="mt-4 pt-3 border-t-2 border-stone-200">
           <div className="flex items-center justify-between text-xs font-mono font-black mb-1">
-            <span>Arrecadado: R$ {valorTotalArrecadado.toFixed(2).replace('.', ',')} ({totalPagos} pagos)</span>
-            <span className="text-[#E6007E] font-black">{Math.round((valorTotalArrecadado / metaTotal) * 100)}% da Meta</span>
+            <span>Arrecadado: R$ {valorTotalArrecadado.toFixed(2).replace('.', ',')} ({totalPagos} pagos / {currentRifa.quantidadeNumeros} totais)</span>
+            <span className="text-[#E6007E] font-black">{Math.round((valorTotalArrecadado / metaTotal) * 100) || 0}% da Meta</span>
           </div>
 
           <div className="w-full h-4 bg-white border-2 border-[#1E1B2E] shadow-[2px_2px_0px_#1E1B2E]">
             <div
               className="h-full bg-gradient-to-r from-[#FBBF24] via-[#E6007E] to-[#00D287] border-r border-[#1E1B2E] transition-all duration-700"
-              style={{ width: `${(valorTotalArrecadado / metaTotal) * 100}%` }}
+              style={{ width: `${Math.min(100, Math.round((valorTotalArrecadado / metaTotal) * 100))}%` }}
             />
           </div>
         </div>
@@ -183,25 +360,30 @@ export default function RaffleApp({ bilhetes, setBilhetes, isAdmin }: RaffleAppP
       <div className="vintage-card p-4">
         <h3 className="font-black text-xs uppercase tracking-wider text-[#581C87] font-mono mb-2 flex items-center gap-1.5">
           <Sparkles className="w-3.5 h-3.5 text-[#FBBF24]" />
-          <span>Prêmios que Serão Sorteados:</span>
+          <span>Prêmios que Serão Sorteados ({currentRifa.premios.length} Prêmios):</span>
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-serif">
-          <div className="p-2.5 bg-[#FEFCE8] border-2 border-[#FBBF24] text-[#1E1B2E] font-bold shadow-[2px_2px_0px_#FBBF24]">
-            🥇 1º Prêmio: Cesta Artesanal Carnavalesca + Kit Cervejas Especiais
-          </div>
-          <div className="p-2.5 bg-[#FDF2F8] border-2 border-[#E6007E] text-[#1E1B2E] font-bold shadow-[2px_2px_0px_#E6007E]">
-            🥈 2º Prêmio: Par de Óculos & Adereço Exclusivo Bicharada
-          </div>
-          <div className="p-2.5 bg-[#ECFDF5] border-2 border-[#00D287] text-[#1E1B2E] font-bold shadow-[2px_2px_0px_#00D287]">
-            🥉 3º Prêmio: Camiseta Oficial 2027 + Copo Tiracolo
-          </div>
+          {currentRifa.premios.map((premio) => (
+            <div
+              key={premio.posicao}
+              className={`p-2.5 border-2 text-[#1E1B2E] font-bold ${
+                premio.posicao === 1
+                  ? 'bg-[#FEFCE8] border-[#FBBF24] shadow-[2px_2px_0px_#FBBF24]'
+                  : premio.posicao === 2
+                  ? 'bg-[#FDF2F8] border-[#E6007E] shadow-[2px_2px_0px_#E6007E]'
+                  : 'bg-[#ECFDF5] border-[#00D287] shadow-[2px_2px_0px_#00D287]'
+              }`}
+            >
+              <span>{premio.posicao}º Prêmio: {premio.descricao}</span>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Navegação da Cartela de Bilhetes */}
+      {/* Navegação da Cartela de Bilhetes por Faixas */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-[#1E1B2E] pb-2">
         <div className="flex items-center gap-1 overflow-x-auto no-scrollbar font-mono text-xs">
-          {[1, 2, 3, 4, 5].map((f) => (
+          {Array.from({ length: totalFaixas }, (_, idx) => idx + 1).map((f) => (
             <button
               key={f}
               onClick={() => {
@@ -214,7 +396,7 @@ export default function RaffleApp({ bilhetes, setBilhetes, isAdmin }: RaffleAppP
                   : 'bg-white text-stone-800 hover:bg-stone-100'
               }`}
             >
-              {String((f - 1) * 100 + 1).padStart(3, '0')} - {String(f * 100).padStart(3, '0')}
+              {String((f - 1) * 100 + 1).padStart(3, '0')} - {String(Math.min(f * 100, currentRifa.quantidadeNumeros)).padStart(3, '0')}
             </button>
           ))}
         </div>
@@ -245,9 +427,14 @@ export default function RaffleApp({ bilhetes, setBilhetes, isAdmin }: RaffleAppP
         <span className="flex items-center gap-1">
           <span className="w-3.5 h-3.5 bg-[#00D287] border border-[#1E1B2E] inline-block shadow-[1px_1px_0px_#000]" /> Selecionado ({selectedNumbers.length})
         </span>
+        {isAdmin && (
+          <span className="text-xs text-stone-500 italic ml-auto font-sans">
+            (Dica Coord: clique duas vezes no número para alterar status)
+          </span>
+        )}
       </div>
 
-      {/* Grade Interativa de 100 Números por Faixa */}
+      {/* Grade Interativa de Números */}
       <div className="vintage-card p-4">
         <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
           {bilhetesExibidos.map((bilhete) => {
@@ -260,7 +447,7 @@ export default function RaffleApp({ bilhetes, setBilhetes, isAdmin }: RaffleAppP
                 key={bilhete.numero}
                 onClick={() => toggleSelectNumber(bilhete.numero)}
                 onDoubleClick={() => alternarStatusCoord(bilhete.numero)}
-                disabled={isPago}
+                disabled={isPago || (vendasEncerradas && !isAdmin)}
                 className={`py-2 px-1 border-2 border-[#1E1B2E] text-xs font-mono font-black transition-all flex flex-col items-center justify-center relative ${
                   isSelected
                     ? 'bg-[#00D287] text-[#1E1B2E] shadow-[3px_3px_0px_#1E1B2E] scale-105 z-10'
@@ -268,11 +455,14 @@ export default function RaffleApp({ bilhetes, setBilhetes, isAdmin }: RaffleAppP
                     ? 'bg-[#FDF2F8] text-[#E6007E] border-[#E6007E] opacity-70 line-through cursor-not-allowed'
                     : isReservado
                     ? 'bg-[#FEFCE8] text-[#B45309] border-[#FBBF24] shadow-[2px_2px_0px_#FBBF24]'
+                    : vendasEncerradas
+                    ? 'bg-stone-200 text-stone-500 cursor-not-allowed'
                     : 'bg-white hover:bg-pink-50 text-[#1E1B2E] shadow-[2px_2px_0px_#1E1B2E] active:translate-x-0.5 active:translate-y-0.5'
                 }`}
                 title={
                   isPago ? `Bilhete #${bilhete.numero} pago por ${bilhete.compradorNome || 'Folião'}` :
                   isReservado ? `Bilhete #${bilhete.numero} reservado por ${bilhete.compradorNome || 'Folião'}` :
+                  vendasEncerradas ? 'Vendas encerradas' :
                   `Clique para escolher o bilhete #${bilhete.numero}`
                 }
               >
@@ -287,14 +477,14 @@ export default function RaffleApp({ bilhetes, setBilhetes, isAdmin }: RaffleAppP
       </div>
 
       {/* Barra Flutuante de Checkout */}
-      {selectedNumbers.length > 0 && (
+      {selectedNumbers.length > 0 && !vendasEncerradas && (
         <div className="sticky bottom-4 z-40 bg-white border-4 border-[#1E1B2E] p-4 shadow-[6px_6px_0px_#1E1B2E] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-2">
           <div>
             <span className="font-mono text-xs font-black uppercase text-[#E6007E] block">
               🎟️ {selectedNumbers.length} {selectedNumbers.length === 1 ? 'número selecionado' : 'números selecionados'}
             </span>
             <p className="font-black text-sm text-[#1E1B2E] font-mono">
-              Total: R$ {(selectedNumbers.length * VALOR_BILHETE).toFixed(2).replace('.', ',')}
+              Total: R$ {(selectedNumbers.length * currentRifa.precoNumero).toFixed(2).replace('.', ',')}
               <span className="text-stone-500 text-xs font-normal ml-2">
                 ({selectedNumbers.map(n => `#${String(n).padStart(3, '0')}`).join(', ')})
               </span>
@@ -320,7 +510,7 @@ export default function RaffleApp({ bilhetes, setBilhetes, isAdmin }: RaffleAppP
               Finalizar Reserva da Rifa
             </h3>
             <p className="text-xs text-stone-600 mt-1 mb-3 font-serif">
-              Insira seus dados para gerarmos o comprovante que será enviado direto no WhatsApp da Regina.
+              Insira seus dados para gerarmos a confirmação que será enviada direto no WhatsApp de {currentRifa.nomeCoordenador}.
             </p>
 
             <div className="bg-[#FAF5FF] border-2 border-[#581C87] p-3 shadow-[2px_2px_0px_#581C87] mb-3 text-xs font-mono space-y-1">
@@ -333,7 +523,7 @@ export default function RaffleApp({ bilhetes, setBilhetes, isAdmin }: RaffleAppP
               <div className="flex justify-between font-black text-sm pt-1 border-t border-purple-200">
                 <span>Total a Pagar via Pix:</span>
                 <span className="text-[#00A868]">
-                  R$ {(selectedNumbers.length * VALOR_BILHETE).toFixed(2).replace('.', ',')}
+                  R$ {(selectedNumbers.length * currentRifa.precoNumero).toFixed(2).replace('.', ',')}
                 </span>
               </div>
             </div>
@@ -342,7 +532,7 @@ export default function RaffleApp({ bilhetes, setBilhetes, isAdmin }: RaffleAppP
               <span className="font-bold block text-stone-600 text-[11px] mb-1">CHAVE PIX DO BLOCO:</span>
               <div className="flex items-center justify-center gap-2">
                 <strong className="text-stone-900 bg-white px-2 py-0.5 border border-stone-300">
-                  {CHAVE_PIX}
+                  {currentRifa.chavePix || 'apoio@bicharada.org'}
                 </strong>
                 <button
                   type="button"
@@ -393,6 +583,145 @@ export default function RaffleApp({ bilhetes, setBilhetes, isAdmin }: RaffleAppP
                 >
                   <MessageSquare className="w-4 h-4" />
                   <span>Enviar Comprovante no WhatsApp</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Criação de Nova Rifa (Exclusivo Administrador) */}
+      {modalCriarRifa && isAdmin && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border-4 border-[#1E1B2E] p-6 max-w-lg w-full shadow-[6px_6px_0px_#1E1B2E] max-h-[90vh] overflow-y-auto">
+            <div className="stamp stamp-urgent text-xs mb-2">Painel da Coordenação</div>
+            <h3 className="text-lg font-black uppercase text-[#1E1B2E] font-mono">
+              Criar Nova Rifa Oficial
+            </h3>
+            <p className="text-xs text-stone-600 mt-1 mb-4 font-serif">
+              Preencha os parâmetros da rifa. As tabelas de rifas e vendas serão geradas automaticamente.
+            </p>
+
+            <form onSubmit={handleCriarNovaRifa} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Título da Rifa *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Rifa Solidária da Bateria 2027"
+                  value={formTitulo}
+                  onChange={(e) => setFormTitulo(e.target.value)}
+                  className="w-full px-3 py-2 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Nome do Coordenador *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Regina"
+                    value={formCoordenador}
+                    onChange={(e) => setFormCoordenador(e.target.value)}
+                    className="w-full px-3 py-2 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Data Limite de Venda *</label>
+                  <input
+                    type="date"
+                    required
+                    value={formDataLimite}
+                    onChange={(e) => setFormDataLimite(e.target.value)}
+                    className="w-full px-3 py-2 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none"
+                  />
+                  <span className="text-[10px] text-stone-500 font-serif">Vendas bloqueadas após 1 dia da data.</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Quantidade de Números *</label>
+                  <input
+                    type="number"
+                    required
+                    min={10}
+                    max={1000}
+                    step={10}
+                    value={formQuantidade}
+                    onChange={(e) => setFormQuantidade(Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Preço de Cada Número (R$) *</label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    step={0.5}
+                    value={formPreco}
+                    onChange={(e) => setFormPreco(Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Número de Prêmios</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={formNumeroPremios}
+                  onChange={(e) => handleAlterarQuantidadePremios(Number(e.target.value))}
+                  className="w-full px-3 py-2 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none"
+                />
+              </div>
+
+              {/* Descritivo de cada prêmio */}
+              <div className="space-y-2 pt-1 border-t border-stone-200">
+                <span className="font-mono text-xs font-black uppercase text-[#581C87] block">
+                  Descritivo de Cada Prêmio:
+                </span>
+                {Array.from({ length: formNumeroPremios }).map((_, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-bold w-20 shrink-0">{idx + 1}º Prêmio:</span>
+                    <input
+                      type="text"
+                      required
+                      placeholder={`Descrição do ${idx + 1}º prêmio...`}
+                      value={formDescritivosPremios[idx] || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFormDescritivosPremios(prev => {
+                          const novo = [...prev];
+                          novo[idx] = val;
+                          return novo;
+                        });
+                      }}
+                      className="flex-1 px-3 py-1.5 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-200">
+                <button
+                  type="button"
+                  onClick={() => setModalCriarRifa(false)}
+                  className="px-3 py-1.5 border-2 border-[#1E1B2E] text-xs font-bold uppercase hover:bg-stone-200"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="vintage-button px-4 py-2 bg-[#00D287] text-[#1E1B2E] text-xs font-black uppercase shadow-[3px_3px_0px_#1E1B2E]"
+                >
+                  Publicar Rifa
                 </button>
               </div>
             </form>

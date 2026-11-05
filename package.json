@@ -8,6 +8,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "test": "tsx --test tests/**/*.test.ts",
     "test:python": "python -m pytest tests/"
   },
   "keywords": [
@@ -35,6 +36,7 @@
     "autoprefixer": "^10.6.2",
     "postcss": "^8.5.32",
     "tailwindcss": "^4.3.4",
+    "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   }
 }

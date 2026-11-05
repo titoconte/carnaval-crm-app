@@ -21,6 +21,8 @@ import {
   MACROTAREFAS_DESFILE_INICIAIS,
   MOVIMENTOS_BAR_INICIAIS,
   gerarBilhetesRifaIniciais,
+  RIFAS_INICIAIS,
+  VENDAS_RIFAS_INICIAIS,
   REPERTORIO_INICIAL,
   LETRAS_CIFRAS_INICIAIS,
   ENQUETES_WHATSAPP_INICIAIS,
@@ -30,6 +32,8 @@ import {
   MacrotarefaDesfile,
   MovimentoBar,
   BilheteRifa,
+  Rifa,
+  RifaVenda,
   MusicaRepertorio,
   ItemLetraCifra,
   EnqueteWhatsApp,
@@ -51,6 +55,8 @@ export default function Home() {
   const [macrotarefas, setMacrotarefas] = useState<MacrotarefaDesfile[]>(MACROTAREFAS_DESFILE_INICIAIS);
   const [movimentosBar, setMovimentosBar] = useState<MovimentoBar[]>(MOVIMENTOS_BAR_INICIAIS);
   const [bilhetesRifa, setBilhetesRifa] = useState<BilheteRifa[]>(gerarBilhetesRifaIniciais());
+  const [rifas, setRifas] = useState<Rifa[]>(RIFAS_INICIAIS);
+  const [vendasRifas, setVendasRifas] = useState<RifaVenda[]>(VENDAS_RIFAS_INICIAIS);
   const [musicas, setMusicas] = useState<MusicaRepertorio[]>(REPERTORIO_INICIAL);
   const [letrasCifras, setLetrasCifras] = useState<ItemLetraCifra[]>(LETRAS_CIFRAS_INICIAIS);
   const [enquetes, setEnquetes] = useState<EnqueteWhatsApp[]>(ENQUETES_WHATSAPP_INICIAIS);
@@ -70,6 +76,12 @@ export default function Home() {
 
       const sRifa = localStorage.getItem('bicha_rifa_v2');
       if (sRifa) setBilhetesRifa(JSON.parse(sRifa));
+
+      const sRifasTab = localStorage.getItem('bicha_rifas_tab_v3');
+      if (sRifasTab) setRifas(JSON.parse(sRifasTab));
+
+      const sVendasRifas = localStorage.getItem('bicha_rifas_vendas_v3');
+      if (sVendasRifas) setVendasRifas(JSON.parse(sVendasRifas));
 
       const sIntegrantes = localStorage.getItem('bicha_integrantes_v2');
       if (sIntegrantes) setIntegrantes(JSON.parse(sIntegrantes));
@@ -94,6 +106,8 @@ export default function Home() {
       localStorage.setItem('bicha_macros_v2', JSON.stringify(macrotarefas));
       localStorage.setItem('bicha_bar_v2', JSON.stringify(movimentosBar));
       localStorage.setItem('bicha_rifa_v2', JSON.stringify(bilhetesRifa));
+      localStorage.setItem('bicha_rifas_tab_v3', JSON.stringify(rifas));
+      localStorage.setItem('bicha_rifas_vendas_v3', JSON.stringify(vendasRifas));
       localStorage.setItem('bicha_integrantes_v2', JSON.stringify(integrantes));
       localStorage.setItem('bicha_musicas_v2', JSON.stringify(musicas));
       localStorage.setItem('bicha_letras_v2', JSON.stringify(letrasCifras));
@@ -101,7 +115,7 @@ export default function Home() {
     } catch (e) {
       console.error('Erro ao salvar LocalStorage:', e);
     }
-  }, [tarefas, macrotarefas, movimentosBar, bilhetesRifa, integrantes, musicas, letrasCifras, enquetes]);
+  }, [tarefas, macrotarefas, movimentosBar, bilhetesRifa, rifas, vendasRifas, integrantes, musicas, letrasCifras, enquetes]);
 
   // Contagem de tarefas órfãs
   const orfasCount = tarefas.filter(
@@ -179,6 +193,10 @@ export default function Home() {
 
         {activeTab === 'rifa' && (
           <RaffleApp
+            rifas={rifas}
+            setRifas={setRifas}
+            vendas={vendasRifas}
+            setVendas={setVendasRifas}
             bilhetes={bilhetesRifa}
             setBilhetes={setBilhetesRifa}
             isAdmin={isAdmin}

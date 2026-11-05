@@ -24,6 +24,37 @@ export interface TarefaPostIt {
   concluida: boolean;
 }
 
+export interface PremioRifa {
+  posicao: number;
+  descricao: string;
+}
+
+export interface Rifa {
+  id: string;
+  titulo: string;
+  nomeCoordenador: string;
+  quantidadeNumeros: number;
+  precoNumero: number;
+  dataLimite: string; // Formato YYYY-MM-DD
+  numeroPremios: number;
+  premios: PremioRifa[];
+  chavePix?: string;
+  telefoneContato?: string;
+  dataCriacao: string;
+  ativa: boolean;
+}
+
+export interface RifaVenda {
+  id: string;
+  rifaId: string;
+  numero: number;
+  status: 'Disponível' | 'Reservado' | 'Pago';
+  compradorNome?: string;
+  compradorWhats?: string;
+  dataVenda?: string; // Data ISO da reserva ou venda
+  valorPago?: number;
+}
+
 export interface BilheteRifa {
   numero: number; // 1 a 500
   status: 'Disponível' | 'Reservado' | 'Pago';
@@ -337,6 +368,219 @@ export const MOVIMENTOS_BAR_INICIAIS: MovimentoBar[] = [
   { id: 'mov-4', data: '2026-10-20', descricao: 'Compra de 6 caixas de cerveja e água', tipo: 'Saída', categoria: 'Compra no Atacado (Fort)', valor: 290.00, responsavel: 'Pedro' },
   { id: 'mov-5', data: '2026-10-20', descricao: 'Venda de bebidas no 2º Ensaio', tipo: 'Entrada', categoria: 'Venda de Cerveja / Bebidas', valor: 520.00, responsavel: 'Pedro' }
 ];
+
+/**
+ * Valida se a venda de um bilhete de rifa é permitida de acordo com a data limite.
+ * Regra: A venda não pode passar de 1 dia da data limite estabelecida.
+ * 
+ * @param rifa - Objeto da rifa contendo a dataLimite
+ * @param dataTentativa - Data da tentativa de venda (padrão: agora)
+ * @returns Objeto informando se é permitida e motivo em caso de recusa
+ */
+export function validarVendaRifa(
+  rifa: Rifa,
+  dataTentativa: string | Date = new Date()
+): { permitida: boolean; motivo?: string } {
+  const dataAtual = typeof dataTentativa === 'string' ? new Date(dataTentativa) : dataTentativa;
+  
+  // Limite é 1 dia após a data limite especificada (final do dia seguinte)
+  const [ano, mes, dia] = rifa.dataLimite.split('-').map(Number);
+  const dataLimiteObj = new Date(ano, mes - 1, dia, 23, 59, 59, 999);
+  
+  // Adiciona exatamente 1 dia completo de tolerância ao limite
+  const limiteMaximoVenda = new Date(dataLimiteObj.getTime() + 24 * 60 * 60 * 1000);
+
+  if (dataAtual.getTime() > limiteMaximoVenda.getTime()) {
+    return {
+      permitida: false,
+      motivo: `Venda não permitida: o prazo limite da rifa (${rifa.dataLimite}) foi ultrapassado em mais de 1 dia.`
+    };
+  }
+
+  return { permitida: true };
+}
+
+/**
+ * Cria uma nova rifa garantindo a estrutura correta de prêmios e metadados.
+ * 
+ * @param dados - Parâmetros da nova rifa informados pelo administrador
+ * @returns Nova rifa estruturada
+ */
+export function criarNovaRifa(dados: {
+  titulo: string;
+  nomeCoordenador: string;
+  quantidadeNumeros: number;
+  precoNumero: number;
+  dataLimite: string;
+  premios: PremioRifa[];
+  chavePix?: string;
+  telefoneContato?: string;
+}): Rifa {
+  return {
+    id: `rifa-${Date.now()}`,
+    titulo: dados.titulo.trim(),
+    nomeCoordenador: dados.nomeCoordenador.trim(),
+    quantidadeNumeros: dados.quantidadeNumeros,
+    precoNumero: dados.precoNumero,
+    dataLimite: dados.dataLimite,
+    numeroPremios: dados.premios.length,
+    premios: dados.premios,
+    chavePix: dados.chavePix || 'apoio@bicharada.org',
+    telefoneContato: dados.telefoneContato || '5548999999999',
+    dataCriacao: new Date().toISOString().split('T')[0],
+    ativa: true
+  };
+}
+
+/**
+ * Registra a venda/reserva de um bilhete na tabela fato de vendas, validando a data limite.
+ * 
+ * @param rifa - Rifa em que a venda está ocorrendo
+ * @param vendas - Lista atual de vendas (tabela fato)
+ * @param numero - Número do bilhete a ser vendido
+ * @param comprador - Informações do comprador e data
+ * @returns Resultado com sucesso ou recusa e a lista atualizada
+ */
+export function registrarVendaBilhete(
+  rifa: Rifa,
+  vendas: RifaVenda[],
+  numero: number,
+  comprador: {
+    compradorNome: string;
+    compradorWhats: string;
+    dataVenda?: string;
+    valorPago?: number;
+    status?: 'Reservado' | 'Pago';
+  }
+): { sucesso: boolean; motivo?: string; vendasAtualizadas: RifaVenda[] } {
+  const dataVenda = comprador.dataVenda || new Date().toISOString();
+  const validacao = validarVendaRifa(rifa, dataVenda);
+
+  if (!validacao.permitida) {
+    return {
+      sucesso: false,
+      motivo: validacao.motivo,
+      vendasAtualizadas: vendas
+    };
+  }
+
+  const status = comprador.status || 'Reservado';
+  let encontrado = false;
+
+  const vendasAtualizadas = vendas.map(v => {
+    if (v.rifaId === rifa.id && v.numero === numero) {
+      encontrado = true;
+      return {
+        ...v,
+        status,
+        compradorNome: comprador.compradorNome.trim(),
+        compradorWhats: comprador.compradorWhats.trim(),
+        dataVenda,
+        valorPago: comprador.valorPago || rifa.precoNumero
+      };
+    }
+    return v;
+  });
+
+  if (!encontrado) {
+    vendasAtualizadas.push({
+      id: `venda-${rifa.id}-${numero}`,
+      rifaId: rifa.id,
+      numero,
+      status,
+      compradorNome: comprador.compradorNome.trim(),
+      compradorWhats: comprador.compradorWhats.trim(),
+      dataVenda,
+      valorPago: comprador.valorPago || rifa.precoNumero
+    });
+  }
+
+  return {
+    sucesso: true,
+    vendasAtualizadas
+  };
+}
+
+/**
+ * Gera as linhas iniciais da tabela fato de vendas para uma nova rifa.
+ * 
+ * @param rifa - Rifa para a qual os números serão gerados
+ * @returns Lista inicial de vendas para a tabela fato
+ */
+export function gerarVendasIniciaisParaRifa(rifa: Rifa): RifaVenda[] {
+  const vendas: RifaVenda[] = [];
+  for (let i = 1; i <= rifa.quantidadeNumeros; i++) {
+    vendas.push({
+      id: `venda-${rifa.id}-${i}`,
+      rifaId: rifa.id,
+      numero: i,
+      status: 'Disponível'
+    });
+  }
+  return vendas;
+}
+
+/**
+ * Rifas estruturadas iniciais cadastradas no sistema.
+ */
+export const RIFAS_INICIAIS: Rifa[] = [
+  {
+    id: 'rifa-oficial-2027',
+    titulo: 'Grande Rifa Carnavalesca Bicharada 2027',
+    nomeCoordenador: 'Regina',
+    quantidadeNumeros: 500,
+    precoNumero: 10.0,
+    dataLimite: '2027-02-05',
+    numeroPremios: 3,
+    premios: [
+      { posicao: 1, descricao: 'Cesta Artesanal Carnavalesca + Kit Cervejas Especiais' },
+      { posicao: 2, descricao: 'Par de Óculos & Adereço Exclusivo Bicharada' },
+      { posicao: 3, descricao: 'Camiseta Oficial 2027 + Copo Tiracolo' }
+    ],
+    chavePix: 'apoio@bicharada.org',
+    telefoneContato: '5548999999999',
+    dataCriacao: '2026-10-01',
+    ativa: true
+  }
+];
+
+/**
+ * Tabela fato inicial de vendas de rifas.
+ */
+export const VENDAS_RIFAS_INICIAIS: RifaVenda[] = (() => {
+  const rifa = RIFAS_INICIAIS[0];
+  const vendas: RifaVenda[] = [];
+  for (let i = 1; i <= rifa.quantidadeNumeros; i++) {
+    let status: RifaVenda['status'] = 'Disponível';
+    let compradorNome: string | undefined;
+    let compradorWhats: string | undefined;
+    let dataVenda: string | undefined;
+    let valorPago: number | undefined;
+
+    if ([7, 13, 24, 69, 100, 222, 333, 444, 499].includes(i)) {
+      status = 'Pago';
+      compradorNome = 'Folião Bicharada';
+      dataVenda = '2026-10-15';
+      valorPago = rifa.precoNumero;
+    } else if ([14, 55, 88, 120].includes(i)) {
+      status = 'Reservado';
+      compradorNome = 'Aguardando Pix';
+      dataVenda = '2026-10-20';
+    }
+
+    vendas.push({
+      id: `venda-${rifa.id}-${i}`,
+      rifaId: rifa.id,
+      numero: i,
+      status,
+      compradorNome,
+      compradorWhats,
+      dataVenda,
+      valorPago
+    });
+  }
+  return vendas;
+})();
 
 /**
  * Gerador da cartela de 500 bilhetes da Rifa Online (com alguns números já comprados para demonstração).
