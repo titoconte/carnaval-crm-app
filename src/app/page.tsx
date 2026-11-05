@@ -23,11 +23,13 @@ import {
   gerarBilhetesRifaIniciais,
   RIFAS_INICIAIS,
   VENDAS_RIFAS_INICIAIS,
+  INSCRITOS_INICIAIS,
   REPERTORIO_INICIAL,
   LETRAS_CIFRAS_INICIAIS,
   ENQUETES_WHATSAPP_INICIAIS,
   CALENDARIO_INICIAL,
   Integrante,
+  InscritoBloco,
   TarefaPostIt,
   MacrotarefaDesfile,
   MovimentoBar,
@@ -57,6 +59,7 @@ export default function Home() {
   const [bilhetesRifa, setBilhetesRifa] = useState<BilheteRifa[]>(gerarBilhetesRifaIniciais());
   const [rifas, setRifas] = useState<Rifa[]>(RIFAS_INICIAIS);
   const [vendasRifas, setVendasRifas] = useState<RifaVenda[]>(VENDAS_RIFAS_INICIAIS);
+  const [inscritos, setInscritos] = useState<InscritoBloco[]>(INSCRITOS_INICIAIS);
   const [musicas, setMusicas] = useState<MusicaRepertorio[]>(REPERTORIO_INICIAL);
   const [letrasCifras, setLetrasCifras] = useState<ItemLetraCifra[]>(LETRAS_CIFRAS_INICIAIS);
   const [enquetes, setEnquetes] = useState<EnqueteWhatsApp[]>(ENQUETES_WHATSAPP_INICIAIS);
@@ -83,6 +86,9 @@ export default function Home() {
       const sVendasRifas = localStorage.getItem('bicha_rifas_vendas_v3');
       if (sVendasRifas) setVendasRifas(JSON.parse(sVendasRifas));
 
+      const sInscritos = localStorage.getItem('bicha_inscritos_v2');
+      if (sInscritos) setInscritos(JSON.parse(sInscritos));
+
       const sIntegrantes = localStorage.getItem('bicha_integrantes_v2');
       if (sIntegrantes) setIntegrantes(JSON.parse(sIntegrantes));
 
@@ -108,6 +114,7 @@ export default function Home() {
       localStorage.setItem('bicha_rifa_v2', JSON.stringify(bilhetesRifa));
       localStorage.setItem('bicha_rifas_tab_v3', JSON.stringify(rifas));
       localStorage.setItem('bicha_rifas_vendas_v3', JSON.stringify(vendasRifas));
+      localStorage.setItem('bicha_inscritos_v2', JSON.stringify(inscritos));
       localStorage.setItem('bicha_integrantes_v2', JSON.stringify(integrantes));
       localStorage.setItem('bicha_musicas_v2', JSON.stringify(musicas));
       localStorage.setItem('bicha_letras_v2', JSON.stringify(letrasCifras));
@@ -115,7 +122,7 @@ export default function Home() {
     } catch (e) {
       console.error('Erro ao salvar LocalStorage:', e);
     }
-  }, [tarefas, macrotarefas, movimentosBar, bilhetesRifa, rifas, vendasRifas, integrantes, musicas, letrasCifras, enquetes]);
+  }, [tarefas, macrotarefas, movimentosBar, bilhetesRifa, rifas, vendasRifas, inscritos, integrantes, musicas, letrasCifras, enquetes]);
 
   // Contagem de tarefas órfãs
   const orfasCount = tarefas.filter(
@@ -216,7 +223,12 @@ export default function Home() {
         )}
 
         {activeTab === 'inscricao' && (
-          <JoinForm onAddIntegrante={handleAddIntegrante} />
+          <JoinForm
+            inscritos={inscritos}
+            setInscritos={setInscritos}
+            onAddIntegrante={handleAddIntegrante}
+            isAdmin={isAdmin}
+          />
         )}
       </main>
 

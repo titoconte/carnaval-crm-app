@@ -13,6 +13,18 @@ export interface Integrante {
   ativo: boolean;
 }
 
+export interface InscritoBloco {
+  id: string;
+  nome: string;
+  whatsapp: string;
+  grandeGrupo: Integrante['grandeGrupo'];
+  instrumentoOuFuncao: string;
+  experiencia: string;
+  observacao?: string;
+  dataInscricao: string;
+  status: 'Pendente' | 'Aprovado' | 'Recusado';
+}
+
 export interface TarefaPostIt {
   id: string;
   titulo: string;
@@ -541,6 +553,114 @@ export const RIFAS_INICIAIS: Rifa[] = [
     telefoneContato: '5548999999999',
     dataCriacao: '2026-10-01',
     ativa: true
+  }
+];
+
+/**
+ * Atualiza o status de aceite/recusa de uma inscrição no bloco.
+ * 
+ * @param inscritos - Lista atual de inscritos
+ * @param id - Identificador do inscrito
+ * @param novoStatus - Novo status ('Aprovado' | 'Recusado' | 'Pendente')
+ * @returns Lista atualizada com o novo status
+ */
+export function atualizarStatusInscrito(
+  inscritos: InscritoBloco[],
+  id: string,
+  novoStatus: 'Aprovado' | 'Recusado' | 'Pendente'
+): InscritoBloco[] {
+  return inscritos.map(i => {
+    if (i.id === id) {
+      return { ...i, status: novoStatus };
+    }
+    return i;
+  });
+}
+
+/**
+ * Gera mensagem personalizada e amigável para envio via WhatsApp informando aceite ou recusa.
+ * 
+ * @param inscrito - Dados do inscrito
+ * @param decisao - Decisão tomada pela coordenação ('Aprovado' | 'Recusado')
+ * @returns Texto formatado da mensagem para o folião
+ */
+export function gerarMensagemWhatsappInscricao(
+  inscrito: InscritoBloco,
+  decisao: 'Aprovado' | 'Recusado'
+): string {
+  if (decisao === 'Aprovado') {
+    return (
+      `🎉 *PARABÉNS, ${inscrito.nome}!* 🐾🪽\n\n` +
+      `Sua inscrição para o *Bloco Bicharada 2027* foi *APROVADA*!\n\n` +
+      `🥁 *Naipe/Setor:* ${inscrito.grandeGrupo} — ${inscrito.instrumentoOuFuncao}\n` +
+      `📍 Em breve você será adicionado(a) aos subgrupos oficiais de ensaios e oficinas no WhatsApp.\n\n` +
+      `Seja muito bem-vindo(a) à nossa bicharada solta pelos ares! ✨🦁`
+    );
+  } else {
+    return (
+      `Olá, *${inscrito.nome}*! 🐾\n\n` +
+      `Agradecemos imensamente o seu interesse e carinho em querer sair no *Bloco Bicharada 2027* no naipe *${inscrito.grandeGrupo} (${inscrito.instrumentoOuFuncao})*.\n\n` +
+      `No momento nossas vagas para esta função estão preenchidas para mantermos o equilíbrio sonoro do desfile. Guardamos com muito carinho seu contato para futuras vagas de remanejamento e oficinas abertas!\n\n` +
+      `Esperamos você cantando e pulando com a gente na avenida! 🪽✨`
+    );
+  }
+}
+
+/**
+ * Gera o link universal do WhatsApp (wa.me) higienizando caracteres não numéricos do telefone.
+ * 
+ * @param inscrito - Dados do inscrito com número de WhatsApp
+ * @param decisao - Decisão ('Aprovado' | 'Recusado')
+ * @returns URL wa.me com a mensagem pré-formatada
+ */
+export function gerarLinkWhatsappInscricao(
+  inscrito: InscritoBloco,
+  decisao: 'Aprovado' | 'Recusado'
+): string {
+  let fone = inscrito.whatsapp.replace(/\D/g, '');
+  if (fone.length === 10 || fone.length === 11) {
+    fone = `55${fone}`;
+  }
+  const texto = encodeURIComponent(gerarMensagemWhatsappInscricao(inscrito, decisao));
+  return `https://wa.me/${fone}?text=${texto}`;
+}
+
+/**
+ * Lista de demonstração inicial de inscrições recebidas pelo edital.
+ */
+export const INSCRITOS_INICIAIS: InscritoBloco[] = [
+  {
+    id: 'insc-1',
+    nome: 'Carolina Mendez',
+    whatsapp: '(48) 99876-5432',
+    grandeGrupo: 'Bateria',
+    instrumentoOuFuncao: 'Caixa',
+    experiencia: 'Já toco o instrumento com facilidade',
+    observacao: 'Disponível para todos os ensaios de sexta-feira',
+    dataInscricao: '2026-11-02',
+    status: 'Pendente'
+  },
+  {
+    id: 'insc-2',
+    nome: 'Rodrigo Bastos',
+    whatsapp: '(48) 98765-4321',
+    grandeGrupo: 'Sopros',
+    instrumentoOuFuncao: 'Trombone de Vara',
+    experiencia: 'Toco profissionalmente em outros blocos',
+    observacao: 'Possuo instrumento próprio',
+    dataInscricao: '2026-11-03',
+    status: 'Aprovado'
+  },
+  {
+    id: 'insc-3',
+    nome: 'Samara Albuquerque',
+    whatsapp: '(48) 97654-3210',
+    grandeGrupo: 'Brincantes & Dança',
+    instrumentoOuFuncao: 'Pernalta',
+    experiencia: 'Iniciante com oficinas de circo',
+    observacao: 'Preciso de perna de pau emprestada se houver',
+    dataInscricao: '2026-11-04',
+    status: 'Pendente'
   }
 ];
 
