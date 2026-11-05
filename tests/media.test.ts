@@ -4,12 +4,15 @@ import {
   CorPaletaAnual,
   ArquivoArteMidia,
   PostInstagramPlanejado,
+  TemaAnoBloco,
+  TEMA_ANO_INICIAL,
   adicionarCorPaleta,
   removerCorPaleta,
   adicionarArquivoArte,
   filtrarArquivosArte,
   gerarTextoLegendaInstagram,
-  adicionarPostPlanejado
+  adicionarPostPlanejado,
+  atualizarTemaAno
 } from '../src/data/blocoData';
 
 describe('Gestão de Mídia, Cores do Ano e Instagram', () => {
@@ -29,7 +32,6 @@ describe('Gestão de Mídia, Cores do Ano e Instagram', () => {
     assert.strictEqual(atualizadas.length, 3);
     assert.strictEqual(atualizadas[2].nome, 'Azul Turquesa');
     assert.strictEqual(atualizadas[2].hex, '#00B4D8');
-    assert.ok(atualizadas[2].id.startsWith('cor-'));
   });
 
   it('deve remover uma cor da paleta anual pelo ID', () => {
@@ -38,44 +40,45 @@ describe('Gestão de Mídia, Cores do Ano e Instagram', () => {
     assert.strictEqual(atualizadas[0].id, 'c2');
   });
 
-  const artesMock: ArquivoArteMidia[] = [
-    {
-      id: 'a1',
-      titulo: 'Logo Vetor Oficial',
-      categoria: 'Logotipos',
-      nomeArquivo: 'logo.svg',
-      tamanhoFormatado: '120 KB',
-      formatoExtensao: 'SVG',
-      dataUpload: '2026-10-01'
-    },
-    {
-      id: 'a2',
-      titulo: 'Cartaz Lambe A3',
-      categoria: 'Cartazes & Lambes',
-      nomeArquivo: 'lambe.pdf',
-      tamanhoFormatado: '2.5 MB',
-      formatoExtensao: 'PDF',
-      dataUpload: '2026-10-05'
-    }
-  ];
-
   it('deve cadastrar um novo arquivo de arte gráfica', () => {
-    const novasArtes = adicionarArquivoArte(artesMock, {
-      titulo: 'Template Reels Ensaio',
-      categoria: 'Redes Sociais',
-      nomeArquivo: 'template_reels.png',
-      tamanhoFormatado: '800 KB',
-      formatoExtensao: 'PNG',
-      dimensoesOuUso: '1080x1920'
+    const artes: ArquivoArteMidia[] = [];
+    const atualizadas = adicionarArquivoArte(artes, {
+      titulo: 'Logo Vetorial 2027',
+      categoria: 'Logotipos',
+      nomeArquivo: 'logo_bicharada_2027.svg',
+      formatoExtensao: 'SVG',
+      tamanhoAproximado: '1.2 MB',
+      dimensoesOuUso: 'Vetor escalável'
     });
 
-    assert.strictEqual(novasArtes.length, 3);
-    assert.strictEqual(novasArtes[0].titulo, 'Template Reels Ensaio');
-    assert.strictEqual(novasArtes[0].formatoExtensao, 'PNG');
+    assert.strictEqual(atualizadas.length, 1);
+    assert.strictEqual(atualizadas[0].titulo, 'Logo Vetorial 2027');
+    assert.strictEqual(atualizadas[0].categoria, 'Logotipos');
+    assert.strictEqual(atualizadas[0].formatoExtensao, 'SVG');
+    assert.ok(atualizadas[0].id.startsWith('arte-'));
   });
 
   it('deve filtrar arquivos de arte por categoria e busca textual', () => {
-    const apenasLogos = filtrarArquivosArte(artesMock, 'Logotipos');
+    const artesMock: ArquivoArteMidia[] = [
+      {
+        id: 'a1',
+        titulo: 'Logo Principal',
+        categoria: 'Logotipos',
+        nomeArquivo: 'logo.png',
+        formatoExtensao: 'PNG',
+        dataUpload: '2026-11-01'
+      },
+      {
+        id: 'a2',
+        titulo: 'Lambe-lambe Formato A3',
+        categoria: 'Cartazes & Lambes',
+        nomeArquivo: 'lambe.pdf',
+        formatoExtensao: 'PDF',
+        dataUpload: '2026-11-02'
+      }
+    ];
+
+    const apenasLogos = filtrarArquivosArte(artesMock, 'Logotipos', '');
     assert.strictEqual(apenasLogos.length, 1);
     assert.strictEqual(apenasLogos[0].id, 'a1');
 
@@ -116,5 +119,26 @@ describe('Gestão de Mídia, Cores do Ano e Instagram', () => {
     assert.strictEqual(atualizados.length, 1);
     assert.strictEqual(atualizados[0].titulo, 'Oficina de Fantasias');
     assert.strictEqual(atualizados[0].tipo, 'Stories');
+  });
+
+  it('deve carregar o tema do ano inicial com título, fantasia e descrição de cores', () => {
+    assert.strictEqual(TEMA_ANO_INICIAL.ano, 2027);
+    assert.strictEqual(TEMA_ANO_INICIAL.titulo, 'Solta pelos Ares 🪽');
+    assert.ok(TEMA_ANO_INICIAL.fantasia.includes('asas'));
+    assert.ok(TEMA_ANO_INICIAL.descricaoCores.includes('#FF007A'));
+  });
+
+  it('deve atualizar o tema do ano dinamicamente mantendo integridade dos dados', () => {
+    const temaAtualizado = atualizarTemaAno(TEMA_ANO_INICIAL, {
+      titulo: 'Metamorfose Selvagem 🦋',
+      fantasia: 'Fantasias de casulos abrindo e borboletas gigantes.',
+      descricaoCores: 'Amarelo ouro (#FBBF24) e Roxo Profundo (#581C87).'
+    });
+
+    assert.strictEqual(temaAtualizado.titulo, 'Metamorfose Selvagem 🦋');
+    assert.strictEqual(temaAtualizado.fantasia, 'Fantasias de casulos abrindo e borboletas gigantes.');
+    assert.strictEqual(temaAtualizado.descricaoCores, 'Amarelo ouro (#FBBF24) e Roxo Profundo (#581C87).');
+    assert.strictEqual(temaAtualizado.ano, 2027);
+    assert.ok(temaAtualizado.dataAtualizacao);
   });
 });

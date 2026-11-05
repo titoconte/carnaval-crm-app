@@ -42,12 +42,14 @@ import {
   ArquivoArteMidia,
   PostInstagramPlanejado,
   ConfiguracaoInstagram,
+  TemaAnoBloco,
   adicionarCorPaleta,
   removerCorPaleta,
   adicionarArquivoArte,
   filtrarArquivosArte,
   gerarTextoLegendaInstagram,
-  adicionarPostPlanejado
+  adicionarPostPlanejado,
+  atualizarTemaAno
 } from '../data/blocoData';
 
 interface MediaManagerProps {
@@ -59,6 +61,8 @@ interface MediaManagerProps {
   setPostsInstagram: React.Dispatch<React.SetStateAction<PostInstagramPlanejado[]>>;
   configInstagram: ConfiguracaoInstagram;
   setConfigInstagram: React.Dispatch<React.SetStateAction<ConfiguracaoInstagram>>;
+  temaAno: TemaAnoBloco;
+  setTemaAno: React.Dispatch<React.SetStateAction<TemaAnoBloco>>;
   isAdmin: boolean;
 }
 
@@ -77,13 +81,55 @@ export default function MediaManager({
   setPostsInstagram,
   configInstagram,
   setConfigInstagram,
+  temaAno,
+  setTemaAno,
   isAdmin
 }: MediaManagerProps) {
-  const [subAba, setSubAba] = useState<'cores' | 'artes' | 'instagram'>('cores');
+  const [subAba, setSubAba] = useState<'cores' | 'artes' | 'instagram' | 'tema'>('cores');
 
   // Estados de feedback de cópia
   const [corCopiada, setCorCopiada] = useState<string | null>(null);
   const [legendaCopiadaId, setLegendaCopiadaId] = useState<string | null>(null);
+
+  // Estados do Tema do Ano
+  const [tituloTema, setTituloTema] = useState(temaAno.titulo);
+  const [sloganTema, setSloganTema] = useState(temaAno.subtituloOuSlogan || '');
+  const [fantasiaTema, setFantasiaTema] = useState(temaAno.fantasia);
+  const [descricaoCoresTema, setDescricaoCoresTema] = useState(temaAno.descricaoCores);
+  const [salvoTemaFeedback, setSalvoTemaFeedback] = useState(false);
+
+  // Sincroniza formulário caso temaAno externo mude
+  React.useEffect(() => {
+    setTituloTema(temaAno.titulo);
+    setSloganTema(temaAno.subtituloOuSlogan || '');
+    setFantasiaTema(temaAno.fantasia);
+    setDescricaoCoresTema(temaAno.descricaoCores);
+  }, [temaAno]);
+
+  /**
+   * Salva as diretrizes do tema do ano oficial e atualiza o cabeçalho dinâmico.
+   */
+  const handleSalvarTema = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tituloTema.trim()) return;
+
+    const atualizado = atualizarTemaAno(temaAno, {
+      titulo: tituloTema.trim(),
+      subtituloOuSlogan: sloganTema.trim() || undefined,
+      fantasia: fantasiaTema.trim(),
+      descricaoCores: descricaoCoresTema.trim()
+    });
+
+    setTemaAno(atualizado);
+    setSalvoTemaFeedback(true);
+    setTimeout(() => setSalvoTemaFeedback(false), 3000);
+
+    confetti({
+      particleCount: 45,
+      spread: 65,
+      colors: ['#E6007E', '#581C87', '#FBBF24', '#00D287']
+    });
+  };
 
   // Estados de Nova Cor
   const [modalNovaCor, setModalNovaCor] = useState(false);
@@ -373,11 +419,35 @@ export default function MediaManager({
               <span>+ Novo Post / Story</span>
             </button>
           )}
+
+          {subAba === 'tema' && (
+            <button
+              type="button"
+              onClick={handleSalvarTema}
+              className="vintage-button px-3.5 py-2 bg-[#FBBF24] text-[#1E1B2E] hover:bg-[#F59E0B] text-xs uppercase flex items-center gap-1.5 shadow-[2px_2px_0px_#1E1B2E] cursor-pointer"
+            >
+              <Check className="w-4 h-4" />
+              <span>Salvar Tema</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Navegação entre as 3 Sub-seções */}
+      {/* Navegação entre as 4 Sub-seções */}
       <div className="flex items-center gap-2 border-b-2 border-[#1E1B2E] pb-2 overflow-x-auto no-scrollbar">
+        <button
+          type="button"
+          onClick={() => setSubAba('tema')}
+          className={`flex items-center gap-1.5 px-4 py-2 border-2 border-[#1E1B2E] text-xs font-black uppercase transition-all whitespace-nowrap cursor-pointer ${
+            subAba === 'tema'
+              ? 'bg-[#FBBF24] text-[#1E1B2E] shadow-[2px_2px_0px_#1E1B2E]'
+              : 'bg-white text-[#1E1B2E] hover:bg-amber-50'
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Tema do Ano ({temaAno.titulo})</span>
+        </button>
+
         <button
           type="button"
           onClick={() => setSubAba('cores')}
@@ -780,6 +850,196 @@ export default function MediaManager({
                   </div>
                 );
               })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SUB-ABA 4: TEMA DO ANO (TÍTULO DO TEMA, FANTASIA E DESCRIÇÃO DE CORES) */}
+      {subAba === 'tema' && (
+        <div className="space-y-4">
+          {/* Banner Informativo & Live Preview do Cabeçalho */}
+          <div className="bg-[#FAF6EC] border-3 border-[#1E1B2E] p-4 sm:p-5 shadow-[3px_3px_0px_#1E1B2E]">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b-2 border-dashed border-[#1E1B2E] pb-3 mb-4">
+              <div>
+                <span className="stamp stamp-urgent text-xs">Identidade Carnavalesca</span>
+                <h3 className="text-lg font-black uppercase text-[#1E1B2E] font-mono mt-1">
+                  Tema Oficial do Carnaval {temaAno.ano}
+                </h3>
+                <p className="text-xs text-stone-600 font-serif">
+                  O título configurado aqui estampa dinamicamente a faixa oficial do cabeçalho da aplicação.
+                </p>
+              </div>
+
+              {salvoTemaFeedback && (
+                <div className="p-2 bg-[#00D287] text-[#1E1B2E] text-xs font-mono font-black border-2 border-[#1E1B2E] shadow-[2px_2px_0px_#1E1B2E] animate-bounce">
+                  ✓ Tema e cabeçalho atualizados com sucesso!
+                </div>
+              )}
+            </div>
+
+            {/* Simulação Visual do Cabeçalho */}
+            <div className="p-4 bg-gradient-to-r from-[#581C87] via-[#E6007E] to-[#00D287] border-3 border-[#1E1B2E] text-center shadow-[2px_2px_0px_#1E1B2E]">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#FAF6EC] bg-black/40 px-2 py-0.5 rounded">
+                Visualização do Cabeçalho Oficial
+              </span>
+              <h4 className="text-2xl sm:text-4xl font-black text-white font-mono uppercase tracking-tight drop-shadow-[2px_2px_0px_#1E1B2E] mt-1">
+                BICHARADA
+              </h4>
+              <div className="inline-block mt-1 px-4 py-1 bg-[#581C87] text-[#FBBF24] border-2 border-[#1E1B2E] font-black text-xs sm:text-sm uppercase tracking-wider rotate-[-1.5deg] shadow-[2px_2px_0px_#1E1B2E] max-w-full truncate">
+                {tituloTema || 'Título do Tema'}
+              </div>
+              {sloganTema && (
+                <p className="text-[11px] font-mono text-white mt-1 italic drop-shadow-[1px_1px_0px_#000]">
+                  &ldquo;{sloganTema}&rdquo;
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Formulário de Configuração do Tema */}
+            <div className="lg:col-span-2 vintage-card p-4 sm:p-5">
+              <div className="flex items-center justify-between mb-3 border-b-2 border-[#1E1B2E] pb-2">
+                <h4 className="text-sm font-black uppercase text-[#1E1B2E] font-mono flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-[#E6007E]" />
+                  <span>Diretrizes Oficiais do Tema</span>
+                </h4>
+                <span className="text-[10px] font-mono text-stone-500">
+                  {temaAno.dataAtualizacao ? `Atualizado em ${new Date(temaAno.dataAtualizacao).toLocaleDateString('pt-BR')}` : 'Oficial 2027'}
+                </span>
+              </div>
+
+              <form onSubmit={handleSalvarTema} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1 font-mono">
+                    Título do Tema (Faixa do Topo) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Solta pelos Ares 🪽"
+                    value={tituloTema}
+                    onChange={(e) => setTituloTema(e.target.value)}
+                    className="w-full px-3 py-2 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono font-bold focus:outline-none focus:bg-white"
+                  />
+                  <span className="text-[10px] text-stone-500 font-mono mt-0.5 block">
+                    Este texto substitui imediatamente a estampa do topo da página.
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1 font-mono">
+                    Slogan / Subtítulo do Carnaval
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: O voo livre da diversidade no Carnaval de Floripa"
+                    value={sloganTema}
+                    onChange={(e) => setSloganTema(e.target.value)}
+                    className="w-full px-3 py-2 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none focus:bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1 font-mono">
+                    Conceito & Diretrizes de Fantasia *
+                  </label>
+                  <textarea
+                    rows={4}
+                    required
+                    placeholder="Descreva o conceito de fantasias, adereços, asas, maquiagem e tecidos para os foliões e alas..."
+                    value={fantasiaTema}
+                    onChange={(e) => setFantasiaTema(e.target.value)}
+                    className="w-full px-3 py-2 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-serif leading-relaxed focus:outline-none focus:bg-white"
+                  />
+                  <span className="text-[10px] text-stone-500 font-mono mt-0.5 block">
+                    Orientações práticas para os brincantes, pernaltas, bateria e fantasias livres.
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1 font-mono">
+                    Descrição & Harmonização das Cores do Ano *
+                  </label>
+                  <textarea
+                    rows={3}
+                    required
+                    placeholder="Como as cores oficiais devem ser combinadas nos tecidos, estandartes e adereços..."
+                    value={descricaoCoresTema}
+                    onChange={(e) => setDescricaoCoresTema(e.target.value)}
+                    className="w-full px-3 py-2 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-serif leading-relaxed focus:outline-none focus:bg-white"
+                  />
+                </div>
+
+                <div className="pt-2 border-t-2 border-stone-200 flex items-center justify-between">
+                  <span className="text-xs text-stone-600 font-mono">
+                    Pressione salvar para atualizar em tempo real.
+                  </span>
+                  <button
+                    type="submit"
+                    className="vintage-button px-5 py-2 bg-[#FBBF24] hover:bg-[#F59E0B] text-[#1E1B2E] text-xs uppercase flex items-center gap-1.5 shadow-[2px_2px_0px_#1E1B2E] cursor-pointer"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>Salvar Alterações do Tema</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Guia Lateral de Cores e Aplicação Rápida */}
+            <div className="space-y-3">
+              <div className="vintage-card p-4">
+                <h4 className="text-xs font-black uppercase text-[#1E1B2E] font-mono mb-2 flex items-center gap-1.5 border-b border-stone-200 pb-1">
+                  <Palette className="w-3.5 h-3.5 text-[#00D287]" />
+                  <span>Cores do Ano para o Tema</span>
+                </h4>
+                <p className="text-[11px] text-stone-600 font-serif mb-3">
+                  Cartela oficial disponível para composição das fantasias e cenografia:
+                </p>
+
+                <div className="space-y-2">
+                  {cores.map((c) => (
+                    <div
+                      key={c.id}
+                      className="p-2 border border-[#1E1B2E] bg-white flex items-center justify-between gap-2 shadow-[1px_1px_0px_#1E1B2E]"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className="w-5 h-5 rounded-xs border border-black shrink-0"
+                          style={{ backgroundColor: c.hex }}
+                        />
+                        <div className="truncate">
+                          <div className="text-xs font-black font-mono uppercase truncate text-[#1E1B2E]">
+                            {c.nome}
+                          </div>
+                          <div className="text-[10px] text-stone-500 font-mono">
+                            {c.hex}
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCopiarHex(c.hex)}
+                        className="px-2 py-0.5 border border-black bg-stone-100 hover:bg-stone-200 text-[10px] font-mono shrink-0 cursor-pointer"
+                        title="Copiar HEX"
+                      >
+                        {corCopiada === c.hex ? '✓' : 'Copiar'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-[#FAF5FF] border-2 border-[#581C87] p-3 text-xs text-stone-700 shadow-[2px_2px_0px_#581C87]">
+                <div className="font-mono font-black uppercase text-[#581C87] mb-1 flex items-center gap-1">
+                  <Users className="w-3.5 h-3.5" />
+                  <span>Dica para a Comissão</span>
+                </div>
+                <p className="font-serif text-[11px] leading-relaxed">
+                  As diretrizes de fantasia inseridas aqui orientam todos os naipes da bateria, brincantes e equipe de apoio para a confecção das fantasias.
+                </p>
+              </div>
             </div>
           </div>
         </div>

@@ -35,6 +35,7 @@ import {
   ARTES_MIDIA_INICIAIS,
   POSTS_INSTAGRAM_INICIAIS,
   CONFIG_INSTAGRAM_INICIAL,
+  TEMA_ANO_INICIAL,
   converterTarefaEmMacrotarefa,
   Integrante,
   InscritoBloco,
@@ -52,7 +53,8 @@ import {
   CorPaletaAnual,
   ArquivoArteMidia,
   PostInstagramPlanejado,
-  ConfiguracaoInstagram
+  ConfiguracaoInstagram,
+  TemaAnoBloco
 } from '../data/blocoData';
 
 /**
@@ -82,6 +84,7 @@ export default function Home() {
   const [artes, setArtes] = useState<ArquivoArteMidia[]>(ARTES_MIDIA_INICIAIS);
   const [postsInstagram, setPostsInstagram] = useState<PostInstagramPlanejado[]>(POSTS_INSTAGRAM_INICIAIS);
   const [configInstagram, setConfigInstagram] = useState<ConfiguracaoInstagram>(CONFIG_INSTAGRAM_INICIAL);
+  const [temaAno, setTemaAno] = useState<TemaAnoBloco>(TEMA_ANO_INICIAL);
 
   // Carrega dados salvos no LocalStorage
   useEffect(() => {
@@ -133,6 +136,9 @@ export default function Home() {
 
       const sConfigIg = localStorage.getItem('bicha_midia_config_ig_v1');
       if (sConfigIg) setConfigInstagram(JSON.parse(sConfigIg));
+
+      const sTema = localStorage.getItem('bicha_tema_ano_v1');
+      if (sTema) setTemaAno(JSON.parse(sTema));
     } catch (e) {
       console.error('Erro ao ler LocalStorage:', e);
     }
@@ -157,10 +163,11 @@ export default function Home() {
       localStorage.setItem('bicha_midia_artes_v1', JSON.stringify(artes));
       localStorage.setItem('bicha_midia_posts_v1', JSON.stringify(postsInstagram));
       localStorage.setItem('bicha_midia_config_ig_v1', JSON.stringify(configInstagram));
+      localStorage.setItem('bicha_tema_ano_v1', JSON.stringify(temaAno));
     } catch (e) {
       console.error('Erro ao salvar LocalStorage:', e);
     }
-  }, [tarefas, macrotarefas, movimentosBar, bilhetesRifa, rifas, vendasRifas, inscritos, integrantes, musicas, letrasCifras, enquetes, documentos, cores, artes, postsInstagram, configInstagram]);
+  }, [tarefas, macrotarefas, movimentosBar, bilhetesRifa, rifas, vendasRifas, inscritos, integrantes, musicas, letrasCifras, enquetes, documentos, cores, artes, postsInstagram, configInstagram, temaAno]);
 
   // Contagem de tarefas órfãs
   const orfasCount = tarefas.filter(
@@ -188,6 +195,7 @@ export default function Home() {
         isAdmin={isAdmin}
         setIsAdmin={setIsAdmin}
         openAdminModal={() => setAdminModalOpen(true)}
+        temaTitulo={temaAno.titulo}
       />
 
       {/* Menu Fanzine de Navegação */}
@@ -300,6 +308,8 @@ export default function Home() {
             setPostsInstagram={setPostsInstagram}
             configInstagram={configInstagram}
             setConfigInstagram={setConfigInstagram}
+            temaAno={temaAno}
+            setTemaAno={setTemaAno}
             isAdmin={isAdmin}
           />
         )}
@@ -308,7 +318,7 @@ export default function Home() {
       {/* Rodapé Estilo Gazeta / Fanzine */}
       <footer className="bg-[#1A181B] text-[#FAF6EC] py-6 px-4 text-center text-xs border-t-4 border-[#E6007E]">
         <p className="font-mono font-black uppercase text-sm">
-          ★ BLOCO BICHARADA • SOLTA PELOS ARES 2027 ★
+          ★ BLOCO BICHARADA • {temaAno.titulo.toUpperCase()} {temaAno.ano} ★
         </p>
         <p className="mt-1 font-serif text-[11px] text-stone-400">
           Florianópolis / SC • Sistema Comunitário Aberto e 100% Gratuito na Vercel

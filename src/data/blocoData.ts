@@ -1362,6 +1362,21 @@ export interface PostInstagramPlanejado {
 }
 
 /**
+ * Interface do Tema Oficial do Ano do Bloco.
+ * Contém o título de exibição (que estampa a faixa oficial do cabeçalho),
+ * as diretrizes de fantasia e adereços, e a descrição das cores oficiais.
+ */
+export interface TemaAnoBloco {
+  ano: number;
+  titulo: string;
+  fantasia: string;
+  descricaoCores: string;
+  subtituloOuSlogan?: string;
+  autorOuCriador?: string;
+  dataAtualizacao?: string;
+}
+
+/**
  * Interface de configuração do perfil e integração com a API do Instagram (Meta Graph API).
  */
 export interface ConfiguracaoInstagram {
@@ -1660,4 +1675,34 @@ export function adicionarPostPlanejado(
     status: novo.status || 'Planejado'
   };
   return [postCriado, ...posts];
+}
+
+/**
+ * Tema Oficial Inicial do Bloco Bicharada.
+ */
+export const TEMA_ANO_INICIAL: TemaAnoBloco = {
+  ano: 2027,
+  titulo: 'Solta pelos Ares 🪽',
+  fantasia: 'Fantasias leves e esvoaçantes com asas, penas coloridas sintéticas, capas translúcidas, criaturas aladas e insetos polinizadores. Uso criativo de maquiagens holográficas e glitter biodegradável.',
+  descricaoCores: 'Paleta vibrante 2027: Rosa Choque Neon (#FF007A) como força principal, Verde Papagaio (#00D287) como contraste tropical, Amarelo Ouro (#FBBF24) para brilhos e Roxo Profundo (#581C87) para contrastes e forros.',
+  subtituloOuSlogan: 'O voo livre da diversidade no Carnaval de Floripa',
+  autorOuCriador: 'Coordenação Artística & Visual'
+};
+
+/**
+ * Atualiza as informações do tema do ano oficial do bloco.
+ * 
+ * @param temaAtual - Objeto com os dados do tema atual
+ * @param novosDados - Campos a serem atualizados (título, fantasia, descrição de cores, etc.)
+ * @returns Novo objeto atualizado do tema do ano
+ */
+export function atualizarTemaAno(
+  temaAtual: TemaAnoBloco,
+  novosDados: Partial<TemaAnoBloco>
+): TemaAnoBloco {
+  return {
+    ...temaAtual,
+    ...novosDados,
+    dataAtualizacao: new Date().toISOString()
+  };
 }

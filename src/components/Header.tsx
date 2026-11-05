@@ -8,6 +8,7 @@ interface HeaderProps {
   isAdmin: boolean;
   setIsAdmin: (val: boolean) => void;
   openAdminModal: () => void;
+  temaTitulo?: string;
 }
 
 /**
@@ -15,7 +16,7 @@ interface HeaderProps {
  * Reproduz o contraste vibrante de Rosa Choque (#E6007E), Verde Menta (#00D287),
  * Roxo Estandarte (#581C87) e Dourado Glitter (#FBBF24).
  */
-export default function Header({ isAdmin, setIsAdmin, openAdminModal }: HeaderProps) {
+export default function Header({ isAdmin, setIsAdmin, openAdminModal, temaTitulo = 'Solta pelos Ares 🪽' }: HeaderProps) {
   const [timeLeft, setTimeLeft] = useState<{ dias: number; horas: number; minutos: number }>({ dias: 0, horas: 0, minutos: 0 });
 
   useEffect(() => {
@@ -93,8 +94,8 @@ export default function Header({ isAdmin, setIsAdmin, openAdminModal }: HeaderPr
             BICHARADA
           </h1>
 
-          <div className="inline-block mt-0.5 px-3 py-0.5 sm:px-4 sm:py-1 bg-[#581C87] text-[#FBBF24] border-2 border-[#1E1B2E] font-black text-xs sm:text-sm uppercase tracking-wider rotate-[-1.5deg] shadow-[2px_2px_0px_#1E1B2E]">
-            Solta pelos Ares 🪽
+          <div className="inline-block mt-0.5 px-3 py-0.5 sm:px-4 sm:py-1 bg-[#581C87] text-[#FBBF24] border-2 border-[#1E1B2E] font-black text-xs sm:text-sm uppercase tracking-wider rotate-[-1.5deg] shadow-[2px_2px_0px_#1E1B2E] max-w-[92vw] truncate">
+            {temaTitulo}
           </div>
         </div>
 
