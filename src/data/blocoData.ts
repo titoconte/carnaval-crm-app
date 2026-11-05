@@ -4,11 +4,22 @@
  * Elenco estruturado por grandes naipes e mural de recados/tarefas estilo cortiça.
  */
 
+export type GrandeGrupoElenco =
+  | 'Bateria'
+  | 'Sopros'
+  | 'Vozes'
+  | 'Outros Instrumentos'
+  | 'Brincantes & Dança'
+  | 'Carro Alegórico'
+  | 'Organização & Apoio';
+
+export type SetorElenco = 'Música' | 'Performance' | 'Organização';
+
 export interface Integrante {
   id: string;
   nome: string;
-  grandeGrupo: 'Bateria' | 'Sopros' | 'Vozes' | 'Outros Instrumentos' | 'Brincantes & Dança' | 'Organização & Apoio';
-  instrumentoOuFuncao: string; // Ex: Caixas, Surdos, Trompete, Pernalta, Harmonia, Produção
+  grandeGrupo: GrandeGrupoElenco;
+  instrumentoOuFuncao: string; // Ex: Caixas, Surdos, Trompete, Pernalta, Harmonia, Produção, Carro Alegórico
   observacao?: string;
   ativo: boolean;
 }
@@ -163,13 +174,42 @@ export const MACROCATEGORIAS_ELENCO: Integrante['grandeGrupo'][] = [
   'Vozes',
   'Outros Instrumentos',
   'Brincantes & Dança',
+  'Carro Alegórico',
   'Organização & Apoio'
 ];
+
+export const SETORES_ELENCO: { id: SetorElenco; rotulo: string; descricao: string; emoji: string }[] = [
+  { id: 'Música', rotulo: 'Música', descricao: 'Bateria, Sopros, Vozes e Instrumentos de Harmonia', emoji: '🎺' },
+  { id: 'Performance', rotulo: 'Performance', descricao: 'Brincantes, Pernaltas, Dança e Carro Alegórico', emoji: '🎭' },
+  { id: 'Organização', rotulo: 'Organização', descricao: 'Coordenação Geral, Produção, Apoio e Logística', emoji: '📋' }
+];
+
+export const CATEGORIAS_POR_SETOR: Record<SetorElenco, Integrante['grandeGrupo'][]> = {
+  'Música': ['Bateria', 'Sopros', 'Vozes', 'Outros Instrumentos'],
+  'Performance': ['Brincantes & Dança', 'Carro Alegórico'],
+  'Organização': ['Organização & Apoio']
+};
 
 export interface ColunaMacrocategoria {
   categoria: Integrante['grandeGrupo'];
   total: number;
   instrumentos: Record<string, Integrante[]>;
+}
+
+/**
+ * Retorna o setor correspondente a uma macrocategoria do elenco.
+ * 
+ * @param grupo - Macrocategoria do integrante
+ * @returns SetorElenco ('Música' | 'Performance' | 'Organização')
+ */
+export function obterSetorDoGrupo(grupo: Integrante['grandeGrupo']): SetorElenco {
+  if (['Bateria', 'Sopros', 'Vozes', 'Outros Instrumentos'].includes(grupo)) {
+    return 'Música';
+  }
+  if (['Brincantes & Dança', 'Carro Alegórico'].includes(grupo)) {
+    return 'Performance';
+  }
+  return 'Organização';
 }
 
 /**
@@ -187,6 +227,7 @@ export function agruparElencoPorMacrocategoria(
     'Vozes': { categoria: 'Vozes', total: 0, instrumentos: {} },
     'Outros Instrumentos': { categoria: 'Outros Instrumentos', total: 0, instrumentos: {} },
     'Brincantes & Dança': { categoria: 'Brincantes & Dança', total: 0, instrumentos: {} },
+    'Carro Alegórico': { categoria: 'Carro Alegórico', total: 0, instrumentos: {} },
     'Organização & Apoio': { categoria: 'Organização & Apoio', total: 0, instrumentos: {} }
   };
 
@@ -203,6 +244,22 @@ export function agruparElencoPorMacrocategoria(
   }
 
   return resultado;
+}
+
+/**
+ * Retorna as colunas de macrocategorias pertencentes a um setor específico do elenco.
+ * 
+ * @param integrantes - Lista de integrantes
+ * @param setor - Setor desejado ('Música', 'Performance' ou 'Organização')
+ * @returns Lista de dados agrupados para as macrocategorias do setor informado
+ */
+export function obterColunasPorSetor(
+  integrantes: Integrante[],
+  setor: SetorElenco
+): ColunaMacrocategoria[] {
+  const agrupado = agruparElencoPorMacrocategoria(integrantes);
+  const categorias = CATEGORIAS_POR_SETOR[setor] || [];
+  return categorias.map(cat => agrupado[cat]);
 }
 
 /**
@@ -276,7 +333,11 @@ export const INTEGRANTES_INICIAIS: Integrante[] = [
   { id: 'dan-2', nome: 'Ju Ben', grandeGrupo: 'Brincantes & Dança', instrumentoOuFuncao: 'Ala de Dança', ativo: true },
   { id: 'dan-3', nome: 'Vini Franke', grandeGrupo: 'Brincantes & Dança', instrumentoOuFuncao: 'Ala de Dança', ativo: true },
 
-  // 6. ORGANIZAÇÃO & APOIO (Aba à parte)
+  // 6. CARRO ALEGÓRICO (Performance & Visual)
+  { id: 'car-1', nome: 'Dudu Cenógrafo', grandeGrupo: 'Carro Alegórico', instrumentoOuFuncao: 'Cenografia e Estrutura Alegórica', ativo: true },
+  { id: 'car-2', nome: 'Beto Som', grandeGrupo: 'Carro Alegórico', instrumentoOuFuncao: 'Operação da Kombi Sonora & Iluminação', ativo: true },
+
+  // 7. ORGANIZAÇÃO & APOIO (Aba à parte)
   { id: 'org-1', nome: 'Tito', grandeGrupo: 'Organização & Apoio', instrumentoOuFuncao: 'Coordenação Geral, Jurídico & Apoio', ativo: true },
   { id: 'org-2', nome: 'Nathy R.', grandeGrupo: 'Organização & Apoio', instrumentoOuFuncao: 'Produção Executiva & Espaços', ativo: true },
   { id: 'org-3', nome: 'Laís', grandeGrupo: 'Organização & Apoio', instrumentoOuFuncao: 'Comunicação / Redação e Conceito', ativo: true },

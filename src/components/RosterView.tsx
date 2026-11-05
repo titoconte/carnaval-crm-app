@@ -1,12 +1,17 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Users, UserPlus, Search, Sparkles } from 'lucide-react';
+import { Users, UserPlus, Search, Sparkles, Music, Theater, ClipboardList } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import {
   Integrante,
+  GrandeGrupoElenco,
+  SetorElenco,
+  SETORES_ELENCO,
+  CATEGORIAS_POR_SETOR,
   MACROCATEGORIAS_ELENCO,
-  agruparElencoPorMacrocategoria
+  agruparElencoPorMacrocategoria,
+  obterSetorDoGrupo
 } from '../data/blocoData';
 
 interface RosterViewProps {
@@ -15,17 +20,22 @@ interface RosterViewProps {
 }
 
 /**
- * Visualização do Elenco e Naipes em Colunas de Macrocategorias.
- * As macrocategorias ficam organizadas lado a lado em colunas
+ * Visualização do Elenco e Naipes em 3 Abas:
+ * 1. Música (Bateria, Sopros, Vozes, Outros Instrumentos)
+ * 2. Performance (Brincantes, Pernaltas, Dança e Carro Alegórico)
+ * 3. Organização (Organização, Apoio e Produção)
+ * 
+ * Dentro de cada aba, as macrocategorias ficam dispostas em colunas
  * e as funções/instrumentos e integrantes distribuídos em linhas verticais.
  */
 export default function RosterView({ integrantes, setIntegrantes }: RosterViewProps) {
   const [search, setSearch] = useState('');
+  const [setorAtivo, setSetorAtivo] = useState<SetorElenco>('Música');
   const [modalNovo, setModalNovo] = useState(false);
 
   // Form states para adição rápida de novos integrantes
   const [nome, setNome] = useState('');
-  const [grandeGrupo, setGrandeGrupo] = useState<Integrante['grandeGrupo']>('Bateria');
+  const [grandeGrupo, setGrandeGrupo] = useState<GrandeGrupoElenco>('Bateria');
   const [instrumentoOuFuncao, setInstrumentoOuFuncao] = useState('Caixa');
   const [observacao, setObservacao] = useState('');
 
@@ -46,6 +56,7 @@ export default function RosterView({ integrantes, setIntegrantes }: RosterViewPr
     };
 
     setIntegrantes(prev => [novo, ...prev]);
+    setSetorAtivo(obterSetorDoGrupo(grandeGrupo));
     setModalNovo(false);
     setNome('');
     setObservacao('');
@@ -97,6 +108,13 @@ export default function RosterView({ integrantes, setIntegrantes }: RosterViewPr
           bgHeader: 'bg-[#FDF2F8]',
           tag: 'text-[#E6007E]'
         };
+      case 'Carro Alegórico':
+        return {
+          badge: 'bg-[#FF6B00] text-white',
+          border: 'border-[#FF6B00]',
+          bgHeader: 'bg-[#FFF7ED]',
+          tag: 'text-[#C2410C]'
+        };
       case 'Organização & Apoio':
         return {
           badge: 'bg-[#00D287] text-[#1E1B2E]',
@@ -114,6 +132,20 @@ export default function RosterView({ integrantes, setIntegrantes }: RosterViewPr
     }
   };
 
+  /**
+   * Retorna o ícone correspondente ao setor.
+   */
+  const getSetorIcon = (setor: SetorElenco) => {
+    switch (setor) {
+      case 'Música':
+        return <Music className="w-4 h-4" />;
+      case 'Performance':
+        return <Theater className="w-4 h-4" />;
+      case 'Organização':
+        return <ClipboardList className="w-4 h-4" />;
+    }
+  };
+
   // Filtra integrantes por busca textual
   const filtrados = integrantes.filter(m => {
     if (!search.trim()) return true;
@@ -126,12 +158,22 @@ export default function RosterView({ integrantes, setIntegrantes }: RosterViewPr
   // Agrupa os integrantes filtrados nas colunas de macrocategorias
   const colunasData = agruparElencoPorMacrocategoria(filtrados);
 
+  // Macrocategorias da aba ativa
+  const categoriasAbaAtiva = CATEGORIAS_POR_SETOR[setorAtivo] || [];
+
+  // Contagem por setor
+  const contagemPorSetor: Record<SetorElenco, number> = {
+    'Música': integrantes.filter(i => obterSetorDoGrupo(i.grandeGrupo) === 'Música').length,
+    'Performance': integrantes.filter(i => obterSetorDoGrupo(i.grandeGrupo) === 'Performance').length,
+    'Organização': integrantes.filter(i => obterSetorDoGrupo(i.grandeGrupo) === 'Organização').length
+  };
+
   return (
     <div className="space-y-4">
       {/* Top Banner & Botão Adicionar */}
       <div className="vintage-card p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="stamp stamp-open text-xs">Quadro Oficial 2027</span>
             <span className="font-mono text-xs font-bold text-stone-600">
               Total: {integrantes.length} bichos cadastrados
@@ -139,10 +181,10 @@ export default function RosterView({ integrantes, setIntegrantes }: RosterViewPr
           </div>
           <h2 className="text-xl font-black uppercase text-[#1E1B2E] flex items-center gap-2">
             <Users className="w-5 h-5 text-[#E6007E]" />
-            <span>Elenco por Macrocategorias & Naipes</span>
+            <span>Elenco por Setores & Naipes</span>
           </h2>
           <p className="text-xs text-stone-600 mt-0.5">
-            Macrocategorias distribuídas em colunas, com naipes e integrantes organizados em linhas verticais.
+            Organizado em 3 abas essenciais: Música, Performance (brincantes, pernaltas, dança, carro alegórico) e Organização.
           </p>
         </div>
 
@@ -159,7 +201,11 @@ export default function RosterView({ integrantes, setIntegrantes }: RosterViewPr
           </div>
 
           <button
-            onClick={() => setModalNovo(true)}
+            onClick={() => {
+              // Ajusta o grupo padrão de acordo com o setor ativo
+              setGrandeGrupo(CATEGORIAS_POR_SETOR[setorAtivo][0]);
+              setModalNovo(true);
+            }}
             className="vintage-button px-3.5 py-2 bg-[#00D287] text-[#1E1B2E] hover:bg-[#34EEA0] text-xs uppercase flex items-center gap-1.5 shrink-0 shadow-[2px_2px_0px_#1E1B2E]"
           >
             <UserPlus className="w-4 h-4" />
@@ -168,25 +214,72 @@ export default function RosterView({ integrantes, setIntegrantes }: RosterViewPr
         </div>
       </div>
 
-      {/* DISPOSIÇÃO EM COLUNAS DE MACROCATEGORIAS COM LINHAS VERTICAIS INTERNAS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 items-start">
-        {MACROCATEGORIAS_ELENCO.map((macro) => {
-          const dadosColuna = colunasData[macro];
+      {/* 3 ABAS DO ELENCO: MÚSICA, PERFORMANCE, ORGANIZAÇÃO */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        {SETORES_ELENCO.map((setor) => {
+          const isAtivo = setorAtivo === setor.id;
+          const totalNoSetor = contagemPorSetor[setor.id];
+
+          return (
+            <button
+              key={setor.id}
+              onClick={() => setSetorAtivo(setor.id)}
+              className={`p-3 border-3 border-[#1E1B2E] text-left transition-all flex items-center justify-between gap-2 shadow-[2px_2px_0px_#1E1B2E] cursor-pointer ${
+                isAtivo
+                  ? 'bg-[#1E1B2E] text-white shadow-[4px_4px_0px_#E6007E] -translate-y-0.5'
+                  : 'bg-white hover:bg-stone-50 text-[#1E1B2E]'
+              }`}
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="text-xl shrink-0">{setor.emoji}</span>
+                <div className="truncate">
+                  <div className="font-mono font-black text-sm uppercase flex items-center gap-1.5 truncate">
+                    {setor.rotulo}
+                  </div>
+                  <div className={`text-[10px] truncate font-serif ${isAtivo ? 'text-stone-300' : 'text-stone-500'}`}>
+                    {setor.descricao}
+                  </div>
+                </div>
+              </div>
+              <span
+                className={`font-mono text-xs font-black px-2 py-0.5 border border-black shrink-0 shadow-[1px_1px_0px_#000] ${
+                  isAtivo ? 'bg-[#00D287] text-[#1E1B2E]' : 'bg-[#FBBF24] text-[#1E1B2E]'
+                }`}
+              >
+                {totalNoSetor}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* DISPOSIÇÃO EM COLUNAS DE MACROCATEGORIAS DA ABA ATIVA */}
+      <div
+        className={`grid gap-3 items-start ${
+          setorAtivo === 'Música'
+            ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'
+            : setorAtivo === 'Performance'
+            ? 'grid-cols-1 md:grid-cols-2'
+            : 'grid-cols-1 md:grid-cols-1 max-w-2xl'
+        }`}
+      >
+        {categoriasAbaAtiva.map((macro) => {
+          const dadosColuna = colunasData[macro] || { categoria: macro, total: 0, instrumentos: {} };
           const theme = getGrupoTheme(macro);
           const instrumentosEntries = Object.entries(dadosColuna.instrumentos);
 
           return (
             <div
               key={macro}
-              className={`vintage-card flex flex-col bg-white border-t-8 ${theme.border} min-h-[380px] p-2.5`}
+              className={`vintage-card flex flex-col bg-white border-t-8 ${theme.border} min-h-[380px] p-3`}
             >
               {/* Cabeçalho da Coluna de Macrocategoria */}
-              <div className={`p-2 border-2 border-[#1E1B2E] ${theme.bgHeader} mb-2 shadow-[2px_2px_0px_#1E1B2E]`}>
+              <div className={`p-2.5 border-2 border-[#1E1B2E] ${theme.bgHeader} mb-2 shadow-[2px_2px_0px_#1E1B2E]`}>
                 <div className="flex items-center justify-between gap-1">
-                  <span className={`px-2 py-0.5 border border-black font-black uppercase text-[11px] font-mono shadow-[1px_1px_0px_#000] truncate ${theme.badge}`}>
+                  <span className={`px-2 py-0.5 border border-black font-black uppercase text-xs font-mono shadow-[1px_1px_0px_#000] truncate ${theme.badge}`}>
                     {macro}
                   </span>
-                  <span className="font-mono text-[11px] font-black px-1.5 py-0.5 bg-[#FBBF24] border border-black shadow-[1px_1px_0px_#000] shrink-0">
+                  <span className="font-mono text-xs font-black px-2 py-0.5 bg-[#FBBF24] border border-black shadow-[1px_1px_0px_#000] shrink-0">
                     {dadosColuna.total}
                   </span>
                 </div>
@@ -194,35 +287,42 @@ export default function RosterView({ integrantes, setIntegrantes }: RosterViewPr
 
               {/* Linhas de Instrumentos/Funções dentro da Coluna */}
               {instrumentosEntries.length === 0 ? (
-                <div className="text-center py-6 text-stone-400 font-mono text-[11px] italic">
-                  Nenhum integrante {search ? 'encontrado' : 'nesta ala'}
+                <div className="text-center py-8 text-stone-400 font-mono text-xs italic">
+                  Nenhum integrante {search ? 'encontrado' : 'nesta categoria'}
                 </div>
               ) : (
                 <div className="space-y-2.5 flex-1">
                   {instrumentosEntries.map(([inst, membros]) => (
                     <div
                       key={inst}
-                      className="bg-stone-50 border border-[#1E1B2E] p-2 shadow-[1px_1px_0px_#1E1B2E]"
+                      className="bg-stone-50 border-2 border-[#1E1B2E] p-2.5 shadow-[1px_1px_0px_#1E1B2E]"
                     >
                       {/* Linha do Instrumento */}
-                      <div className="flex items-center justify-between border-b border-stone-200 pb-1 mb-1.5 text-[11px] font-mono font-black uppercase text-[#1E1B2E]">
+                      <div className="flex items-center justify-between border-b border-stone-200 pb-1 mb-2 text-xs font-mono font-black uppercase text-[#1E1B2E]">
                         <span className="truncate">{inst}</span>
                         <span className="text-stone-500 font-normal shrink-0">({membros.length})</span>
                       </div>
 
                       {/* Linhas de Integrantes */}
-                      <div className="space-y-1">
+                      <div className="space-y-1.5">
                         {membros.map((m) => (
                           <div
                             key={m.id}
-                            className="p-1 bg-white border border-black/20 flex items-center gap-1.5 text-xs font-mono shadow-2xs hover:border-[#E6007E] transition-colors"
+                            className="p-1.5 bg-white border border-black/30 flex items-center justify-between gap-1.5 text-xs font-mono shadow-2xs hover:border-[#E6007E] transition-colors"
                           >
-                            <span className="w-4 h-4 bg-[#E6007E] text-white text-[9px] font-black flex items-center justify-center shrink-0 border border-black">
-                              {m.nome.charAt(0)}
-                            </span>
-                            <span className="truncate font-bold text-stone-900 text-[11px]">
-                              {m.nome}
-                            </span>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="w-5 h-5 bg-[#E6007E] text-white text-[10px] font-black flex items-center justify-center shrink-0 border border-black">
+                                {m.nome.charAt(0)}
+                              </span>
+                              <span className="truncate font-bold text-stone-900 text-xs">
+                                {m.nome}
+                              </span>
+                            </div>
+                            {m.observacao && (
+                              <span className="text-[10px] text-stone-500 truncate max-w-[120px] font-sans italic" title={m.observacao}>
+                                {m.observacao}
+                              </span>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -264,12 +364,22 @@ export default function RosterView({ integrantes, setIntegrantes }: RosterViewPr
                 <label className="block text-xs font-black uppercase text-[#1A181B] mb-1">Macrocategoria (Coluna) *</label>
                 <select
                   value={grandeGrupo}
-                  onChange={(e) => setGrandeGrupo(e.target.value as any)}
+                  onChange={(e) => setGrandeGrupo(e.target.value as GrandeGrupoElenco)}
                   className="w-full px-3 py-2 bg-white border-2 border-[#1A181B] text-xs font-mono font-bold"
                 >
-                  {MACROCATEGORIAS_ELENCO.map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
+                  <optgroup label="🎺 Setor Música">
+                    <option value="Bateria">Bateria</option>
+                    <option value="Sopros">Sopros</option>
+                    <option value="Vozes">Vozes</option>
+                    <option value="Outros Instrumentos">Outros Instrumentos / Harmonia</option>
+                  </optgroup>
+                  <optgroup label="🎭 Setor Performance">
+                    <option value="Brincantes & Dança">Brincantes & Dança (Pernaltas, Brincantes, Dançarinos)</option>
+                    <option value="Carro Alegórico">Carro Alegórico & Kombi Sonora</option>
+                  </optgroup>
+                  <optgroup label="📋 Setor Organização">
+                    <option value="Organização & Apoio">Organização, Produção & Apoio</option>
+                  </optgroup>
                 </select>
               </div>
 
@@ -278,7 +388,7 @@ export default function RosterView({ integrantes, setIntegrantes }: RosterViewPr
                 <input
                   type="text"
                   required
-                  placeholder="Ex: Caixa, Surdo, Trompete, Pernalta, Produção..."
+                  placeholder="Ex: Caixa, Surdo, Trompete, Pernalta, Cenógrafo, Produção..."
                   value={instrumentoOuFuncao}
                   onChange={(e) => setInstrumentoOuFuncao(e.target.value)}
                   className="w-full px-3 py-2 bg-white border-2 border-[#1A181B] text-xs font-mono focus:outline-none"
