@@ -11,6 +11,7 @@ import {
   Square,
   Sparkles,
   Trash2,
+  Edit2,
   CheckCircle2,
   Clock
 } from 'lucide-react';
@@ -21,7 +22,9 @@ import {
   calcularProgressoChecklist,
   ordenarTarefasPorUrgencia,
   podeAcionarEquipePronta,
-  formatarDataBrasileira
+  formatarDataBrasileira,
+  atualizarTarefaPostIt,
+  removerTarefaPostIt
 } from '../data/blocoData';
 
 interface TasksManagerProps {
@@ -36,6 +39,7 @@ interface TasksManagerProps {
  * Estilo Quadro de Cortiça com Post-its vivos.
  * Funcionalidades:
  * - "Quero Ajudar" para assumir tarefas órfãs;
+ * - Edição completa e deleção de tarefas do mural;
  * - Checklists individuais com datas limites por item e % de progresso da tarefa;
  * - Data final global da tarefa;
  * - Botão "Equipe Pronta" que transfere a tarefa para a aba Tarefas em Andamento (Desfile).
@@ -53,6 +57,16 @@ export default function TasksManager({
   const [modalEditarData, setModalEditarData] = useState<TarefaPostIt | null>(null);
   const [dataEdicao, setDataEdicao] = useState('');
   const [modalNovoPostIt, setModalNovoPostIt] = useState(false);
+
+  // Estados para edição completa da tarefa
+  const [modalEditarTarefa, setModalEditarTarefa] = useState<TarefaPostIt | null>(null);
+  const [editTitulo, setEditTitulo] = useState('');
+  const [editDescricao, setEditDescricao] = useState('');
+  const [editCategoria, setEditCategoria] = useState<TarefaPostIt['categoria']>('Apoio');
+  const [editResponsavel, setEditResponsavel] = useState('');
+  const [editCor, setEditCor] = useState<TarefaPostIt['corPostIt']>('rosa');
+  const [editUrgente, setEditUrgente] = useState(false);
+  const [editDataFinal, setEditDataFinal] = useState('');
 
   // Estados do formulário de novo Post-it
   const [novoTitulo, setNovoTitulo] = useState('');
@@ -143,6 +157,55 @@ export default function TasksManager({
 
     setModalEditarData(null);
     setDataEdicao('');
+  };
+
+  /**
+   * Abre o modal de edição completa para a tarefa selecionada.
+   */
+  const abrirModalEditarTarefa = (tarefa: TarefaPostIt) => {
+    setModalEditarTarefa(tarefa);
+    setEditTitulo(tarefa.titulo);
+    setEditDescricao(tarefa.descricao);
+    setEditCategoria(tarefa.categoria);
+    setEditResponsavel(tarefa.responsavel || '');
+    setEditCor(tarefa.corPostIt);
+    setEditUrgente(!!tarefa.urgente);
+    setEditDataFinal(tarefa.dataFinal || '');
+  };
+
+  /**
+   * Salva as alterações da tarefa em edição.
+   */
+  const handleSalvarEdicaoTarefa = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!modalEditarTarefa || !editTitulo.trim()) return;
+
+    const atualizada: TarefaPostIt = {
+      ...modalEditarTarefa,
+      titulo: editTitulo.trim(),
+      descricao: editDescricao.trim(),
+      categoria: editCategoria,
+      responsavel: editResponsavel.trim(),
+      corPostIt: editCor,
+      urgente: editUrgente,
+      dataFinal: editDataFinal.trim() ? editDataFinal.trim() : undefined
+    };
+
+    setTarefas(prev => atualizarTarefaPostIt(prev, atualizada));
+    setModalEditarTarefa(null);
+  };
+
+  /**
+   * Remove uma tarefa do mural após confirmação do usuário.
+   */
+  const handleRemoverTarefa = (id: string) => {
+    const tarefa = tarefas.find(t => t.id === id);
+    if (!tarefa) return;
+
+    const confirmou = window.confirm(`Tem certeza que deseja excluir o post-it "${tarefa.titulo}"?`);
+    if (!confirmou) return;
+
+    setTarefas(prev => removerTarefaPostIt(prev, id));
   };
 
   /**
@@ -272,7 +335,7 @@ export default function TasksManager({
 
         <button
           onClick={() => setModalNovoPostIt(true)}
-          className="vintage-button px-4 py-2 bg-[#E6007E] text-white hover:bg-[#C2006A] text-xs uppercase flex items-center gap-1.5 active:translate-x-0.5 active:translate-y-0.5"
+          className="vintage-button px-4 py-2 bg-[#E6007E] text-white hover:bg-[#C2006A] text-xs uppercase flex items-center gap-1.5 active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>+ Pregar Novo Post-It</span>
@@ -283,7 +346,7 @@ export default function TasksManager({
       <div className="flex items-center gap-2 pb-1 overflow-x-auto no-scrollbar">
         <button
           onClick={() => setFiltro('todas')}
-          className={`px-3 py-1.5 border-2 border-[#1E1B2E] text-xs font-black uppercase transition-all shadow-[2px_2px_0px_#1E1B2E] ${
+          className={`px-3 py-1.5 border-2 border-[#1E1B2E] text-xs font-black uppercase transition-all shadow-[2px_2px_0px_#1E1B2E] cursor-pointer ${
             filtro === 'todas'
               ? 'bg-[#581C87] text-[#FBBF24]'
               : 'bg-white text-[#1E1B2E] hover:bg-purple-50'
@@ -294,7 +357,7 @@ export default function TasksManager({
 
         <button
           onClick={() => setFiltro('orfas')}
-          className={`px-3 py-1.5 border-2 border-[#1E1B2E] text-xs font-black uppercase transition-all shadow-[2px_2px_0px_#1E1B2E] ${
+          className={`px-3 py-1.5 border-2 border-[#1E1B2E] text-xs font-black uppercase transition-all shadow-[2px_2px_0px_#1E1B2E] cursor-pointer ${
             filtro === 'orfas'
               ? 'bg-[#E6007E] text-white'
               : 'bg-white text-[#1E1B2E] hover:bg-pink-50'
@@ -328,23 +391,45 @@ export default function TasksManager({
                   } ${rotation}`}
                 >
                   <div>
-                    {/* Carimbos e Cabeçalho do Post-it */}
+                    {/* Carimbos, Cabeçalho e Botões de Ação do Post-it */}
                     <div className="flex items-center justify-between gap-1 mb-2 flex-wrap">
-                      <span className="text-[10px] font-black uppercase tracking-wider bg-black/10 px-2 py-0.5 border border-black/30 font-mono">
-                        {tarefa.categoria}
-                      </span>
-
-                      {tarefa.urgente && (
-                        <span className="stamp stamp-urgent text-[10px]">
-                          Urgente!
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-black uppercase tracking-wider bg-black/10 px-2 py-0.5 border border-black/30 font-mono">
+                          {tarefa.categoria}
                         </span>
-                      )}
 
-                      {semDono && (
-                        <span className="stamp stamp-open text-[10px]">
-                          Vaga Aberta
-                        </span>
-                      )}
+                        {tarefa.urgente && (
+                          <span className="stamp stamp-urgent text-[10px]">
+                            Urgente!
+                          </span>
+                        )}
+
+                        {semDono && (
+                          <span className="stamp stamp-open text-[10px]">
+                            Vaga Aberta
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Botões de Edição e Deleção da Tarefa */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => abrirModalEditarTarefa(tarefa)}
+                          className="p-1 text-stone-600 hover:text-black hover:bg-black/10 transition-colors rounded cursor-pointer"
+                          title="Editar post-it"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoverTarefa(tarefa.id)}
+                          className="p-1 text-stone-600 hover:text-red-600 hover:bg-black/10 transition-colors rounded cursor-pointer"
+                          title="Excluir post-it"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
 
                     <h3 className="font-black text-base text-[#1E1B2E] leading-tight font-mono">
@@ -589,6 +674,128 @@ export default function TasksManager({
         </div>
       )}
 
+      {/* Modal para Edição Completa da Tarefa / Post-it */}
+      {modalEditarTarefa && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border-4 border-[#1E1B2E] p-6 max-w-md w-full shadow-[6px_6px_0px_#1E1B2E] max-h-[90vh] overflow-y-auto">
+            <div className="stamp stamp-urgent text-xs mb-2">Editar Tarefa</div>
+            <h3 className="text-base font-black uppercase text-[#1E1B2E]">
+              Editar Post-It do Mural
+            </h3>
+            <p className="text-xs text-stone-600 mt-1 mb-4 font-serif">
+              Atualize as informações, o responsável e os prazos desta demanda.
+            </p>
+
+            <form onSubmit={handleSalvarEdicaoTarefa} className="space-y-3">
+              <div>
+                <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Título do Recado *</label>
+                <input
+                  type="text"
+                  required
+                  value={editTitulo}
+                  onChange={(e) => setEditTitulo(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Descrição</label>
+                <textarea
+                  rows={2}
+                  value={editDescricao}
+                  onChange={(e) => setEditDescricao(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Cor do Post-it</label>
+                  <select
+                    value={editCor}
+                    onChange={(e) => setEditCor(e.target.value as any)}
+                    className="w-full px-2 py-1.5 bg-white border-2 border-[#1E1B2E] text-xs font-bold font-mono focus:outline-none"
+                  >
+                    <option value="rosa">Rosa</option>
+                    <option value="verde">Verde</option>
+                    <option value="amarelo">Amarelo</option>
+                    <option value="azul">Azul</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Prazo Final</label>
+                  <input
+                    type="date"
+                    value={editDataFinal}
+                    onChange={(e) => setEditDataFinal(e.target.value)}
+                    className="w-full px-2 py-1.5 bg-white border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Categoria</label>
+                  <select
+                    value={editCategoria}
+                    onChange={(e) => setEditCategoria(e.target.value as any)}
+                    className="w-full px-2 py-1.5 bg-white border-2 border-[#1E1B2E] text-xs font-bold font-mono focus:outline-none"
+                  >
+                    <option value="Apoio">Apoio</option>
+                    <option value="Logística">Logística</option>
+                    <option value="Produção">Produção</option>
+                    <option value="Fantasias">Fantasias</option>
+                    <option value="Música">Música</option>
+                    <option value="Comunicação">Comunicação</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Responsável</label>
+                  <input
+                    type="text"
+                    placeholder="Vazio para Vaga Aberta"
+                    value={editResponsavel}
+                    onChange={(e) => setEditResponsavel(e.target.value)}
+                    className="w-full px-2 py-1.5 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-bold font-mono focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="editUrgenteCheck"
+                  checked={editUrgente}
+                  onChange={(e) => setEditUrgente(e.target.checked)}
+                  className="w-4 h-4 border-2 border-[#1E1B2E]"
+                />
+                <label htmlFor="editUrgenteCheck" className="text-xs font-black uppercase text-[#E6007E]">
+                  Carimbar como URGENTE!
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-200">
+                <button
+                  type="button"
+                  onClick={() => setModalEditarTarefa(null)}
+                  className="px-3 py-1.5 border-2 border-[#1E1B2E] text-xs font-bold uppercase hover:bg-stone-200 cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="vintage-button px-4 py-1.5 bg-[#00D287] hover:bg-[#34EEA0] text-[#1E1B2E] text-xs uppercase cursor-pointer"
+                >
+                  Salvar Alterações
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Modal para Pregar Novo Post-It com Checklists e Prazos */}
       {modalNovoPostIt && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
@@ -607,27 +814,42 @@ export default function TasksManager({
                 <input
                   type="text"
                   required
-                  placeholder="Ex: Buscar fitas de cetim para os adereços"
+                  placeholder="Ex: Transportar instrumentos para o ensaio"
                   value={novoTitulo}
                   onChange={(e) => setNovoTitulo(e.target.value)}
-                  className="w-full px-3 py-2 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-bold font-mono focus:outline-none"
+                  className="w-full px-3 py-2 bg-white border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Instruções / Detalhes</label>
+                <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Descrição Detalhada *</label>
                 <textarea
                   rows={2}
-                  placeholder="Como fazer, local de entrega, etc..."
+                  required
+                  placeholder="Precisamos de carro ou van no sábado às 13h..."
                   value={novaDescricao}
                   onChange={(e) => setNovaDescricao(e.target.value)}
-                  className="w-full px-3 py-2 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-serif focus:outline-none"
+                  className="w-full px-3 py-2 bg-white border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Data Final da Tarefa</label>
+                  <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Cor do Post-it</label>
+                  <select
+                    value={novaCor}
+                    onChange={(e) => setNovaCor(e.target.value as any)}
+                    className="w-full px-2 py-1.5 bg-white border-2 border-[#1E1B2E] text-xs font-bold font-mono focus:outline-none"
+                  >
+                    <option value="rosa">Rosa (Destaque)</option>
+                    <option value="verde">Verde (Operacional)</option>
+                    <option value="amarelo">Amarelo (Avisos)</option>
+                    <option value="azul">Azul (Geral)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Prazo Geral da Missão</label>
                   <input
                     type="date"
                     value={novaDataFinal}
@@ -635,29 +857,15 @@ export default function TasksManager({
                     className="w-full px-2 py-1.5 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none"
                   />
                 </div>
-
-                <div>
-                  <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Cor do Post-it</label>
-                  <select
-                    value={novaCor}
-                    onChange={(e) => setNovaCor(e.target.value as any)}
-                    className="w-full px-2 py-1.5 bg-white border-2 border-[#1E1B2E] text-xs font-bold"
-                  >
-                    <option value="rosa">Rosa Choque (#E6007E)</option>
-                    <option value="verde">Verde Menta (#00D287)</option>
-                    <option value="amarelo">Amarelo Dourado (#FBBF24)</option>
-                    <option value="azul">Lavanda (#6C2BD9)</option>
-                  </select>
-                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Categoria</label>
                   <select
                     value={novaCategoria}
                     onChange={(e) => setNovaCategoria(e.target.value as any)}
-                    className="w-full px-2 py-1.5 bg-white border-2 border-[#1E1B2E] text-xs font-bold"
+                    className="w-full px-2 py-1.5 bg-white border-2 border-[#1E1B2E] text-xs font-bold font-mono focus:outline-none"
                   >
                     <option value="Apoio">Apoio</option>
                     <option value="Logística">Logística</option>
@@ -722,7 +930,7 @@ export default function TasksManager({
                           <button
                             type="button"
                             onClick={() => handleRemoverItemChecklist(item.id)}
-                            className="text-red-500 hover:text-red-700"
+                            className="text-red-500 hover:text-red-700 cursor-pointer"
                           >
                             <Trash2 className="w-3 h-3" />
                           </button>
@@ -750,13 +958,13 @@ export default function TasksManager({
                 <button
                   type="button"
                   onClick={() => setModalNovoPostIt(false)}
-                  className="px-3 py-1.5 border-2 border-[#1E1B2E] text-xs font-bold uppercase hover:bg-stone-200"
+                  className="px-3 py-1.5 border-2 border-[#1E1B2E] text-xs font-bold uppercase hover:bg-stone-200 cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="vintage-button px-4 py-1.5 bg-[#E6007E] text-white text-xs uppercase"
+                  className="vintage-button px-4 py-1.5 bg-[#E6007E] text-white text-xs uppercase cursor-pointer"
                 >
                   Pregar Bilhete!
                 </button>

@@ -1370,3 +1370,87 @@ export function removerIntegranteElenco(
 ): Integrante[] {
   return integrantes.filter(i => i.id !== id);
 }
+
+/**
+ * Atualiza os dados de uma tarefa post-it existente no mural de tarefas.
+ * 
+ * @param tarefas - Lista atual de tarefas post-it
+ * @param tarefaAtualizada - Tarefa com os dados modificados
+ * @returns Lista atualizada com a tarefa modificada
+ */
+export function atualizarTarefaPostIt(
+  tarefas: TarefaPostIt[],
+  tarefaAtualizada: TarefaPostIt
+): TarefaPostIt[] {
+  return tarefas.map(t => t.id === tarefaAtualizada.id ? { ...tarefaAtualizada } : t);
+}
+
+/**
+ * Remove uma tarefa post-it do mural pelo seu identificador unico.
+ * 
+ * @param tarefas - Lista atual de tarefas post-it
+ * @param id - Identificador da tarefa a ser removida
+ * @returns Lista de tarefas sem a tarefa removida
+ */
+export function removerTarefaPostIt(
+  tarefas: TarefaPostIt[],
+  id: string
+): TarefaPostIt[] {
+  return tarefas.filter(t => t.id !== id);
+}
+
+/**
+ * Atualiza os dados de uma macrotarefa do cortejo/desfile em andamento.
+ * 
+ * @param macrotarefas - Lista atual de macrotarefas
+ * @param macroAtualizada - Macrotarefa modificada
+ * @returns Lista atualizada com a macrotarefa modificada
+ */
+export function atualizarMacrotarefa(
+  macrotarefas: MacrotarefaDesfile[],
+  macroAtualizada: MacrotarefaDesfile
+): MacrotarefaDesfile[] {
+  return macrotarefas.map(m => m.id === macroAtualizada.id ? { ...macroAtualizada } : m);
+}
+
+/**
+ * Remove uma macrotarefa do desfile pelo seu identificador unico.
+ * 
+ * @param macrotarefas - Lista atual de macrotarefas
+ * @param id - Identificador da macrotarefa a ser removida
+ * @returns Lista de macrotarefas sem a macrotarefa removida
+ */
+export function removerMacrotarefa(
+  macrotarefas: MacrotarefaDesfile[],
+  id: string
+): MacrotarefaDesfile[] {
+  return macrotarefas.filter(m => m.id !== id);
+}
+
+/**
+ * Atualiza os dados de uma enquete apurada do WhatsApp.
+ * 
+ * @param enquetes - Lista atual de enquetes
+ * @param enqueteAtualizada - Enquete modificada
+ * @returns Lista atualizada com a enquete modificada
+ */
+export function atualizarEnquete(
+  enquetes: EnqueteWhatsApp[],
+  enqueteAtualizada: EnqueteWhatsApp
+): EnqueteWhatsApp[] {
+  return enquetes.map(e => e.id === enqueteAtualizada.id ? { ...enqueteAtualizada } : e);
+}
+
+/**
+ * Remove uma enquete do WhatsApp pelo seu identificador unico.
+ * 
+ * @param enquetes - Lista atual de enquetes
+ * @param id - Identificador da enquete a ser removida
+ * @returns Lista de enquetes sem a enquete removida
+ */
+export function removerEnquete(
+  enquetes: EnqueteWhatsApp[],
+  id: string
+): EnqueteWhatsApp[] {
+  return enquetes.filter(e => e.id !== id);
+}

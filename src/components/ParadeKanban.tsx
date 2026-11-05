@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Plus, CheckSquare, Square, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Plus, CheckSquare, Square, ArrowRight, ArrowLeft, Edit2, Trash2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { MacrotarefaDesfile } from '../data/blocoData';
+import { MacrotarefaDesfile, atualizarMacrotarefa, removerMacrotarefa } from '../data/blocoData';
 
 interface ParadeKanbanProps {
   macrotarefas: MacrotarefaDesfile[];
@@ -13,6 +13,7 @@ interface ParadeKanbanProps {
 
 /**
  * Kanban de Rua do Desfile com as Cores Oficiais da Bicharada.
+ * Permite acompanhar, movimentar, editar e excluir as macrotarefas operacionais.
  */
 export default function ParadeKanban({ macrotarefas, setMacrotarefas, isAdmin }: ParadeKanbanProps) {
   const [modalNovaMacro, setModalNovaMacro] = useState(false);
@@ -21,6 +22,13 @@ export default function ParadeKanban({ macrotarefas, setMacrotarefas, isAdmin }:
   const [novaColuna, setNovaColuna] = useState<MacrotarefaDesfile['coluna']>('A Fazer');
   const [novaDescricao, setNovaDescricao] = useState('');
   const [checklistsTexto, setChecklistsTexto] = useState('');
+
+  // Estados para edição de macrotarefa
+  const [modalEditarMacro, setModalEditarMacro] = useState<MacrotarefaDesfile | null>(null);
+  const [editTitulo, setEditTitulo] = useState('');
+  const [editResponsavel, setEditResponsavel] = useState('');
+  const [editColuna, setEditColuna] = useState<MacrotarefaDesfile['coluna']>('A Fazer');
+  const [editDescricao, setEditDescricao] = useState('');
 
   const [cardAdicionandoSubitem, setCardAdicionandoSubitem] = useState<string | null>(null);
   const [textoNovoSubitem, setTextoNovoSubitem] = useState('');
@@ -130,6 +138,49 @@ export default function ParadeKanban({ macrotarefas, setMacrotarefas, isAdmin }:
     });
   };
 
+  /**
+   * Abre o modal de edição para a macrotarefa selecionada.
+   */
+  const abrirModalEditarMacro = (macro: MacrotarefaDesfile) => {
+    setModalEditarMacro(macro);
+    setEditTitulo(macro.titulo);
+    setEditResponsavel(macro.responsavelPrincipal);
+    setEditColuna(macro.coluna);
+    setEditDescricao(macro.descricao || '');
+  };
+
+  /**
+   * Salva as alterações da macrotarefa em edição.
+   */
+  const handleSalvarEdicaoMacro = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!modalEditarMacro || !editTitulo.trim()) return;
+
+    const atualizada: MacrotarefaDesfile = {
+      ...modalEditarMacro,
+      titulo: editTitulo.trim(),
+      responsavelPrincipal: editResponsavel.trim() || 'Apoio Geral',
+      coluna: editColuna,
+      descricao: editDescricao.trim() || undefined
+    };
+
+    setMacrotarefas(prev => atualizarMacrotarefa(prev, atualizada));
+    setModalEditarMacro(null);
+  };
+
+  /**
+   * Remove uma macrotarefa após confirmação do usuário.
+   */
+  const handleRemoverMacro = (id: string) => {
+    const macro = macrotarefas.find(m => m.id === id);
+    if (!macro) return;
+
+    const confirmou = window.confirm(`Tem certeza que deseja excluir a macrotarefa "${macro.titulo}"?`);
+    if (!confirmou) return;
+
+    setMacrotarefas(prev => removerMacrotarefa(prev, id));
+  };
+
   return (
     <div className="space-y-4">
       {/* Banner Principal */}
@@ -141,7 +192,7 @@ export default function ParadeKanban({ macrotarefas, setMacrotarefas, isAdmin }:
               <span className="font-mono text-xs font-bold text-stone-600">Kombi Cora • 08/02/2027</span>
             </div>
             <h2 className="text-2xl font-black uppercase text-[#1E1B2E] font-mono leading-tight">
-              Tarefas em Andamento 🚚
+              Tarefas em Andamento 🚐
             </h2>
             <p className="text-xs text-stone-700 mt-1 max-w-lg font-serif">
               Quadro kanban de macrotarefas com checklists em execução para o cortejo e o suporte móvel da Kombi Cora.
@@ -150,7 +201,7 @@ export default function ParadeKanban({ macrotarefas, setMacrotarefas, isAdmin }:
 
           <button
             onClick={() => setModalNovaMacro(true)}
-            className="vintage-button px-4 py-2 bg-[#E6007E] text-white hover:bg-[#C2006A] text-xs uppercase flex items-center gap-1.5 shrink-0 active:translate-x-0.5 active:translate-y-0.5"
+            className="vintage-button px-4 py-2 bg-[#E6007E] text-white hover:bg-[#C2006A] text-xs uppercase flex items-center gap-1.5 shrink-0 active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>+ Nova Macrotarefa</span>
@@ -197,12 +248,30 @@ export default function ParadeKanban({ macrotarefas, setMacrotarefas, isAdmin }:
                       >
                         <div>
                           <div className="flex items-center justify-between gap-1 mb-1">
-                            <span className="font-mono text-[10px] font-black uppercase bg-[#FBBF24] text-[#1E1B2E] px-1.5 py-0.2 border border-black">
+                            <span className="font-mono text-[10px] font-black uppercase bg-[#FBBF24] text-[#1E1B2E] px-1.5 py-0.2 border border-black truncate">
                               Resp: {macro.responsavelPrincipal}
                             </span>
-                            <span className="font-mono text-[10px] font-bold text-stone-500">
-                              {concluidos}/{totalChecks}
-                            </span>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span className="font-mono text-[10px] font-bold text-stone-500">
+                                {concluidos}/{totalChecks}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => abrirModalEditarMacro(macro)}
+                                className="p-0.5 text-stone-500 hover:text-black transition-colors cursor-pointer"
+                                title="Editar macrotarefa"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoverMacro(macro.id)}
+                                className="p-0.5 text-stone-500 hover:text-red-600 transition-colors cursor-pointer"
+                                title="Excluir macrotarefa"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
 
                           <h3 className="font-black text-sm text-[#1E1B2E] font-mono leading-tight">
@@ -259,14 +328,14 @@ export default function ParadeKanban({ macrotarefas, setMacrotarefas, isAdmin }:
                             />
                             <button
                               type="submit"
-                              className="px-2 py-1 bg-[#1E1B2E] text-white text-[10px] font-black uppercase"
+                              className="px-2 py-1 bg-[#1E1B2E] text-white text-[10px] font-black uppercase cursor-pointer"
                             >
                               +
                             </button>
                             <button
                               type="button"
                               onClick={() => setCardAdicionandoSubitem(null)}
-                              className="px-1.5 py-1 text-stone-500 text-[10px]"
+                              className="px-1.5 py-1 text-stone-500 text-[10px] cursor-pointer"
                             >
                               ✕
                             </button>
@@ -274,7 +343,7 @@ export default function ParadeKanban({ macrotarefas, setMacrotarefas, isAdmin }:
                         ) : (
                           <button
                             onClick={() => setCardAdicionandoSubitem(macro.id)}
-                            className="text-[10px] font-mono font-bold text-[#E6007E] hover:underline flex items-center gap-1 pt-1"
+                            className="text-[10px] font-mono font-bold text-[#E6007E] hover:underline flex items-center gap-1 pt-1 cursor-pointer"
                           >
                             <Plus className="w-3 h-3" />
                             <span>Adicionar item na checklist</span>
@@ -286,7 +355,7 @@ export default function ParadeKanban({ macrotarefas, setMacrotarefas, isAdmin }:
                           {coluna !== 'A Fazer' ? (
                             <button
                               onClick={() => moverColuna(macro.id, 'voltar')}
-                              className="flex items-center gap-1 text-stone-600 hover:text-black uppercase"
+                              className="flex items-center gap-1 text-stone-600 hover:text-black uppercase cursor-pointer"
                             >
                               <ArrowLeft className="w-3 h-3" /> Voltar
                             </button>
@@ -295,7 +364,7 @@ export default function ParadeKanban({ macrotarefas, setMacrotarefas, isAdmin }:
                           {coluna !== 'Concluído na Avenida' && (
                             <button
                               onClick={() => moverColuna(macro.id, 'avancar')}
-                              className="flex items-center gap-1 text-[#00A868] hover:text-[#008f58] uppercase"
+                              className="flex items-center gap-1 text-[#00A868] hover:text-[#008f58] uppercase cursor-pointer"
                             >
                               Avançar <ArrowRight className="w-3 h-3" />
                             </button>
@@ -310,6 +379,85 @@ export default function ParadeKanban({ macrotarefas, setMacrotarefas, isAdmin }:
           );
         })}
       </div>
+
+      {/* Modal Editar Macrotarefa */}
+      {modalEditarMacro && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border-4 border-[#1E1B2E] p-6 max-w-md w-full shadow-[6px_6px_0px_#1E1B2E]">
+            <div className="stamp stamp-urgent text-xs mb-2">Desfile 2027</div>
+            <h3 className="text-base font-black uppercase text-[#1E1B2E]">
+              Editar Macrotarefa do Desfile
+            </h3>
+            <p className="text-xs text-stone-600 mt-1 mb-4 font-serif">
+              Atualize o título, o responsável e a coluna operacional desta missão.
+            </p>
+
+            <form onSubmit={handleSalvarEdicaoMacro} className="space-y-3">
+              <div>
+                <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Título da Macrotarefa *</label>
+                <input
+                  type="text"
+                  required
+                  value={editTitulo}
+                  onChange={(e) => setEditTitulo(e.target.value)}
+                  className="w-full px-3 py-2 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Descrição</label>
+                <textarea
+                  rows={2}
+                  value={editDescricao}
+                  onChange={(e) => setEditDescricao(e.target.value)}
+                  className="w-full px-3 py-2 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Coluna / Etapa</label>
+                  <select
+                    value={editColuna}
+                    onChange={(e) => setEditColuna(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono"
+                  >
+                    <option value="A Fazer">A Fazer</option>
+                    <option value="No Dia do Desfile">No Dia do Desfile</option>
+                    <option value="Concluído na Avenida">Concluído na Avenida</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Responsável Principal</label>
+                  <input
+                    type="text"
+                    value={editResponsavel}
+                    onChange={(e) => setEditResponsavel(e.target.value)}
+                    className="w-full px-3 py-2 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-200">
+                <button
+                  type="button"
+                  onClick={() => setModalEditarMacro(null)}
+                  className="px-3 py-1.5 border-2 border-[#1E1B2E] text-xs font-bold uppercase hover:bg-stone-200 cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="vintage-button px-4 py-1.5 bg-[#00D287] hover:bg-[#34EEA0] text-[#1E1B2E] text-xs uppercase cursor-pointer"
+                >
+                  Salvar Alterações
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Modal Nova Macrotarefa */}
       {modalNovaMacro && (
@@ -329,14 +477,25 @@ export default function ParadeKanban({ macrotarefas, setMacrotarefas, isAdmin }:
                 <input
                   type="text"
                   required
-                  placeholder="Ex: Ponto de Hidratação & Água dos Músicos"
+                  placeholder="Ex: Abastecimento de Água da Bateria"
                   value={novoTitulo}
                   onChange={(e) => setNovoTitulo(e.target.value)}
                   className="w-full px-3 py-2 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Descrição</label>
+                <textarea
+                  rows={2}
+                  placeholder="Detalhes operacionais sobre a Kombi ou o trajeto..."
+                  value={novaDescricao}
+                  onChange={(e) => setNovaDescricao(e.target.value)}
+                  className="w-full px-3 py-2 bg-stone-50 border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">Coluna Inicial</label>
                   <select
@@ -375,17 +534,17 @@ export default function ParadeKanban({ macrotarefas, setMacrotarefas, isAdmin }:
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-200">
                 <button
                   type="button"
                   onClick={() => setModalNovaMacro(false)}
-                  className="px-3 py-1.5 border-2 border-[#1E1B2E] text-xs font-bold uppercase hover:bg-stone-200"
+                  className="px-3 py-1.5 border-2 border-[#1E1B2E] text-xs font-bold uppercase hover:bg-stone-200 cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="vintage-button px-4 py-1.5 bg-[#E6007E] text-white text-xs uppercase"
+                  className="vintage-button px-4 py-1.5 bg-[#E6007E] text-white text-xs uppercase cursor-pointer"
                 >
                   Salvar Macrotarefa
                 </button>

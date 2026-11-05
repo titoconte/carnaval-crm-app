@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { MessageCircle, Plus, CheckCircle2, Vote, Sparkles } from 'lucide-react';
+import { MessageCircle, Plus, CheckCircle2, Vote, Sparkles, Edit2, Trash2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { EnqueteWhatsApp } from '../data/blocoData';
+import { EnqueteWhatsApp, atualizarEnquete, removerEnquete } from '../data/blocoData';
 
 interface WhatsAppPollsProps {
   enquetes: EnqueteWhatsApp[];
@@ -12,7 +12,7 @@ interface WhatsAppPollsProps {
 }
 
 /**
- * Mural de Enquetes do WhatsApp com espaço aberto para adicionar resultados.
+ * Mural de Enquetes do WhatsApp com espaço aberto para adicionar, editar e excluir resultados.
  */
 export default function WhatsAppPolls({ enquetes, setEnquetes, isAdmin }: WhatsAppPollsProps) {
   const [modalNova, setModalNova] = useState(false);
@@ -21,6 +21,16 @@ export default function WhatsAppPolls({ enquetes, setEnquetes, isAdmin }: WhatsA
   const [resolucao, setResolucao] = useState('');
   const [opcoesTexto, setOpcoesTexto] = useState('Opção A (20 votos)\nOpção B (10 votos)');
 
+  // Estados para edição de enquete
+  const [modalEditarEnq, setModalEditarEnq] = useState<EnqueteWhatsApp | null>(null);
+  const [editTitulo, setEditTitulo] = useState('');
+  const [editPergunta, setEditPergunta] = useState('');
+  const [editResolucao, setEditResolucao] = useState('');
+  const [editOpcoesTexto, setEditOpcoesTexto] = useState('');
+
+  /**
+   * Registra uma nova apuração de enquete realizada no grupo de WhatsApp.
+   */
   const handleAddEnquete = (e: React.FormEvent) => {
     e.preventDefault();
     if (!titulo.trim() || !pergunta.trim()) return;
@@ -67,6 +77,69 @@ export default function WhatsAppPolls({ enquetes, setEnquetes, isAdmin }: WhatsA
     });
   };
 
+  /**
+   * Abre o modal de edição para a enquete selecionada.
+   */
+  const abrirModalEditarEnquete = (enq: EnqueteWhatsApp) => {
+    setModalEditarEnq(enq);
+    setEditTitulo(enq.titulo);
+    setEditPergunta(enq.pergunta);
+    setEditResolucao(enq.resolucaoOficial || '');
+    setEditOpcoesTexto(enq.opcoes.map(op => `${op.rotulo} (${op.votos} votos)`).join('\n'));
+  };
+
+  /**
+   * Salva as alterações da enquete em edição.
+   */
+  const handleSalvarEdicaoEnquete = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!modalEditarEnq || !editTitulo.trim() || !editPergunta.trim()) return;
+
+    const linhas = editOpcoesTexto.split('\n').filter(l => l.trim().length > 0);
+    let total = 0;
+    const parsed = linhas.map(linha => {
+      const match = linha.match(/\((\d+)\s*votos?\)/i);
+      const v = match ? parseInt(match[1], 10) : 5;
+      total += v;
+      return {
+        rotulo: linha.replace(/\(\d+\s*votos?\)/i, '').trim(),
+        votos: v,
+        percentual: 0
+      };
+    });
+
+    const soma = total || 1;
+    const opcoesFinais = parsed.map(op => ({
+      ...op,
+      percentual: Math.round((op.votos / soma) * 100)
+    }));
+
+    const atualizada: EnqueteWhatsApp = {
+      ...modalEditarEnq,
+      titulo: editTitulo.trim(),
+      pergunta: editPergunta.trim(),
+      totalVotos: soma,
+      opcoes: opcoesFinais,
+      resolucaoOficial: editResolucao.trim() || undefined
+    };
+
+    setEnquetes(prev => atualizarEnquete(prev, atualizada));
+    setModalEditarEnq(null);
+  };
+
+  /**
+   * Remove uma enquete do mural após confirmação do usuário.
+   */
+  const handleRemoverEnquete = (id: string) => {
+    const enq = enquetes.find(e => e.id === id);
+    if (!enq) return;
+
+    const confirmou = window.confirm(`Tem certeza que deseja excluir a apuração da enquete "${enq.titulo}"?`);
+    if (!confirmou) return;
+
+    setEnquetes(prev => removerEnquete(prev, id));
+  };
+
   return (
     <div className="space-y-4">
       {/* Banner Principal com Botão Aberto de Adicionar Resultados */}
@@ -83,7 +156,7 @@ export default function WhatsAppPolls({ enquetes, setEnquetes, isAdmin }: WhatsA
 
         <button
           onClick={() => setModalNova(true)}
-          className="vintage-button px-4 py-2 bg-[#00A868] text-white hover:bg-[#008f58] text-xs uppercase flex items-center gap-1.5 active:translate-x-0.5 active:translate-y-0.5"
+          className="vintage-button px-4 py-2 bg-[#00A868] text-white hover:bg-[#008f58] text-xs uppercase flex items-center gap-1.5 active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>+ Adicionar Resultados da Enquete</span>
@@ -99,15 +172,36 @@ export default function WhatsAppPolls({ enquetes, setEnquetes, isAdmin }: WhatsA
             <div key={enq.id} className="vintage-card p-5 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between text-xs mb-2">
-                  <span className="stamp stamp-confirmed text-[10px]">Apurada</span>
-                  <span className="font-mono text-stone-500 font-bold">{enq.dataEncerramento}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="stamp stamp-confirmed text-[10px]">Apurada</span>
+                    <span className="font-mono text-stone-500 font-bold">{enq.dataEncerramento}</span>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => abrirModalEditarEnquete(enq)}
+                      className="p-1 text-stone-500 hover:text-black transition-colors rounded cursor-pointer"
+                      title="Editar apuração da enquete"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoverEnquete(enq.id)}
+                      className="p-1 text-stone-500 hover:text-red-600 transition-colors rounded cursor-pointer"
+                      title="Excluir apuração da enquete"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
 
                 <h3 className="font-black text-base uppercase text-[#1A181B] font-mono leading-tight">
                   {enq.titulo}
                 </h3>
                 <p className="text-xs text-stone-700 italic mt-1 mb-4 font-serif">
-                  "{enq.pergunta}"
+                  &ldquo;{enq.pergunta}&rdquo;
                 </p>
 
                 {/* Opções da Enquete */}
@@ -150,6 +244,84 @@ export default function WhatsAppPolls({ enquetes, setEnquetes, isAdmin }: WhatsA
           );
         })}
       </div>
+
+      {/* Modal Editar Enquete */}
+      {modalEditarEnq && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#FAF6EC] border-4 border-[#1A181B] p-6 max-w-md w-full shadow-[6px_6px_0px_#1A181B]">
+            <div className="stamp stamp-confirmed text-xs mb-2">Editar Votação</div>
+            <h3 className="text-base font-black uppercase text-[#1A181B]">
+              Editar Resultados da Enquete
+            </h3>
+            <p className="text-xs text-stone-600 mt-1 mb-4 font-serif">
+              Atualize as informações, os votos e a resolução oficial da enquete.
+            </p>
+
+            <form onSubmit={handleSalvarEdicaoEnquete} className="space-y-3">
+              <div>
+                <label className="block text-xs font-black uppercase text-[#1A181B] mb-1">Título da Enquete *</label>
+                <input
+                  type="text"
+                  required
+                  value={editTitulo}
+                  onChange={(e) => setEditTitulo(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border-2 border-[#1A181B] text-xs font-mono focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase text-[#1A181B] mb-1">Pergunta do Grupo *</label>
+                <input
+                  type="text"
+                  required
+                  value={editPergunta}
+                  onChange={(e) => setEditPergunta(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border-2 border-[#1A181B] text-xs font-serif focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase text-[#1A181B] mb-1">
+                  Opções e Votos (uma por linha com os votos entre parênteses) *
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  value={editOpcoesTexto}
+                  onChange={(e) => setEditOpcoesTexto(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border-2 border-[#1A181B] text-xs font-mono focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase text-[#1A181B] mb-1">Resolução / Decisão Adotada</label>
+                <input
+                  type="text"
+                  value={editResolucao}
+                  onChange={(e) => setEditResolucao(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border-2 border-[#1A181B] text-xs font-mono focus:outline-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setModalEditarEnq(null)}
+                  className="px-3 py-1.5 border-2 border-[#1A181B] text-xs font-bold uppercase hover:bg-stone-200 cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="vintage-button px-4 py-1.5 bg-[#00A868] text-white text-xs uppercase cursor-pointer"
+                >
+                  Salvar Alterações
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Modal Adicionar Enquete */}
       {modalNova && (
@@ -217,13 +389,13 @@ export default function WhatsAppPolls({ enquetes, setEnquetes, isAdmin }: WhatsA
                 <button
                   type="button"
                   onClick={() => setModalNova(false)}
-                  className="px-3 py-1.5 border-2 border-[#1A181B] text-xs font-bold uppercase hover:bg-stone-200"
+                  className="px-3 py-1.5 border-2 border-[#1A181B] text-xs font-bold uppercase hover:bg-stone-200 cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="vintage-button px-4 py-1.5 bg-[#00A868] text-white text-xs uppercase"
+                  className="vintage-button px-4 py-1.5 bg-[#00A868] text-white text-xs uppercase cursor-pointer"
                 >
                   Publicar Resultados
                 </button>
