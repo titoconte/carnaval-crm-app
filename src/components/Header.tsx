@@ -18,6 +18,7 @@ interface HeaderProps {
   onOpenLoginModal: () => void;
   onLogout: () => void;
   temaTitulo?: string;
+  temaSubtitulo?: string;
   dbConnected?: boolean | null;
   dbSyncing?: boolean;
   onSync?: () => void;
@@ -35,6 +36,7 @@ export default function Header({
   onOpenLoginModal,
   onLogout,
   temaTitulo = 'Solta pelos Ares 🪽',
+  temaSubtitulo,
   dbConnected,
   dbSyncing = false,
   onSync
@@ -180,12 +182,17 @@ export default function Header({
           </h1>
         </div>
 
-        {/* Faixa do Tema do Carnaval */}
-        <div className="mt-2 flex items-center justify-center gap-2">
+        {/* Faixa do Tema do Carnaval e Subtítulo Oficial */}
+        <div className="mt-2 flex flex-col items-center justify-center gap-1">
           <div className="font-mono text-xs font-black uppercase tracking-wider text-[#FBBF24] bg-[#581C87] border-2 border-[#FBBF24] px-3 py-1 shadow-[2px_2px_0px_#1E1B2E] rotate-[0.5deg]">
             <span className="text-white mr-1.5">Carnaval 2027:</span>
             {temaTitulo}
           </div>
+          {temaSubtitulo && (
+            <div className="text-[11px] font-mono font-bold text-white bg-[#1E1B2E] border border-[#00D287] px-2.5 py-0.5 shadow-[1px_1px_0px_#000] italic">
+              &ldquo;{temaSubtitulo}&rdquo;
+            </div>
+          )}
         </div>
 
         {/* Bilhete de Contagem Regressiva para 08/02/2027 */}
@@ -266,15 +273,22 @@ export default function Header({
         </div>
 
         {/* Título e Tema Mobile Compactos */}
-        <div className="flex items-center justify-between gap-1 border-t border-white/20 pt-1">
-          <div className="font-black text-sm uppercase tracking-tight text-white flex items-center gap-1">
-            <span className="text-[#00D287]">Bloco</span>
-            <span className="text-[#FBBF24]">da</span>
-            <span className="text-[#E6007E]">Bicharada</span>
+        <div className="flex flex-col gap-0.5 border-t border-white/20 pt-1">
+          <div className="flex items-center justify-between gap-1">
+            <div className="font-black text-sm uppercase tracking-tight text-white flex items-center gap-1">
+              <span className="text-[#00D287]">Bloco</span>
+              <span className="text-[#FBBF24]">da</span>
+              <span className="text-[#E6007E]">Bicharada</span>
+            </div>
+            <div className="text-[10px] font-mono font-bold text-[#FBBF24] bg-[#581C87] border border-[#FBBF24] px-1.5 py-0.2 truncate max-w-[170px]">
+              {temaTitulo}
+            </div>
           </div>
-          <div className="text-[10px] font-mono font-bold text-[#FBBF24] bg-[#581C87] border border-[#FBBF24] px-1.5 py-0.2 truncate max-w-[170px]">
-            {temaTitulo}
-          </div>
+          {temaSubtitulo && (
+            <div className="text-[9px] font-mono font-bold italic text-[#FBBF24] bg-black/40 px-1 py-0.5 border border-[#FBBF24]/30 truncate text-center">
+              &ldquo;{temaSubtitulo}&rdquo;
+            </div>
+          )}
         </div>
       </div>
     </header>

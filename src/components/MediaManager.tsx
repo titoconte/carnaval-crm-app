@@ -65,6 +65,7 @@ interface MediaManagerProps {
   setConfigInstagram: React.Dispatch<React.SetStateAction<ConfiguracaoInstagram>>;
   temaAno: TemaAnoBloco;
   setTemaAno: React.Dispatch<React.SetStateAction<TemaAnoBloco>>;
+  onSalvarTema?: (temaAtualizado: TemaAnoBloco) => Promise<void> | void;
   isAdmin: boolean;
 }
 
@@ -85,6 +86,7 @@ export default function MediaManager({
   setConfigInstagram,
   temaAno,
   setTemaAno,
+  onSalvarTema,
   isAdmin
 }: MediaManagerProps) {
   const [subAba, setSubAba] = useState<'cores' | 'artes' | 'instagram' | 'tema'>('cores');
@@ -109,20 +111,26 @@ export default function MediaManager({
   }, [temaAno]);
 
   /**
-   * Salva as diretrizes do tema do ano oficial e atualiza o cabeçalho dinâmico.
+   * Salva as diretrizes do tema do ano oficial e atualiza o cabeçalho dinâmico e banco de dados.
    */
-  const handleSalvarTema = (e: React.FormEvent) => {
+  const handleSalvarTema = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!tituloTema.trim()) return;
 
+    const subtituloLimpo = sloganTema.trim();
     const atualizado = atualizarTemaAno(temaAno, {
       titulo: tituloTema.trim(),
-      subtituloOuSlogan: sloganTema.trim() || undefined,
+      subtituloOuSlogan: subtituloLimpo,
       fantasia: fantasiaTema.trim(),
       descricaoCores: descricaoCoresTema.trim()
     });
 
     setTemaAno(atualizado);
+
+    if (onSalvarTema) {
+      await onSalvarTema(atualizado);
+    }
+
     setSalvoTemaFeedback(true);
     setTimeout(() => setSalvoTemaFeedback(false), 3000);
 

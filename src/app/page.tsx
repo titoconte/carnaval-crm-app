@@ -321,6 +321,37 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [usuarios, tarefas, macrotarefas, movimentosBar, bilhetesRifa, rifas, vendasRifas, inscritos, integrantes, musicas, letrasCifras, enquetes, eventos, documentos, cores, artes, postsInstagram, configInstagram, temaAno, dbConnected, dadosCarregadosDoBanco]);
 
+  /**
+   * Salva o tema do ano no estado local, LocalStorage e diretamente no banco Vercel Postgres,
+   * garantindo sincronização imediata sem depender exclusivamente do debounce.
+   */
+  const handleSalvarTema = async (temaAtualizado: TemaAnoBloco) => {
+    setTemaAno(temaAtualizado);
+    try {
+      localStorage.setItem('bicha_tema_ano_v4', JSON.stringify(temaAtualizado));
+    } catch (e) {
+      console.error('Erro ao salvar tema no LocalStorage:', e);
+    }
+
+    if (dbConnected) {
+      setDbSyncing(true);
+      try {
+        await fetch('/api/db/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            key: 'temaAno',
+            data: temaAtualizado
+          })
+        });
+      } catch (err) {
+        console.error('Erro ao persistir tema no Vercel Postgres:', err);
+      } finally {
+        setDbSyncing(false);
+      }
+    }
+  };
+
   // Contagem de tarefas órfãs
   const orfasCount = tarefas.filter(
     t => (!t.responsavel || t.responsavel.trim() === '' || t.responsavel.toLowerCase().includes('definir')) && !t.concluida
@@ -387,6 +418,7 @@ export default function Home() {
         onOpenLoginModal={() => setLoginModalOpen(true)}
         onLogout={handleLogout}
         temaTitulo={temaAno.titulo}
+        temaSubtitulo={temaAno.subtituloOuSlogan}
         dbConnected={dbConnected}
         dbSyncing={dbSyncing}
         onSync={() => recarregarDadosDoServidor(false)}
@@ -490,6 +522,7 @@ export default function Home() {
             setConfigInstagram={setConfigInstagram}
             temaAno={temaAno}
             setTemaAno={setTemaAno}
+            onSalvarTema={handleSalvarTema}
             isAdmin={isAdmin}
           />
         )}
@@ -537,6 +570,11 @@ export default function Home() {
         <p className="font-mono font-black uppercase text-sm">
           ★ BLOCO BICHARADA • {temaAno.titulo.toUpperCase()} {temaAno.ano} ★
         </p>
+        {temaAno.subtituloOuSlogan && (
+          <p className="font-mono text-xs italic font-bold text-[#FBBF24] mt-0.5">
+            &ldquo;{temaAno.subtituloOuSlogan}&rdquo;
+          </p>
+        )}
         <p className="mt-1 font-serif text-[11px] text-stone-400">
           Florianópolis / SC • Sistema Comunitário Aberto e 100% Gratuito na Vercel
         </p>

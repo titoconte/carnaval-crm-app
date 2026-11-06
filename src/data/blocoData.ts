@@ -1264,6 +1264,9 @@ export function atualizarTemaAno(
   return {
     ...temaAtual,
     ...novosDados,
+    subtituloOuSlogan: novosDados.subtituloOuSlogan !== undefined
+      ? novosDados.subtituloOuSlogan
+      : temaAtual.subtituloOuSlogan,
     dataAtualizacao: new Date().toISOString()
   };
 }
