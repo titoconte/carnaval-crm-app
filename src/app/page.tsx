@@ -152,7 +152,11 @@ export default function Home() {
         if (est.usuarios && Array.isArray(est.usuarios) && est.usuarios.length > 0) {
           setUsuarios(est.usuarios);
         }
-        if (est.tarefas && Array.isArray(est.tarefas)) { setTarefas(est.tarefas); } else { setTarefas(TAREFAS_POSTIT_INICIAIS); }
+        if (Array.isArray(est.tarefas)) {
+          setTarefas(est.tarefas);
+        } else {
+          setTarefas(TAREFAS_POSTIT_INICIAIS);
+        }
         if (est.macrotarefas && Array.isArray(est.macrotarefas)) setMacrotarefas(est.macrotarefas);
         if (est.movimentosBar && Array.isArray(est.movimentosBar)) setMovimentosBar(est.movimentosBar);
         if (est.bilhetesRifa && Array.isArray(est.bilhetesRifa)) setBilhetesRifa(est.bilhetesRifa);
@@ -202,17 +206,13 @@ export default function Home() {
         }
       }
 
-      const sTarefas = localStorage.getItem('bicha_tarefas_v4');
-      if (sTarefas) {
-        const parsed = JSON.parse(sTarefas);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setTarefas(parsed);
-        } else {
-          setTarefas(TAREFAS_POSTIT_INICIAIS);
-        }
-      } else {
-        setTarefas(TAREFAS_POSTIT_INICIAIS);
-      }
+      // A informação de tarefas reside APENAS no banco de dados.
+      // Limpeza de segurança para eliminar qualquer resíduo legado de tarefas no LocalStorage:
+      try {
+        localStorage.removeItem('bicha_tarefas_v4');
+        localStorage.removeItem('bicha_tarefas');
+        localStorage.removeItem('bicha_tarefas_ata7_seeded_v1');
+      } catch (e) {}
 
       const sMacros = localStorage.getItem('bicha_macros_v4');
       if (sMacros) setMacrotarefas(JSON.parse(sMacros));
@@ -275,7 +275,7 @@ export default function Home() {
     recarregarDadosDoServidor(false);
   }, [recarregarDadosDoServidor]);
 
-  // Atualiza automaticamente quando a janela ganha foco ou volta do segundo plano
+  // Atualiza automaticamente quando a aba volta do segundo plano
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -283,10 +283,8 @@ export default function Home() {
       }
     };
     window.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleVisibilityChange);
     return () => {
       window.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleVisibilityChange);
     };
   }, [recarregarDadosDoServidor]);
 
@@ -294,7 +292,7 @@ export default function Home() {
   useEffect(() => {
     try {
       localStorage.setItem('bicha_usuarios_v4', JSON.stringify(usuarios));
-      localStorage.setItem('bicha_tarefas_v4', JSON.stringify(tarefas));
+      // TAREFAS REMOVIDO DO LOCALSTORAGE: A informação reside APENAS no banco de dados.
       localStorage.setItem('bicha_macros_v4', JSON.stringify(macrotarefas));
       localStorage.setItem('bicha_bar_v4', JSON.stringify(movimentosBar));
       localStorage.setItem('bicha_rifa_v4', JSON.stringify(bilhetesRifa));
@@ -328,7 +326,7 @@ export default function Home() {
         body: JSON.stringify({
           batch: {
             usuarios,
-            tarefas,
+            // Tarefas são persistidas imediatamente via handleAtualizarTarefas
             macrotarefas,
             movimentosBar,
             bilhetesRifa,
@@ -354,7 +352,35 @@ export default function Home() {
     }, 1500);
 
     return () => clearTimeout(timer);
-  }, [usuarios, tarefas, macrotarefas, movimentosBar, bilhetesRifa, rifas, vendasRifas, inscritos, integrantes, musicas, letrasCifras, enquetes, eventos, documentos, cores, artes, postsInstagram, configInstagram, temaAno, convencoes, dbConnected, dadosCarregadosDoBanco]);
+  }, [usuarios, macrotarefas, movimentosBar, bilhetesRifa, rifas, vendasRifas, inscritos, integrantes, musicas, letrasCifras, enquetes, eventos, documentos, cores, artes, postsInstagram, configInstagram, temaAno, convencoes, dbConnected, dadosCarregadosDoBanco]);
+
+  /**
+   * Atualiza as tarefas no estado da aplicação e persiste IMEDIATAMENTE no banco de dados.
+   * Garante que a informação de tarefas exista APENAS no banco de dados e nunca no LocalStorage.
+   * 
+   * @param acao - Nova lista de tarefas ou função modificadora funcional
+   */
+  const handleAtualizarTarefas = useCallback((
+    acao: TarefaPostIt[] | ((prev: TarefaPostIt[]) => TarefaPostIt[])
+  ) => {
+    setTarefas(prev => {
+      const novasTarefas = typeof acao === 'function' ? acao(prev) : acao;
+
+      // Dispara persistência imediata no banco de dados Neon/Vercel Postgres
+      fetch('/api/db/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          key: 'tarefas',
+          data: novasTarefas
+        })
+      }).catch(err => {
+        console.error('Erro ao sincronizar tarefas no banco de dados:', err);
+      });
+
+      return novasTarefas;
+    });
+  }, []);
 
   /**
    * Salva o tema do ano no estado local, LocalStorage e diretamente no banco Vercel Postgres,
@@ -448,7 +474,7 @@ export default function Home() {
   const handlePromoverTarefaParaDesfile = (tarefa: TarefaPostIt) => {
     const novaMacro = converterTarefaEmMacrotarefa(tarefa);
     setMacrotarefas(prev => [novaMacro, ...prev]);
-    setTarefas(prev => prev.filter(t => t.id !== tarefa.id));
+    handleAtualizarTarefas(prev => prev.filter(t => t.id !== tarefa.id));
     setActiveTab('desfile');
   };
 
@@ -480,7 +506,7 @@ export default function Home() {
         {activeTab === 'tarefas' && !isPublico && (
           <TasksManager
             tarefas={tarefas}
-            setTarefas={setTarefas}
+            setTarefas={handleAtualizarTarefas}
             isAdmin={isAdmin}
             onEquipePronta={handlePromoverTarefaParaDesfile}
           />

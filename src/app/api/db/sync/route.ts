@@ -34,9 +34,11 @@ export async function GET() {
   try {
     const estados = await obterTodosEstadosDoBanco();
 
-    // Se o banco ainda não possuir tarefas salvas, inicializa com as 11 da Ata 7
-    if (!estados.tarefas) {
+    // Se o banco ainda não possuir tarefas salvas (primeira carga no Postgres),
+    // inicializa com as 11 da Ata 7 e grava no banco para que deleções posteriores persistam
+    if (estados.tarefas === undefined || estados.tarefas === null) {
       estados.tarefas = TAREFAS_POSTIT_INICIAIS;
+      await salvarEstadoNoBanco('tarefas', TAREFAS_POSTIT_INICIAIS);
     }
 
     return NextResponse.json({
