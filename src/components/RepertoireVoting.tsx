@@ -502,15 +502,17 @@ export default function RepertoireVoting({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Botão de Download do Caderno de Partituras em PDF */}
-          <button
-            onClick={() => setModalCadernoPdf(true)}
-            className="vintage-button px-3.5 py-2 bg-[#581C87] text-[#FBBF24] hover:bg-[#431464] text-xs uppercase flex items-center gap-1.5 shadow-[2px_2px_0px_#000]"
-            title="Download do caderno de letras, cifras e partituras em PDF"
-          >
-            <BookOpen className="w-4 h-4" />
-            <span>Caderno de Letras & Cifras (PDF)</span>
-          </button>
+          {/* Botão de Download do Caderno de Partituras em PDF (Oculto para Público) */}
+          {!isPublico && (
+            <button
+              onClick={() => setModalCadernoPdf(true)}
+              className="vintage-button px-3.5 py-2 bg-[#581C87] text-[#FBBF24] hover:bg-[#431464] text-xs uppercase flex items-center gap-1.5 shadow-[2px_2px_0px_#000] cursor-pointer"
+              title="Download do caderno de letras, cifras e partituras em PDF"
+            >
+              <BookOpen className="w-4 h-4" />
+              <span>Caderno de Letras & Cifras (PDF)</span>
+            </button>
+          )}
 
           {!isPublico && (
             <button
@@ -523,6 +525,13 @@ export default function RepertoireVoting({
           )}
         </div>
       </div>
+
+      {/* Banner de Consulta Pública */}
+      {isPublico && (
+        <div className="p-3 bg-amber-50 border-2 border-[#1A181B] font-mono text-xs text-amber-900 shadow-[2px_2px_0px_#1A181B] flex items-center justify-between">
+          <span>👁️ <strong>Modo Consulta Pública:</strong> Ouça as músicas e variações de ritmos no YouTube. Faça login para votar e acessar partituras.</span>
+        </div>
+      )}
 
       {/* Filtros em Estilo Fanzine */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
@@ -608,17 +617,19 @@ export default function RepertoireVoting({
 
               {/* Botões Mídia para Todos os Usuários: Partitura, YouTube e Edição (Coordenação) */}
               <div className="flex items-center gap-1.5 shrink-0 flex-wrap sm:flex-nowrap">
-                {/* Botão Partitura / Arquivos Anexados */}
-                <button
-                  onClick={() => setModalPartitura(musica)}
-                  className="px-2.5 py-1.5 border-2 border-[#1E1B2E] bg-white hover:bg-amber-50 text-[#1E1B2E] text-xs font-mono font-bold uppercase shadow-[1px_1px_0px_#000] flex items-center gap-1 active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
-                  title="Ver partituras e arquivos anexados"
-                >
-                  <FileText className="w-3.5 h-3.5 text-[#581C87]" />
-                  <span className="hidden sm:inline">
-                    Partituras {musica.arquivos && musica.arquivos.length > 1 ? `(${musica.arquivos.length})` : ''}
-                  </span>
-                </button>
+                {/* Botão Partitura / Arquivos Anexados (Apenas Membros Logados) */}
+                {!isPublico && (
+                  <button
+                    onClick={() => setModalPartitura(musica)}
+                    className="px-2.5 py-1.5 border-2 border-[#1E1B2E] bg-white hover:bg-amber-50 text-[#1E1B2E] text-xs font-mono font-bold uppercase shadow-[1px_1px_0px_#000] flex items-center gap-1 active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
+                    title="Ver partituras e arquivos anexados"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-[#581C87]" />
+                    <span className="hidden sm:inline">
+                      Partituras {musica.arquivos && musica.arquivos.length > 1 ? `(${musica.arquivos.length})` : ''}
+                    </span>
+                  </button>
+                )}
 
                 {/* Botão YouTube (1 link direto ou menu de múltiplas versões) */}
                 {musica.youtubeLinks && musica.youtubeLinks.length > 1 ? (
@@ -669,19 +680,29 @@ export default function RepertoireVoting({
                 )}
               </div>
 
-              {/* Botão Votar */}
-              <button
-                onClick={(e) => handleVote(musica.id, e)}
-                disabled={jaVotou}
-                className={`flex items-center gap-1.5 px-3 py-1.5 border-2 border-[#1A181B] font-mono text-xs font-black transition-all shrink-0 active:translate-x-0.5 active:translate-y-0.5 ${
-                  jaVotou
-                    ? 'bg-[#00A868] text-white shadow-[2px_2px_0px_#1A181B]'
-                    : 'bg-white hover:bg-yellow-100 text-[#1A181B] shadow-[2px_2px_0px_#1A181B]'
-                }`}
-              >
-                <ThumbsUp className={`w-3.5 h-3.5 ${jaVotou ? 'fill-current' : ''}`} />
-                <span>{musica.votosFavoraveis}</span>
-              </button>
+              {/* Indicador / Botão Votar */}
+              {isPublico ? (
+                <div
+                  className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-[#1A181B] font-mono text-xs font-black bg-stone-100 text-stone-700 shadow-[2px_2px_0px_#1A181B] shrink-0 cursor-default select-none"
+                  title="Apenas integrantes logados podem votar"
+                >
+                  <ThumbsUp className="w-3.5 h-3.5 text-stone-400" />
+                  <span>{musica.votosFavoraveis}</span>
+                </div>
+              ) : (
+                <button
+                  onClick={(e) => handleVote(musica.id, e)}
+                  disabled={jaVotou}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 border-2 border-[#1A181B] font-mono text-xs font-black transition-all shrink-0 active:translate-x-0.5 active:translate-y-0.5 cursor-pointer ${
+                    jaVotou
+                      ? 'bg-[#00A868] text-white shadow-[2px_2px_0px_#1A181B]'
+                      : 'bg-white hover:bg-yellow-100 text-[#1A181B] shadow-[2px_2px_0px_#1A181B]'
+                  }`}
+                >
+                  <ThumbsUp className={`w-3.5 h-3.5 ${jaVotou ? 'fill-current' : ''}`} />
+                  <span>{musica.votosFavoraveis}</span>
+                </button>
+              )}
 
               {/* Botões Touch de Reordenação (Exclusivo Administrador) */}
               {isAdmin && (

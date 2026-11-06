@@ -1401,7 +1401,7 @@ export function atualizarTemaAno(
  * Perfis de acesso do sistema do Bloco Bicharada:
  * - 'coordenador': Acesso total a todas as abas, edições, exclusões e criação de usuários.
  * - 'bicho': Folião integrante do bloco, acesso às 11 abas com interações operacionais normais.
- * - 'publico': Acesso anônimo sem login, restrito a 5 abas em modo estritamente consulta (apenas inscrição permite envio).
+ * - 'publico': Acesso anônimo sem login, restrito a 3 abas (Inscrições, Rifas e Repertório em modo estritamente consulta).
  */
 export type PerfilUsuario = 'coordenador' | 'bicho' | 'publico';
 

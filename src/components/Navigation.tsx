@@ -43,12 +43,10 @@ export interface TabItem {
 
 /**
  * Retorna as abas visíveis no menu principal respeitando o perfil de acesso do usuário:
- * - Se 'publico' (visitante sem login): Apenas 5 abas na ordem oficial:
- *   1. Inscrições (inscricao)
- *   2. Calendário (calendario)
- *   3. Rifas (rifa)
- *   4. Repertório (repertorio)
- *   5. Documentos (documentos)
+ * - Se 'publico' (visitante sem login): Apenas 3 abas na ordem oficial:
+ *   1. Ficha de Inscrição (inscricao)
+ *   2. Rifas (rifa)
+ *   3. Repertório (repertorio)
  * - Se 'coordenador' ou 'bicho': Todas as 11 abas na ordem oficial de 1 a 11.
  * 
  * @param orfasCount - Quantidade de tarefas órfãs para exibição no badge
@@ -61,11 +59,9 @@ export function getVisibleNavigationTabs(
 ): TabItem[] {
   if (perfil === 'publico') {
     return [
-      { id: 'inscricao', label: 'Inscrições', icon: UserPlus },
-      { id: 'calendario', label: 'Calendário', icon: Calendar },
+      { id: 'inscricao', label: 'Ficha de Inscrição', icon: UserPlus },
       { id: 'rifa', label: 'Rifas 🎟️', icon: Gift, highlight: true },
-      { id: 'repertorio', label: 'Repertório', icon: Music },
-      { id: 'documentos', label: 'Documentos', icon: FolderDown }
+      { id: 'repertorio', label: 'Repertório', icon: Music }
     ];
   }
 

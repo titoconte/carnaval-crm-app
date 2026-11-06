@@ -3,20 +3,18 @@ import assert from 'node:assert';
 import { getVisibleNavigationTabs } from '../src/components/Navigation';
 
 describe('Navegação e Ordem Oficial das Páginas do Bloco Bicharada', () => {
-  it('para o público (sem login), deve exibir exatamente 5 abas na ordem estrita solicitada', () => {
+  it('para o público (sem login), deve exibir exatamente 3 abas na ordem oficial solicitada', () => {
     const tabsPublico = getVisibleNavigationTabs(0, 'publico');
     const ids = tabsPublico.map(t => t.id);
 
     const ordemEsperadaPublico = [
-      'inscricao',   // 1. Inscrições
-      'calendario',  // 2. Calendário
-      'rifa',        // 3. Rifas
-      'repertorio',  // 4. Repertório
-      'documentos'   // 5. Documentos
+      'inscricao',   // 1. Ficha de Inscrição
+      'rifa',        // 2. Rifas
+      'repertorio'   // 3. Repertório
     ];
 
-    assert.strictEqual(tabsPublico.length, 5, 'O público deve ter acesso a exatamente 5 abas');
-    assert.deepStrictEqual(ids, ordemEsperadaPublico, 'A ordem do público deve ser estritamente inscrições, calendário, rifas, repertório e documentos');
+    assert.strictEqual(tabsPublico.length, 3, 'O público deve ter acesso a exatamente 3 abas');
+    assert.deepStrictEqual(ids, ordemEsperadaPublico, 'A ordem do público deve ser estritamente ficha de inscrição, rifas e repertório');
   });
 
   it('para membros (coordenadores e bichos), deve conter exatamente as 11 abas oficiais na ordem completa', () => {

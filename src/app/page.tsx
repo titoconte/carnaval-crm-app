@@ -387,11 +387,18 @@ export default function Home() {
     // Puxa as informações mais recentes do banco ao deslogar
     recarregarDadosDoServidor(true);
 
-    const abasPublicas: TabId[] = ['inscricao', 'calendario', 'rifa', 'repertorio', 'documentos'];
+    const abasPublicas: TabId[] = ['inscricao', 'rifa', 'repertorio'];
     if (!abasPublicas.includes(activeTab)) {
       setActiveTab('inscricao');
     }
   };
+
+  // Garante que o público acesse exclusivamente as 3 abas permitidas
+  useEffect(() => {
+    if (isPublico && !['inscricao', 'rifa', 'repertorio'].includes(activeTab)) {
+      setActiveTab('inscricao');
+    }
+  }, [isPublico, activeTab]);
 
   /**
    * Adiciona um novo integrante aprovado à listagem oficial.
@@ -444,8 +451,8 @@ export default function Home() {
           />
         )}
 
-        {/* 2. Calendário de Ensaios & Datas (Visível para Todos, Edição apenas Coordenador) */}
-        {activeTab === 'calendario' && (
+        {/* 2. Calendário de Ensaios & Datas (Bicho e Coordenador) */}
+        {activeTab === 'calendario' && !isPublico && (
           <CalendarView
             eventos={eventos}
             setEventos={setEventos}
@@ -473,7 +480,7 @@ export default function Home() {
           />
         )}
 
-        {activeTab === 'letras' && (
+        {activeTab === 'letras' && !isPublico && (
           <LyricsAndChords
             items={letrasCifras}
             setItems={setLetrasCifras}
@@ -554,8 +561,8 @@ export default function Home() {
           />
         )}
 
-        {/* 11. Documentos Oficiais (Visível para Todos) */}
-        {activeTab === 'documentos' && (
+        {/* 11. Documentos Oficiais (Bicho e Coordenador) */}
+        {activeTab === 'documentos' && !isPublico && (
           <DocumentsManager
             documentos={documentos}
             setDocumentos={setDocumentos}

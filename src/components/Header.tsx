@@ -177,7 +177,6 @@ export default function Header({
           </span>
           <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tight text-white drop-shadow-[3px_3px_0px_#1E1B2E] flex items-center justify-center gap-3">
             <span className="text-[#00D287]">Bloco</span>
-            <span className="text-[#FBBF24]">da</span>
             <span className="text-[#E6007E]">Bicharada</span>
           </h1>
         </div>
@@ -277,7 +276,6 @@ export default function Header({
           <div className="flex items-center justify-between gap-1">
             <div className="font-black text-sm uppercase tracking-tight text-white flex items-center gap-1">
               <span className="text-[#00D287]">Bloco</span>
-              <span className="text-[#FBBF24]">da</span>
               <span className="text-[#E6007E]">Bicharada</span>
             </div>
             <div className="text-[10px] font-mono font-bold text-[#FBBF24] bg-[#581C87] border border-[#FBBF24] px-1.5 py-0.2 truncate max-w-[170px]">

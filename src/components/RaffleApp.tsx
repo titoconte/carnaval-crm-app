@@ -454,6 +454,13 @@ export default function RaffleApp({
         )}
       </div>
 
+      {/* Mensagem de Modo Consulta Pública */}
+      {isPublico && (
+        <div className="p-3 bg-amber-50 border-2 border-[#1E1B2E] font-mono text-xs text-amber-900 shadow-[2px_2px_0px_#1E1B2E]">
+          👁️ <strong>Modo Consulta Pública:</strong> Veja as rifas oficiais, números e prêmios. Para adquirir bilhetes ou gerenciar vendas, faça login no sistema.
+        </div>
+      )}
+
       {/* Grade Interativa de Números */}
       <div className="vintage-card p-4">
         <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
@@ -466,8 +473,8 @@ export default function RaffleApp({
               <button
                 key={bilhete.numero}
                 onClick={() => !isPublico && toggleSelectNumber(bilhete.numero)}
-                onDoubleClick={() => alternarStatusCoord(bilhete.numero)}
-                disabled={isPago || (vendasEncerradas && !isAdmin)}
+                onDoubleClick={() => !isPublico && alternarStatusCoord(bilhete.numero)}
+                disabled={isPublico || isPago || (vendasEncerradas && !isAdmin)}
                 className={`py-2 px-1 border-2 border-[#1E1B2E] text-xs font-mono font-black transition-all flex flex-col items-center justify-center relative ${
                   isSelected
                     ? 'bg-[#00D287] text-[#1E1B2E] shadow-[3px_3px_0px_#1E1B2E] scale-105 z-10'
@@ -475,9 +482,11 @@ export default function RaffleApp({
                     ? 'bg-[#FDF2F8] text-[#E6007E] border-[#E6007E] opacity-70 line-through cursor-not-allowed'
                     : isReservado
                     ? 'bg-[#FEFCE8] text-[#B45309] border-[#FBBF24] shadow-[2px_2px_0px_#FBBF24]'
+                    : isPublico
+                    ? 'bg-white text-[#1E1B2E] shadow-[1px_1px_0px_#1E1B2E] cursor-default'
                     : vendasEncerradas
                     ? 'bg-stone-200 text-stone-500 cursor-not-allowed'
-                    : 'bg-white hover:bg-pink-50 text-[#1E1B2E] shadow-[2px_2px_0px_#1E1B2E] active:translate-x-0.5 active:translate-y-0.5'
+                    : 'bg-white hover:bg-pink-50 text-[#1E1B2E] shadow-[2px_2px_0px_#1E1B2E] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer'
                 }`}
                 title={
                   isPago ? `Bilhete #${bilhete.numero} pago por ${bilhete.compradorNome || 'Folião'}` :

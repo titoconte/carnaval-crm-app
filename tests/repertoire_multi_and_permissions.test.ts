@@ -185,3 +185,4 @@ describe('Repertório: Múltiplos Arquivos, Links do YouTube e Permissões de Co
     assert.strictEqual(removido.length, 0);
   });
 });
+
