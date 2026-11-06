@@ -4,7 +4,7 @@ import {
   obterTodosEstadosDoBanco,
   salvarEstadoNoBanco
 } from '@/lib/db';
-import { mesclarTarefasComIniciais, TAREFAS_POSTIT_INICIAIS } from '@/data/blocoData';
+import { TAREFAS_POSTIT_INICIAIS } from '@/data/blocoData';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -12,7 +12,7 @@ export const revalidate = 0;
 /**
  * Endpoint para leitura de todos os estados sincronizados do banco (GET /api/db/sync).
  * Retorna os estados salvos no Vercel Postgres para carregar no cliente,
- * garantindo mesclagem com as tarefas essenciais da Ata 7 e cabeçalhos no-store.
+ * respeitando edições e deleções feitas pelos coordenadores.
  */
 export async function GET() {
   const configured = isDatabaseConfigured();
@@ -34,10 +34,8 @@ export async function GET() {
   try {
     const estados = await obterTodosEstadosDoBanco();
 
-    // Garante que as tarefas da Ata 7 estejam sempre mescladas no retorno
-    if (estados.tarefas && Array.isArray(estados.tarefas)) {
-      estados.tarefas = mesclarTarefasComIniciais(estados.tarefas);
-    } else {
+    // Se o banco ainda não possuir tarefas salvas, inicializa com as 11 da Ata 7
+    if (!estados.tarefas) {
       estados.tarefas = TAREFAS_POSTIT_INICIAIS;
     }
 
