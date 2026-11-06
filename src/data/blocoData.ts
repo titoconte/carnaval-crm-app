@@ -646,6 +646,29 @@ export const TAREFAS_POSTIT_INICIAIS: TarefaPostIt[] = [
  * @param checklists - Lista de itens da checklist
  * @returns Percentual inteiro de conclusão
  */
+/**
+ * Mescla uma lista de tarefas existentes com as tarefas da Ata 7 (Recording_7).
+ * Garante que todas as 11 tarefas essenciais estejam presentes no mural,
+ * mesmo se o LocalStorage ou o banco Postgres contiverem apenas tarefas antigas.
+ * 
+ * @param tarefasAtuais - Lista atual de tarefas salvas
+ * @returns Lista mesclada completa contendo todas as tarefas
+ */
+export function mesclarTarefasComIniciais(tarefasAtuais?: TarefaPostIt[]): TarefaPostIt[] {
+  if (!tarefasAtuais || !Array.isArray(tarefasAtuais) || tarefasAtuais.length === 0) {
+    return [...TAREFAS_POSTIT_INICIAIS];
+  }
+
+  const idsExistentes = new Set(tarefasAtuais.map(t => t.id));
+  const titulosExistentes = new Set(tarefasAtuais.map(t => t.titulo.trim().toLowerCase()));
+
+  const novasIniciais = TAREFAS_POSTIT_INICIAIS.filter(
+    t => !idsExistentes.has(t.id) && !titulosExistentes.has(t.titulo.trim().toLowerCase())
+  );
+
+  return [...tarefasAtuais, ...novasIniciais];
+}
+
 export function calcularProgressoChecklist(checklists?: ItemChecklistTarefa[]): number {
   if (!checklists || checklists.length === 0) return 0;
   const concluidos = checklists.filter(c => c.concluido).length;

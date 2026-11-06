@@ -4,7 +4,8 @@ import {
   TAREFAS_POSTIT_INICIAIS,
   TarefaPostIt,
   adicionarNovoUsuario,
-  USUARIOS_INICIAIS
+  USUARIOS_INICIAIS,
+  mesclarTarefasComIniciais
 } from '../src/data/blocoData';
 
 /**
@@ -43,6 +44,37 @@ describe('Tarefas do Mural da Ata 7 (Recording_7)', () => {
     assert.ok(titulos.includes('contra-canto') || titulos.includes('curadoria musical'), 'Deve conter tarefa dos arranjos/contra-canto');
     assert.ok(titulos.includes('rifa'), 'Deve conter tarefa do lançamento da rifa');
     assert.ok(titulos.includes('novos integrantes') || titulos.includes('formulário'), 'Deve conter tarefa do formulário de novos integrantes');
+  });
+
+  it('deve mesclar tarefas existentes com tarefas da Ata 7 sem duplicar', () => {
+    const listaExistente: TarefaPostIt[] = [
+      {
+        id: 'tarefa-antiga-1',
+        titulo: 'Tarefa Antiga Prévia',
+        descricao: 'Teste',
+        categoria: 'Apoio',
+        responsavel: 'Tito',
+        corPostIt: 'amarelo',
+        urgente: false,
+        concluida: false
+      }
+    ];
+
+    const mescladas = mesclarTarefasComIniciais(listaExistente);
+    assert.strictEqual(mescladas.length, 1 + TAREFAS_POSTIT_INICIAIS.length);
+    assert.strictEqual(mescladas[0].id, 'tarefa-antiga-1');
+
+    // Executando novamente não deve gerar duplicatas
+    const segundaMescla = mesclarTarefasComIniciais(mescladas);
+    assert.strictEqual(segundaMescla.length, mescladas.length);
+  });
+
+  it('deve retornar todas as tarefas iniciais caso a lista atual seja vazia ou indefinida', () => {
+    const v1 = mesclarTarefasComIniciais([]);
+    assert.strictEqual(v1.length, 11);
+
+    const v2 = mesclarTarefasComIniciais(undefined);
+    assert.strictEqual(v2.length, 11);
   });
 });
 

@@ -20,6 +20,7 @@ import LoginModal from '../components/LoginModal';
 import {
   INTEGRANTES_INICIAIS,
   TAREFAS_POSTIT_INICIAIS,
+  mesclarTarefasComIniciais,
   MACROTAREFAS_DESFILE_INICIAIS,
   MOVIMENTOS_BAR_INICIAIS,
   gerarBilhetesRifaIniciais,
@@ -151,7 +152,7 @@ export default function Home() {
         if (est.usuarios && Array.isArray(est.usuarios) && est.usuarios.length > 0) {
           setUsuarios(est.usuarios);
         }
-        if (est.tarefas && Array.isArray(est.tarefas) && est.tarefas.length > 0) { setTarefas(est.tarefas); } else { setTarefas(TAREFAS_POSTIT_INICIAIS); }
+        if (est.tarefas && Array.isArray(est.tarefas)) { setTarefas(mesclarTarefasComIniciais(est.tarefas)); } else { setTarefas(TAREFAS_POSTIT_INICIAIS); }
         if (est.macrotarefas && Array.isArray(est.macrotarefas)) setMacrotarefas(est.macrotarefas);
         if (est.movimentosBar && Array.isArray(est.movimentosBar)) setMovimentosBar(est.movimentosBar);
         if (est.bilhetesRifa && Array.isArray(est.bilhetesRifa)) setBilhetesRifa(est.bilhetesRifa);
