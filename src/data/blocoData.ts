@@ -145,6 +145,18 @@ export interface ArquivoAnexoRepertorio {
   tipo?: string;
 }
 
+export type StatusCuradoriaMusica = 'Confirmada' | 'Em Votação' | 'Arquivada' | 'Sugerida para Corte';
+
+export interface ConvencaoMusical {
+  id: string;
+  titulo: string;
+  descricao?: string;
+  categoria?: 'Geral' | 'Bateria' | 'Metais' | 'Harmonia' | 'Vozes' | string;
+  videoUrls?: { rotulo?: string; url: string }[];
+  documentoUrls?: { nome: string; url?: string }[];
+  criadoEm?: string;
+}
+
 export interface MusicaRepertorio {
   id: string;
   titulo: string;
@@ -152,7 +164,7 @@ export interface MusicaRepertorio {
   ritmo: string;
   ordemDesfile: number;
   votosFavoraveis: number;
-  statusCuradoria: 'Confirmada' | 'Em Votação' | 'Sugerida para Corte';
+  statusCuradoria: StatusCuradoriaMusica;
   audioGuiaUrl?: string;
   youtubeUrl?: string;
   youtubeLinks?: LinkYoutubeMusica[];
@@ -884,6 +896,73 @@ export function montarTextoPartituraMusica(musica: MusicaRepertorio): string {
          `Artista Original: ${musica.artistaOriginal} | Ritmo: ${musica.ritmo} | Status: ${musica.statusCuradoria}\n` +
          `------------------------------------------------------------\n` +
          `PARTITURA & CONVENÇÕES:\n${arranjo}\n`;
+}
+
+/**
+ * Lista inicial de convenções musicais e arranjos do Bloco Bicharada.
+ */
+export const CONVENCOES_INICIAIS: ConvencaoMusical[] = [];
+
+/**
+ * Cria uma nova convenção musical com links de vídeo e documentos.
+ * 
+ * @param dados - Metadados da convenção musical
+ * @returns Novo objeto ConvencaoMusical
+ */
+export function criarConvencaoMusical(dados: {
+  titulo: string;
+  descricao?: string;
+  categoria?: string;
+  videoUrls?: { rotulo?: string; url: string }[];
+  documentoUrls?: { nome: string; url?: string }[];
+}): ConvencaoMusical {
+  return {
+    id: `conv-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+    titulo: dados.titulo.trim(),
+    descricao: dados.descricao?.trim(),
+    categoria: dados.categoria || 'Geral',
+    videoUrls: dados.videoUrls || [],
+    documentoUrls: dados.documentoUrls || [],
+    criadoEm: new Date().toISOString()
+  };
+}
+
+/**
+ * Atualiza os dados de uma convenção musical existente.
+ * Restrito exclusivamente a coordenadores do bloco (isAdmin = true).
+ * 
+ * @param convencoes - Lista atual de convenções
+ * @param id - Identificador da convenção a modificar
+ * @param dados - Propriedades atualizadas
+ * @param isAdmin - Booleano indicando se o usuário é coordenador
+ * @returns Lista de convenções atualizada
+ */
+export function editarConvencaoMusical(
+  convencoes: ConvencaoMusical[],
+  id: string,
+  dados: Partial<ConvencaoMusical>,
+  isAdmin: boolean
+): ConvencaoMusical[] {
+  if (!isAdmin) return convencoes;
+  return convencoes.map(c => c.id === id ? { ...c, ...dados } : c);
+}
+
+/**
+ * Remove uma convenção musical cadastrada.
+ * Restrito exclusivamente a coordenadores do bloco (isAdmin = true).
+ * 
+ * @param convencoes - Lista atual de convenções
+ * @param id - Identificador da convenção a excluir
+ * @param isAdmin - Booleano indicando se o usuário é coordenador
+ * @returns Lista filtrada de convenções
+ */
+export function removerConvencaoMusical(
+  convencoes: ConvencaoMusical[],
+  id: string,
+  isAdmin: boolean
+): ConvencaoMusical[] {
+  if (!isAdmin) return convencoes;
+  return convencoes.filter(c => c.id !== id);
 }
 
 export const REPERTORIO_INICIAL: MusicaRepertorio[] = [];

@@ -97,3 +97,4 @@ describe('Restrições de Acesso Público e Título Oficial do Bloco Bicharada',
     assert.strictEqual(nomePadrao.includes('da Bicharada'), false);
   });
 });
+

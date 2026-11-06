@@ -27,6 +27,8 @@ import {
   VENDAS_RIFAS_INICIAIS,
   INSCRITOS_INICIAIS,
   REPERTORIO_INICIAL,
+  CONVENCOES_INICIAIS,
+  ConvencaoMusical,
   LETRAS_CIFRAS_INICIAIS,
   ENQUETES_WHATSAPP_INICIAIS,
   CALENDARIO_INICIAL,
@@ -93,6 +95,7 @@ export default function Home() {
   const [vendasRifas, setVendasRifas] = useState<RifaVenda[]>(VENDAS_RIFAS_INICIAIS);
   const [inscritos, setInscritos] = useState<InscritoBloco[]>(INSCRITOS_INICIAIS);
   const [musicas, setMusicas] = useState<MusicaRepertorio[]>(REPERTORIO_INICIAL);
+  const [convencoes, setConvencoes] = useState<ConvencaoMusical[]>(CONVENCOES_INICIAIS);
   const [letrasCifras, setLetrasCifras] = useState<ItemLetraCifra[]>(LETRAS_CIFRAS_INICIAIS);
   const [enquetes, setEnquetes] = useState<EnqueteWhatsApp[]>(ENQUETES_WHATSAPP_INICIAIS);
   const [eventos, setEventos] = useState<EventoCalendario[]>(CALENDARIO_INICIAL);
@@ -140,6 +143,7 @@ export default function Home() {
         if (est.inscritos && Array.isArray(est.inscritos)) setInscritos(est.inscritos);
         if (est.integrantes && Array.isArray(est.integrantes)) setIntegrantes(est.integrantes);
         if (est.musicas && Array.isArray(est.musicas)) setMusicas(est.musicas);
+        if (est.convencoes && Array.isArray(est.convencoes)) setConvencoes(est.convencoes);
         if (est.letrasCifras && Array.isArray(est.letrasCifras)) setLetrasCifras(est.letrasCifras);
         if (est.enquetes && Array.isArray(est.enquetes)) setEnquetes(est.enquetes);
         if (est.eventos && Array.isArray(est.eventos)) setEventos(est.eventos);
@@ -207,6 +211,9 @@ export default function Home() {
       const sMusicas = localStorage.getItem('bicha_musicas_v4');
       if (sMusicas) setMusicas(JSON.parse(sMusicas));
 
+      const sConvencoes = localStorage.getItem('bicha_convencoes_v4');
+      if (sConvencoes) setConvencoes(JSON.parse(sConvencoes));
+
       const sLetras = localStorage.getItem('bicha_letras_v4');
       if (sLetras) setLetrasCifras(JSON.parse(sLetras));
 
@@ -269,6 +276,7 @@ export default function Home() {
       localStorage.setItem('bicha_inscritos_v4', JSON.stringify(inscritos));
       localStorage.setItem('bicha_integrantes_v4', JSON.stringify(integrantes));
       localStorage.setItem('bicha_musicas_v4', JSON.stringify(musicas));
+      localStorage.setItem('bicha_convencoes_v4', JSON.stringify(convencoes));
       localStorage.setItem('bicha_letras_v4', JSON.stringify(letrasCifras));
       localStorage.setItem('bicha_enquetes_v4', JSON.stringify(enquetes));
       localStorage.setItem('bicha_calendario_v4', JSON.stringify(eventos));
@@ -319,7 +327,7 @@ export default function Home() {
     }, 1500);
 
     return () => clearTimeout(timer);
-  }, [usuarios, tarefas, macrotarefas, movimentosBar, bilhetesRifa, rifas, vendasRifas, inscritos, integrantes, musicas, letrasCifras, enquetes, eventos, documentos, cores, artes, postsInstagram, configInstagram, temaAno, dbConnected, dadosCarregadosDoBanco]);
+  }, [usuarios, tarefas, macrotarefas, movimentosBar, bilhetesRifa, rifas, vendasRifas, inscritos, integrantes, musicas, letrasCifras, enquetes, eventos, documentos, cores, artes, postsInstagram, configInstagram, temaAno, convencoes, dbConnected, dadosCarregadosDoBanco]);
 
   /**
    * Salva o tema do ano no estado local, LocalStorage e diretamente no banco Vercel Postgres,
