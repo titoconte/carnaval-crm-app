@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { FileText, Upload, Copy, Check, Search, Music, ArrowLeft } from 'lucide-react';
+import { FileText, Upload, Copy, Check, Search, Music, ArrowLeft, Pencil, Trash2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { ItemLetraCifra } from '../data/blocoData';
+import { ItemLetraCifra, editarItemLetraCifra, removerItemLetraCifra } from '../data/blocoData';
 
 interface LyricsAndChordsProps {
   items: ItemLetraCifra[];
@@ -27,6 +27,63 @@ export default function LyricsAndChords({ items, setItems, isAdmin, onBackToRepe
   const [tipo, setTipo] = useState<'Letra' | 'Cifra' | 'Partitura'>('Cifra');
   const [autorUpload, setAutorUpload] = useState('');
   const [conteudoTexto, setConteudoTexto] = useState('');
+
+  // Estados de edição (Exclusivo Coordenação)
+  const [modalEditar, setModalEditar] = useState(false);
+  const [editTitulo, setEditTitulo] = useState('');
+  const [editTipo, setEditTipo] = useState<'Letra' | 'Cifra' | 'Partitura'>('Cifra');
+  const [editAutor, setEditAutor] = useState('');
+  const [editConteudo, setEditConteudo] = useState('');
+
+  /**
+   * Abre o modal de edição do item selecionado exclusivamente para coordenadores.
+   */
+  const abrirModalEditar = (item: ItemLetraCifra) => {
+    if (!isAdmin) return;
+    setEditTitulo(item.titulo);
+    setEditTipo(item.tipo);
+    setEditAutor(item.autorUpload);
+    setEditConteudo(item.conteudoTexto || '');
+    setModalEditar(true);
+  };
+
+  /**
+   * Salva as alterações do arquivo ou cifra selecionado.
+   */
+  const handleSalvarEdicao = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAdmin || !selectedItem || !editTitulo.trim()) return;
+
+    const atualizados = editarItemLetraCifra(
+      items,
+      selectedItem.id,
+      {
+        titulo: editTitulo.trim(),
+        tipo: editTipo,
+        autorUpload: editAutor.trim() || selectedItem.autorUpload,
+        conteudoTexto: editConteudo.trim()
+      },
+      isAdmin
+    );
+
+    setItems(atualizados);
+    const atualizado = atualizados.find(i => i.id === selectedItem.id) || null;
+    setSelectedItem(atualizado);
+    setModalEditar(false);
+  };
+
+  /**
+   * Remove um item do caderno de letras/cifras (exclusivo para coordenação).
+   */
+  const handleExcluirItem = (id: string) => {
+    if (!isAdmin) return;
+    if (confirm('Tem certeza que deseja remover este documento do caderno de letras e cifras?')) {
+      const atualizados = removerItemLetraCifra(items, id, isAdmin);
+      setItems(atualizados);
+      setSelectedItem(atualizados[0] || null);
+      setModalEditar(false);
+    }
+  };
 
   /**
    * Registra uma nova cifra, letra ou partitura no caderno oficial do bloco.
@@ -184,13 +241,25 @@ export default function LyricsAndChords({ items, setItems, isAdmin, onBackToRepe
                   <p className="text-xs text-stone-500 font-mono">Enviado por {selectedItem.autorUpload}</p>
                 </div>
 
-                <button
-                  onClick={copyToClipboard}
-                  className="vintage-button px-3 py-1.5 bg-white hover:bg-stone-100 text-xs font-mono flex items-center gap-1"
-                >
-                  {copied ? <Check className="w-3.5 h-3.5 text-[#00A868]" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copied ? 'Copiado!' : 'Copiar'}</span>
-                </button>
+                <div className="flex items-center gap-1.5">
+                  {isAdmin && (
+                    <button
+                      onClick={() => abrirModalEditar(selectedItem)}
+                      className="px-2.5 py-1.5 border-2 border-[#581C87] bg-purple-50 hover:bg-purple-100 text-[#581C87] text-xs font-mono font-bold uppercase flex items-center gap-1 shadow-[1px_1px_0px_#000] cursor-pointer"
+                      title="Editar documento (Coordenação)"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                      <span>Editar</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={copyToClipboard}
+                    className="vintage-button px-3 py-1.5 bg-white hover:bg-stone-100 text-xs font-mono flex items-center gap-1 cursor-pointer"
+                  >
+                    {copied ? <Check className="w-3.5 h-3.5 text-[#00A868]" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copied ? 'Copiado!' : 'Copiar'}</span>
+                  </button>
+                </div>
               </div>
 
               <div className="bg-white border-2 border-[#1A181B] p-3 font-mono text-xs text-stone-900 whitespace-pre-wrap leading-relaxed max-h-[340px] overflow-y-auto">
@@ -280,6 +349,94 @@ export default function LyricsAndChords({ items, setItems, isAdmin, onBackToRepe
                 >
                   Salvar Documento
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Modal Editar Cifra / Letra (Exclusivo Coordenação) */}
+      {isAdmin && modalEditar && selectedItem && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#FAF6EC] border-4 border-[#1A181B] p-6 max-w-lg w-full shadow-[6px_6px_0px_#1A181B] max-h-[90vh] overflow-y-auto">
+            <div className="stamp stamp-urgent text-xs mb-2">Coordenação do Bloco</div>
+            <h3 className="text-base font-black uppercase text-[#1A181B]">
+              Editar Cifra ou Arranjo
+            </h3>
+
+            <form onSubmit={handleSalvarEdicao} className="space-y-3 mt-3">
+              <div>
+                <label className="block text-xs font-black uppercase text-[#1A181B] mb-1">Título do Documento *</label>
+                <input
+                  type="text"
+                  required
+                  value={editTitulo}
+                  onChange={(e) => setEditTitulo(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border-2 border-[#1A181B] text-xs font-mono focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-black uppercase text-[#1A181B] mb-1">Tipo</label>
+                  <select
+                    value={editTipo}
+                    onChange={(e) => setEditTipo(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-white border-2 border-[#1A181B] text-xs font-mono"
+                  >
+                    <option value="Cifra">Cifra Harmônica</option>
+                    <option value="Letra">Letra</option>
+                    <option value="Partitura">Partitura / Convenção</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black uppercase text-[#1A181B] mb-1">Autor / Responsável</label>
+                  <input
+                    type="text"
+                    value={editAutor}
+                    onChange={(e) => setEditAutor(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border-2 border-[#1A181B] text-xs font-mono focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase text-[#1A181B] mb-1">
+                  Texto da Cifra / Convenções
+                </label>
+                <textarea
+                  rows={8}
+                  value={editConteudo}
+                  onChange={(e) => setEditConteudo(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border-2 border-[#1A181B] text-xs font-mono focus:outline-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-between pt-3 border-t border-stone-300">
+                <button
+                  type="button"
+                  onClick={() => handleExcluirItem(selectedItem.id)}
+                  className="px-3 py-1.5 border-2 border-red-600 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-mono font-bold uppercase flex items-center gap-1 cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Excluir</span>
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setModalEditar(false)}
+                    className="px-3 py-1.5 border-2 border-[#1A181B] text-xs font-bold uppercase hover:bg-stone-200"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="vintage-button px-4 py-1.5 bg-[#00A868] text-white text-xs uppercase cursor-pointer"
+                  >
+                    Salvar Alterações
+                  </button>
+                </div>
               </div>
             </form>
           </div>

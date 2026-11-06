@@ -18,7 +18,11 @@ import {
   Download,
   CheckSquare,
   Square,
-  Check
+  Check,
+  Pencil,
+  Trash2,
+  X,
+  ListVideo
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { jsPDF } from 'jspdf';
@@ -26,7 +30,11 @@ import {
   MusicaRepertorio,
   reordenarRepertorio,
   criarSugestaoMusica,
-  obterMusicasParaDownload
+  obterMusicasParaDownload,
+  editarMusicaRepertorio,
+  removerMusicaRepertorio,
+  LinkYoutubeMusica,
+  ArquivoAnexoRepertorio
 } from '../data/blocoData';
 
 /**
@@ -71,11 +79,25 @@ export default function RepertoireVoting({
   const [novoTitulo, setNovoTitulo] = useState('');
   const [novoArtista, setNovoArtista] = useState('');
   const [novoRitmo, setNovoRitmo] = useState('Axé / Samba-Reggae');
-  const [novoYoutube, setNovoYoutube] = useState('');
-  const [novoArquivoNome, setNovoArquivoNome] = useState('');
-  const [novoArquivoUrl, setNovoArquivoUrl] = useState('');
+  const [novoLinksYoutube, setNovoLinksYoutube] = useState<LinkYoutubeMusica[]>([
+    { rotulo: 'Versão Principal', url: '' }
+  ]);
+  const [novosArquivos, setNovosArquivos] = useState<ArquivoAnexoRepertorio[]>([]);
   const [enviandoBlob, setEnviandoBlob] = useState(false);
   const [novoTextoPartitura, setNovoTextoPartitura] = useState('');
+
+  // Modal de Edição de Música (Exclusivo Coordenação)
+  const [musicaParaEditar, setMusicaParaEditar] = useState<MusicaRepertorio | null>(null);
+  const [editTitulo, setEditTitulo] = useState('');
+  const [editArtista, setEditArtista] = useState('');
+  const [editRitmo, setEditRitmo] = useState('');
+  const [editStatus, setEditStatus] = useState<MusicaRepertorio['statusCuradoria']>('Confirmada');
+  const [editLinksYoutube, setEditLinksYoutube] = useState<LinkYoutubeMusica[]>([]);
+  const [editArquivos, setEditArquivos] = useState<ArquivoAnexoRepertorio[]>([]);
+  const [editTextoPartitura, setEditTextoPartitura] = useState('');
+
+  // Modal para Visualizar Versões / Ritmos no YouTube
+  const [modalYoutubeVersoes, setModalYoutubeVersoes] = useState<MusicaRepertorio | null>(null);
 
   // Modal de Leitura de Partitura
   const [modalPartitura, setModalPartitura] = useState<MusicaRepertorio | null>(null);
@@ -286,50 +308,147 @@ export default function RepertoireVoting({
   };
 
   /**
-   * Captura o upload de arquivo de repertório (partitura/cifra) do dispositivo do usuário
-   * e faz o upload em tempo real para o Vercel Blob Storage.
+   * Faz upload de um ou múltiplos arquivos para o Vercel Blob Storage.
+   * 
+   * @param e - Evento de alteração do input file
+   * @param isEdicao - Se true, adiciona na edição; se false, na criação
    */
-  const handleArquivoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setNovoArquivoNome(file.name);
-      setEnviandoBlob(true);
+  const handleMultiplosArquivosUpload = async (e: React.ChangeEvent<HTMLInputElement>, isEdicao = false) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
+    setEnviandoBlob(true);
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
       const formData = new FormData();
       formData.append('file', file);
       formData.append('pasta', 'partituras');
 
-      fetch('/api/blob/upload', {
-        method: 'POST',
-        body: formData
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.sucesso && data.url) {
-            setNovoArquivoUrl(data.url);
-          }
-        })
-        .catch(err => {
-          console.warn('Falha no upload do Blob, mantendo arquivo local:', err);
-        })
-        .finally(() => setEnviandoBlob(false));
+      try {
+        const res = await fetch('/api/blob/upload', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        const novoAnexo: ArquivoAnexoRepertorio = {
+          nome: file.name,
+          url: data.sucesso && data.url ? data.url : undefined
+        };
+
+        if (isEdicao) {
+          setEditArquivos(prev => [...prev, novoAnexo]);
+        } else {
+          setNovosArquivos(prev => [...prev, novoAnexo]);
+        }
+      } catch (err) {
+        console.warn('Falha no upload do Blob:', err);
+        const novoAnexo: ArquivoAnexoRepertorio = { nome: file.name };
+        if (isEdicao) {
+          setEditArquivos(prev => [...prev, novoAnexo]);
+        } else {
+          setNovosArquivos(prev => [...prev, novoAnexo]);
+        }
+      }
+    }
+    setEnviandoBlob(false);
+  };
+
+  /**
+   * Abre o modal de edição de música exclusivamente para coordenadores.
+   */
+  const abrirModalEdicao = (musica: MusicaRepertorio) => {
+    if (!isAdmin) return;
+    setMusicaParaEditar(musica);
+    setEditTitulo(musica.titulo);
+    setEditArtista(musica.artistaOriginal);
+    setEditRitmo(musica.ritmo);
+    setEditStatus(musica.statusCuradoria);
+
+    // Carrega links do YouTube
+    const links = musica.youtubeLinks && musica.youtubeLinks.length > 0
+      ? musica.youtubeLinks.map(l => ({ ...l }))
+      : musica.youtubeUrl
+      ? [{ rotulo: 'Vídeo Principal', url: musica.youtubeUrl }]
+      : [{ rotulo: 'Versão Principal', url: '' }];
+    setEditLinksYoutube(links);
+
+    // Carrega arquivos
+    const arqs = musica.arquivos && musica.arquivos.length > 0
+      ? musica.arquivos.map(a => ({ ...a }))
+      : musica.arquivoRepertorio
+      ? [{ nome: musica.arquivoRepertorio, url: musica.partituraUrl }]
+      : [];
+    setEditArquivos(arqs);
+
+    setEditTextoPartitura(musica.partituraTexto || '');
+  };
+
+  /**
+   * Salva as alterações da música editada pelo coordenador.
+   */
+  const handleSalvarEdicao = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAdmin || !musicaParaEditar || !editTitulo.trim()) return;
+
+    const linksValidos = editLinksYoutube.filter(l => l.url && l.url.trim().length > 0);
+    const atualizadas = editarMusicaRepertorio(
+      musicas,
+      musicaParaEditar.id,
+      {
+        titulo: editTitulo.trim(),
+        artistaOriginal: editArtista.trim() || 'Compositor a confirmar',
+        ritmo: editRitmo,
+        statusCuradoria: editStatus,
+        youtubeLinks: linksValidos,
+        youtubeUrl: linksValidos[0]?.url || undefined,
+        arquivos: editArquivos,
+        arquivoRepertorio: editArquivos[0]?.nome || undefined,
+        partituraUrl: editArquivos[0]?.url || undefined,
+        partituraTexto: editTextoPartitura.trim() || undefined
+      },
+      isAdmin
+    );
+
+    setMusicas(atualizadas);
+    setMusicaParaEditar(null);
+
+    confetti({
+      particleCount: 35,
+      spread: 50,
+      colors: ['#00A868', '#581C87']
+    });
+  };
+
+  /**
+   * Remove uma música do repertório (exclusivo para coordenação).
+   */
+  const handleExcluirMusica = (id: string) => {
+    if (!isAdmin) return;
+    if (confirm('Tem certeza que deseja remover esta música do repertório oficial?')) {
+      const atualizadas = removerMusicaRepertorio(musicas, id, isAdmin);
+      setMusicas(atualizadas);
+      setMusicaParaEditar(null);
     }
   };
 
   /**
-   * Submete a sugestão de música com YouTube e upload de repertório.
+   * Submete a sugestão de música com múltiplos links do YouTube e arquivos.
    */
   const handleAddSong = (e: React.FormEvent) => {
     e.preventDefault();
     if (!novoTitulo.trim()) return;
 
+    const linksValidos = novoLinksYoutube.filter(l => l.url && l.url.trim().length > 0);
+
     const nova = criarSugestaoMusica({
       titulo: novoTitulo.trim(),
       artistaOriginal: novoArtista.trim() || 'Compositor a confirmar',
       ritmo: novoRitmo,
-      youtubeUrl: novoYoutube.trim() || undefined,
-      arquivoRepertorio: novoArquivoNome || undefined,
-      partituraUrl: novoArquivoUrl || undefined,
+      youtubeLinks: linksValidos,
+      youtubeUrl: linksValidos[0]?.url,
+      arquivos: novosArquivos,
+      arquivoRepertorio: novosArquivos[0]?.nome,
+      partituraUrl: novosArquivos[0]?.url,
       partituraTexto: novoTextoPartitura.trim() || undefined,
       ordemDesfile: musicas.length + 1
     });
@@ -340,9 +459,8 @@ export default function RepertoireVoting({
     // Reset formulário
     setNovoTitulo('');
     setNovoArtista('');
-    setNovoYoutube('');
-    setNovoArquivoNome('');
-    setNovoArquivoUrl('');
+    setNovoLinksYoutube([{ rotulo: 'Versão Principal', url: '' }]);
+    setNovosArquivos([]);
     setNovoTextoPartitura('');
     setModalNovaMusica(false);
 
@@ -488,29 +606,42 @@ export default function RepertoireVoting({
                 </div>
               </div>
 
-              {/* Botões Mídia para Todos os Usuários: Partitura e YouTube */}
-              <div className="flex items-center gap-1.5 shrink-0">
-                {/* Botão Partitura */}
+              {/* Botões Mídia para Todos os Usuários: Partitura, YouTube e Edição (Coordenação) */}
+              <div className="flex items-center gap-1.5 shrink-0 flex-wrap sm:flex-nowrap">
+                {/* Botão Partitura / Arquivos Anexados */}
                 <button
                   onClick={() => setModalPartitura(musica)}
-                  className="px-2.5 py-1.5 border-2 border-[#1E1B2E] bg-white hover:bg-amber-50 text-[#1E1B2E] text-xs font-mono font-bold uppercase shadow-[1px_1px_0px_#000] flex items-center gap-1 active:translate-x-0.5 active:translate-y-0.5"
-                  title="Ver partitura / arranjo dos metais"
+                  className="px-2.5 py-1.5 border-2 border-[#1E1B2E] bg-white hover:bg-amber-50 text-[#1E1B2E] text-xs font-mono font-bold uppercase shadow-[1px_1px_0px_#000] flex items-center gap-1 active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
+                  title="Ver partituras e arquivos anexados"
                 >
                   <FileText className="w-3.5 h-3.5 text-[#581C87]" />
-                  <span className="hidden sm:inline">Partitura</span>
+                  <span className="hidden sm:inline">
+                    Partituras {musica.arquivos && musica.arquivos.length > 1 ? `(${musica.arquivos.length})` : ''}
+                  </span>
                 </button>
 
-                {/* Botão YouTube */}
-                <a
-                  href={youtubeLink}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-2.5 py-1.5 border-2 border-[#1E1B2E] bg-white hover:bg-red-50 text-red-700 text-xs font-mono font-bold uppercase shadow-[1px_1px_0px_#000] flex items-center gap-1 active:translate-x-0.5 active:translate-y-0.5"
-                  title="Ouvir no YouTube"
-                >
-                  <YoutubeIcon className="w-3.5 h-3.5 text-red-600" />
-                  <span className="hidden sm:inline">YouTube</span>
-                </a>
+                {/* Botão YouTube (1 link direto ou menu de múltiplas versões) */}
+                {musica.youtubeLinks && musica.youtubeLinks.length > 1 ? (
+                  <button
+                    onClick={() => setModalYoutubeVersoes(musica)}
+                    className="px-2.5 py-1.5 border-2 border-[#1E1B2E] bg-red-50 hover:bg-red-100 text-red-700 text-xs font-mono font-bold uppercase shadow-[1px_1px_0px_#000] flex items-center gap-1 active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
+                    title="Ver versões de ritmos no YouTube"
+                  >
+                    <YoutubeIcon className="w-3.5 h-3.5 text-red-600" />
+                    <span className="hidden sm:inline">YouTube ({musica.youtubeLinks.length})</span>
+                  </button>
+                ) : (
+                  <a
+                    href={musica.youtubeLinks?.[0]?.url || youtubeLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-2.5 py-1.5 border-2 border-[#1E1B2E] bg-white hover:bg-red-50 text-red-700 text-xs font-mono font-bold uppercase shadow-[1px_1px_0px_#000] flex items-center gap-1 active:translate-x-0.5 active:translate-y-0.5"
+                    title="Ouvir no YouTube"
+                  >
+                    <YoutubeIcon className="w-3.5 h-3.5 text-red-600" />
+                    <span className="hidden sm:inline">YouTube</span>
+                  </a>
+                )}
 
                 {/* Áudio Guia (se disponível) */}
                 {musica.audioGuiaUrl && (
@@ -523,6 +654,18 @@ export default function RepertoireVoting({
                   >
                     <Headphones className="w-3.5 h-3.5" />
                   </a>
+                )}
+
+                {/* Botão Editar Música (EXCLUSIVO COORDENAÇÃO) */}
+                {isAdmin && (
+                  <button
+                    onClick={() => abrirModalEdicao(musica)}
+                    className="px-2 py-1.5 border-2 border-[#581C87] bg-purple-100 hover:bg-purple-200 text-[#581C87] text-xs font-mono font-bold uppercase shadow-[1px_1px_0px_#000] flex items-center gap-1 cursor-pointer"
+                    title="Editar música, arquivos e links (Coordenação)"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Editar</span>
+                  </button>
                 )}
               </div>
 
@@ -618,36 +761,98 @@ export default function RepertoireVoting({
                 </select>
               </div>
 
-              {/* Link do YouTube */}
+              {/* Links do YouTube (Múltiplas opções de ritmos e referências) */}
               <div>
-                <label className="block text-xs font-black uppercase text-[#1A181B] mb-1 flex items-center gap-1.5">
-                  <YoutubeIcon className="w-3.5 h-3.5 text-red-600" />
-                  <span>Link da Música no YouTube</span>
-                </label>
-                <input
-                  type="url"
-                  placeholder="https://www.youtube.com/watch?v=..."
-                  value={novoYoutube}
-                  onChange={(e) => setNovoYoutube(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border-2 border-[#1A181B] text-xs font-mono focus:outline-none"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-black uppercase text-[#1A181B] flex items-center gap-1.5">
+                    <YoutubeIcon className="w-3.5 h-3.5 text-red-600" />
+                    <span>Links do YouTube (Opções de Ritmos & Versões)</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setNovoLinksYoutube(prev => [...prev, { rotulo: `Versão ${prev.length + 1}`, url: '' }])}
+                    className="text-[10px] font-mono font-bold text-[#E6007E] hover:underline flex items-center gap-0.5 cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>+ Outro Link / Ritmo</span>
+                  </button>
+                </div>
+
+                <div className="space-y-1.5">
+                  {novoLinksYoutube.map((item, idx) => (
+                    <div key={idx} className="flex gap-1.5 items-center">
+                      <input
+                        type="text"
+                        placeholder="Rótulo (ex: Versão Axé, Frevo...)"
+                        value={item.rotulo || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setNovoLinksYoutube(prev => prev.map((l, i) => i === idx ? { ...l, rotulo: val } : l));
+                        }}
+                        className="w-1/3 px-2 py-1.5 bg-white border-2 border-[#1A181B] text-xs font-mono focus:outline-none"
+                      />
+                      <input
+                        type="url"
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        value={item.url}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setNovoLinksYoutube(prev => prev.map((l, i) => i === idx ? { ...l, url: val } : l));
+                        }}
+                        className="flex-1 px-2 py-1.5 bg-white border-2 border-[#1A181B] text-xs font-mono focus:outline-none"
+                      />
+                      {novoLinksYoutube.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setNovoLinksYoutube(prev => prev.filter((_, i) => i !== idx))}
+                          className="p-1 text-red-600 hover:bg-red-50 border border-transparent hover:border-red-300"
+                          title="Remover link"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              {/* Upload de Repertório / Partitura */}
+              {/* Upload de Múltiplos Arquivos (Partituras / Cifras / Guias) */}
               <div>
                 <label className="block text-xs font-black uppercase text-[#1A181B] mb-1 flex items-center gap-1.5">
                   <Upload className="w-3.5 h-3.5 text-[#581C87]" />
-                  <span>Upload de Repertório (Partitura / Cifra / Guia)</span>
+                  <span>Subir Arquivos de Repertório (Partituras, Cifras, Áudios)</span>
                 </label>
                 <input
                   type="file"
-                  onChange={handleArquivoUpload}
-                  className="w-full text-xs font-mono file:mr-2 file:py-1 file:px-3 file:border-2 file:border-black file:bg-[#FBBF24] file:font-black file:uppercase file:text-[10px]"
+                  multiple
+                  onChange={(e) => handleMultiplosArquivosUpload(e, false)}
+                  className="w-full text-xs font-mono file:mr-2 file:py-1 file:px-3 file:border-2 file:border-black file:bg-[#FBBF24] file:font-black file:uppercase file:text-[10px] cursor-pointer"
                 />
-                {novoArquivoNome && (
-                  <span className="text-[11px] font-mono text-[#00A868] mt-1 block">
-                    ✓ Arquivo: {novoArquivoNome} {enviandoBlob ? '(Subindo para o Vercel Blob...)' : '(Pronto)'}
+                {enviandoBlob && (
+                  <span className="text-[11px] font-mono text-[#581C87] mt-1 block animate-pulse">
+                    Enviando arquivos para o Vercel Blob...
                   </span>
+                )}
+
+                {novosArquivos.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    <span className="text-[10px] font-mono font-bold text-stone-600 uppercase block">
+                      Arquivos Anexados ({novosArquivos.length}):
+                    </span>
+                    {novosArquivos.map((arq, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-1.5 bg-white border border-[#1A181B] text-xs font-mono">
+                        <span className="truncate max-w-[260px]">📎 {arq.nome}</span>
+                        <button
+                          type="button"
+                          onClick={() => setNovosArquivos(prev => prev.filter((_, i) => i !== idx))}
+                          className="text-red-500 hover:text-red-700 p-0.5 cursor-pointer"
+                          title="Remover arquivo"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
 
@@ -685,11 +890,11 @@ export default function RepertoireVoting({
         </div>
       )}
 
-      {/* Modal Visualizador de Partitura / Arranjo */}
+      {/* Modal Visualizador de Partituras & Arquivos da Música */}
       {modalPartitura && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border-4 border-[#1A181B] p-6 max-w-lg w-full shadow-[6px_6px_0px_#1A181B]">
-            <div className="stamp stamp-open text-xs mb-2">Partitura & Arranjo Oficial</div>
+          <div className="bg-white border-4 border-[#1A181B] p-6 max-w-lg w-full shadow-[6px_6px_0px_#1A181B] max-h-[90vh] overflow-y-auto">
+            <div className="stamp stamp-open text-xs mb-2">Partituras & Arquivos Oficiais</div>
             <h3 className="text-base font-black uppercase text-[#1A181B] font-mono flex items-center gap-1.5">
               <FileText className="w-4 h-4 text-[#581C87]" />
               <span>{modalPartitura.titulo} — {modalPartitura.artistaOriginal}</span>
@@ -706,17 +911,44 @@ export default function RepertoireVoting({
                     'Partitura padrão transcrita pela direção musical (Fael). Consulte também o Caderno de Letras & Cifras para detalhes completos.'}
                 </p>
               </div>
-              {modalPartitura.partituraUrl && (
-                <div className="pt-2 border-t border-stone-200">
-                  <a
-                    href={modalPartitura.partituraUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="vintage-button px-3 py-1.5 bg-[#00D287] text-[#1E1B2E] text-xs uppercase flex items-center gap-1 inline-flex shadow-[1px_1px_0px_#000]"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    <span>Baixar / Abrir Arquivo Completo da Partitura</span>
-                  </a>
+
+              {/* Lista de Arquivos Anexados */}
+              {((modalPartitura.arquivos && modalPartitura.arquivos.length > 0) || modalPartitura.partituraUrl || modalPartitura.arquivoRepertorio) && (
+                <div className="pt-2 border-t border-stone-200 space-y-1.5">
+                  <span className="font-bold text-stone-800 block text-[11px] uppercase">
+                    Arquivos Disponíveis para Download:
+                  </span>
+                  {modalPartitura.arquivos && modalPartitura.arquivos.length > 0 ? (
+                    modalPartitura.arquivos.map((arq, i) => (
+                      <div key={i} className="flex items-center justify-between p-2 bg-white border border-stone-300">
+                        <span className="truncate max-w-[240px]">📎 {arq.nome}</span>
+                        {arq.url ? (
+                          <a
+                            href={arq.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-2 py-1 bg-[#00D287] text-[#1E1B2E] text-[10px] font-bold uppercase flex items-center gap-1 shadow-[1px_1px_0px_#000]"
+                          >
+                            <Download className="w-3 h-3" /> Baixar
+                          </a>
+                        ) : (
+                          <span className="text-[10px] text-stone-400">Local</span>
+                        )}
+                      </div>
+                    ))
+                  ) : modalPartitura.partituraUrl ? (
+                    <div className="flex items-center justify-between p-2 bg-white border border-stone-300">
+                      <span className="truncate max-w-[240px]">📎 {modalPartitura.arquivoRepertorio || 'Partitura'}</span>
+                      <a
+                        href={modalPartitura.partituraUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-2 py-1 bg-[#00D287] text-[#1E1B2E] text-[10px] font-bold uppercase flex items-center gap-1 shadow-[1px_1px_0px_#000]"
+                      >
+                        <Download className="w-3 h-3" /> Baixar
+                      </a>
+                    </div>
+                  ) : null}
                 </div>
               )}
             </div>
@@ -742,6 +974,254 @@ export default function RepertoireVoting({
                 Fechar
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Popup: Opções de Ritmos & Versões no YouTube */}
+      {modalYoutubeVersoes && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border-4 border-[#1A181B] p-6 max-w-md w-full shadow-[6px_6px_0px_#1A181B]">
+            <div className="stamp stamp-urgent text-xs mb-2">Opções de Ritmos & Versões</div>
+            <h3 className="text-base font-black uppercase text-[#1A181B] font-mono flex items-center gap-2">
+              <YoutubeIcon className="w-5 h-5 text-red-600" />
+              <span>{modalYoutubeVersoes.titulo}</span>
+            </h3>
+            <p className="text-xs text-stone-600 mt-1 mb-4 font-serif">
+              Selecione qual ritmo ou arranjo de referência você deseja ouvir no YouTube:
+            </p>
+
+            <div className="space-y-2 mb-4">
+              {modalYoutubeVersoes.youtubeLinks?.map((link, idx) => (
+                <a
+                  key={idx}
+                  href={link.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-between p-3 border-2 border-[#1A181B] bg-stone-50 hover:bg-red-50 text-[#1A181B] font-mono text-xs font-bold transition-all shadow-[2px_2px_0px_#1A181B] group"
+                >
+                  <div className="flex items-center gap-2">
+                    <YoutubeIcon className="w-4 h-4 text-red-600 group-hover:scale-110 transition-transform" />
+                    <span>{link.rotulo || `Opção ${idx + 1}`}</span>
+                  </div>
+                  <ExternalLink className="w-3.5 h-3.5 text-stone-500" />
+                </a>
+              ))}
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setModalYoutubeVersoes(null)}
+                className="px-4 py-1.5 border-2 border-[#1E1B2E] bg-stone-100 text-stone-900 text-xs font-bold uppercase hover:bg-stone-200"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Editar Música (EXCLUSIVO PARA COORDENADORES) */}
+      {isAdmin && musicaParaEditar && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#FAF6EC] border-4 border-[#1A181B] p-6 max-w-lg w-full shadow-[6px_6px_0px_#1A181B] max-h-[90vh] overflow-y-auto">
+            <div className="stamp stamp-urgent text-xs mb-2">Área da Coordenação</div>
+            <h3 className="text-base font-black uppercase text-[#1A181B] font-mono flex items-center gap-1.5">
+              <Pencil className="w-4 h-4 text-[#581C87]" />
+              <span>Editar Música do Repertório</span>
+            </h3>
+            <p className="text-xs text-stone-600 mt-1 mb-4 font-serif">
+              Atualize detalhes da faixa, links de ritmos do YouTube, arquivos de partitura e status de curadoria.
+            </p>
+
+            <form onSubmit={handleSalvarEdicao} className="space-y-3">
+              <div>
+                <label className="block text-xs font-black uppercase text-[#1A181B] mb-1">Título da Música *</label>
+                <input
+                  type="text"
+                  required
+                  value={editTitulo}
+                  onChange={(e) => setEditTitulo(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border-2 border-[#1A181B] text-xs font-mono focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-black uppercase text-[#1A181B] mb-1">Compositor / Artista</label>
+                  <input
+                    type="text"
+                    value={editArtista}
+                    onChange={(e) => setEditArtista(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border-2 border-[#1A181B] text-xs font-mono focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-black uppercase text-[#1A181B] mb-1">Status de Curadoria</label>
+                  <select
+                    value={editStatus}
+                    onChange={(e) => setEditStatus(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-white border-2 border-[#1A181B] text-xs font-mono"
+                  >
+                    <option value="Confirmada">Confirmada</option>
+                    <option value="Em Votação">Em Votação</option>
+                    <option value="Sugerida para Corte">Sugerida para Corte</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase text-[#1A181B] mb-1">Ritmo Carnavalesco</label>
+                <select
+                  value={editRitmo}
+                  onChange={(e) => setEditRitmo(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border-2 border-[#1A181B] text-xs font-mono"
+                >
+                  <option value="Axé / Samba-Reggae">Axé / Samba-Reggae</option>
+                  <option value="Afoxé / Ijexá">Afoxé / Ijexá</option>
+                  <option value="Frevo">Frevo</option>
+                  <option value="Marchinha Tradicional">Marchinha Tradicional</option>
+                  <option value="Maracatu">Maracatu</option>
+                  <option value="Samba de Enredo">Samba de Enredo</option>
+                </select>
+              </div>
+
+              {/* Links do YouTube na Edição */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-black uppercase text-[#1A181B] flex items-center gap-1.5">
+                    <YoutubeIcon className="w-3.5 h-3.5 text-red-600" />
+                    <span>Links do YouTube (Opções de Ritmos & Versões)</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setEditLinksYoutube(prev => [...prev, { rotulo: `Versão ${prev.length + 1}`, url: '' }])}
+                    className="text-[10px] font-mono font-bold text-[#E6007E] hover:underline flex items-center gap-0.5 cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>+ Outro Link</span>
+                  </button>
+                </div>
+
+                <div className="space-y-1.5">
+                  {editLinksYoutube.map((item, idx) => (
+                    <div key={idx} className="flex gap-1.5 items-center">
+                      <input
+                        type="text"
+                        placeholder="Rótulo (ex: Versão Axé, Frevo...)"
+                        value={item.rotulo || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEditLinksYoutube(prev => prev.map((l, i) => i === idx ? { ...l, rotulo: val } : l));
+                        }}
+                        className="w-1/3 px-2 py-1.5 bg-white border-2 border-[#1A181B] text-xs font-mono focus:outline-none"
+                      />
+                      <input
+                        type="url"
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        value={item.url}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEditLinksYoutube(prev => prev.map((l, i) => i === idx ? { ...l, url: val } : l));
+                        }}
+                        className="flex-1 px-2 py-1.5 bg-white border-2 border-[#1A181B] text-xs font-mono focus:outline-none"
+                      />
+                      {editLinksYoutube.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setEditLinksYoutube(prev => prev.filter((_, i) => i !== idx))}
+                          className="p-1 text-red-600 hover:bg-red-50"
+                          title="Remover link"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Arquivos Anexados na Edição */}
+              <div>
+                <label className="block text-xs font-black uppercase text-[#1A181B] mb-1 flex items-center gap-1.5">
+                  <Upload className="w-3.5 h-3.5 text-[#581C87]" />
+                  <span>Anexar Novos Arquivos (Partituras / Cifras)</span>
+                </label>
+                <input
+                  type="file"
+                  multiple
+                  onChange={(e) => handleMultiplosArquivosUpload(e, true)}
+                  className="w-full text-xs font-mono file:mr-2 file:py-1 file:px-3 file:border-2 file:border-black file:bg-[#FBBF24] file:font-black file:uppercase file:text-[10px] cursor-pointer"
+                />
+                {enviandoBlob && (
+                  <span className="text-[11px] font-mono text-[#581C87] mt-1 block animate-pulse">
+                    Enviando arquivos...
+                  </span>
+                )}
+
+                {editArquivos.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    <span className="text-[10px] font-mono font-bold text-stone-600 uppercase block">
+                      Arquivos Atuais ({editArquivos.length}):
+                    </span>
+                    {editArquivos.map((arq, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-1.5 bg-white border border-[#1A181B] text-xs font-mono">
+                        <span className="truncate max-w-[260px]">📎 {arq.nome}</span>
+                        <button
+                          type="button"
+                          onClick={() => setEditArquivos(prev => prev.filter((_, i) => i !== idx))}
+                          className="text-red-500 hover:text-red-700 p-0.5 cursor-pointer"
+                          title="Remover arquivo"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Anotações da Partitura */}
+              <div>
+                <label className="block text-xs font-black uppercase text-[#1A181B] mb-1">
+                  Anotações da Partitura / Tom
+                </label>
+                <textarea
+                  rows={2}
+                  value={editTextoPartitura}
+                  onChange={(e) => setEditTextoPartitura(e.target.value)}
+                  className="w-full px-3 py-1.5 bg-white border-2 border-[#1A181B] text-xs font-serif focus:outline-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-between pt-3 border-t border-stone-300">
+                <button
+                  type="button"
+                  onClick={() => handleExcluirMusica(musicaParaEditar.id)}
+                  className="px-3 py-1.5 border-2 border-red-600 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-mono font-bold uppercase flex items-center gap-1 cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Excluir Música</span>
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMusicaParaEditar(null)}
+                    className="px-3 py-1.5 border-2 border-[#1A181B] text-xs font-bold uppercase hover:bg-stone-200"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="vintage-button px-4 py-1.5 bg-[#00A868] text-white text-xs uppercase cursor-pointer"
+                  >
+                    Salvar Alterações
+                  </button>
+                </div>
+              </div>
+            </form>
           </div>
         </div>
       )}

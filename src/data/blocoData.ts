@@ -134,6 +134,17 @@ export interface EnqueteWhatsApp {
   resolucaoOficial?: string;
 }
 
+export interface LinkYoutubeMusica {
+  rotulo?: string;
+  url: string;
+}
+
+export interface ArquivoAnexoRepertorio {
+  nome: string;
+  url?: string;
+  tipo?: string;
+}
+
 export interface MusicaRepertorio {
   id: string;
   titulo: string;
@@ -144,9 +155,11 @@ export interface MusicaRepertorio {
   statusCuradoria: 'Confirmada' | 'Em Votação' | 'Sugerida para Corte';
   audioGuiaUrl?: string;
   youtubeUrl?: string;
+  youtubeLinks?: LinkYoutubeMusica[];
   partituraUrl?: string;
   partituraTexto?: string;
   arquivoRepertorio?: string;
+  arquivos?: ArquivoAnexoRepertorio[];
   letra?: string;
 }
 
@@ -704,24 +717,137 @@ export function criarSugestaoMusica(dados: {
   artistaOriginal: string;
   ritmo: string;
   youtubeUrl?: string;
+  youtubeLinks?: LinkYoutubeMusica[];
   partituraUrl?: string;
   partituraTexto?: string;
   arquivoRepertorio?: string;
+  arquivos?: ArquivoAnexoRepertorio[];
   ordemDesfile?: number;
 }): MusicaRepertorio {
+  const linksYoutube: LinkYoutubeMusica[] = dados.youtubeLinks && dados.youtubeLinks.length > 0
+    ? dados.youtubeLinks
+    : dados.youtubeUrl?.trim()
+    ? [{ rotulo: 'Vídeo Principal', url: dados.youtubeUrl.trim() }]
+    : [];
+
+  const arquivosAnexos: ArquivoAnexoRepertorio[] = dados.arquivos && dados.arquivos.length > 0
+    ? dados.arquivos
+    : dados.arquivoRepertorio?.trim()
+    ? [{ nome: dados.arquivoRepertorio.trim(), url: dados.partituraUrl?.trim() }]
+    : [];
+
   return {
-    id: `mus-${Date.now()}`,
+    id: `mus-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
     titulo: dados.titulo.trim(),
     artistaOriginal: dados.artistaOriginal.trim() || 'Compositor a confirmar',
     ritmo: dados.ritmo || 'Axé / Samba-Reggae',
     ordemDesfile: dados.ordemDesfile || 99,
     votosFavoraveis: 1,
     statusCuradoria: 'Em Votação',
-    youtubeUrl: dados.youtubeUrl?.trim() || undefined,
-    partituraUrl: dados.partituraUrl?.trim() || undefined,
+    youtubeUrl: linksYoutube[0]?.url || dados.youtubeUrl?.trim() || undefined,
+    youtubeLinks: linksYoutube,
+    partituraUrl: arquivosAnexos[0]?.url || dados.partituraUrl?.trim() || undefined,
     partituraTexto: dados.partituraTexto?.trim() || undefined,
-    arquivoRepertorio: dados.arquivoRepertorio?.trim() || undefined
+    arquivoRepertorio: arquivosAnexos[0]?.nome || dados.arquivoRepertorio?.trim() || undefined,
+    arquivos: arquivosAnexos
   };
+}
+
+/**
+ * Atualiza os dados de uma música do repertório.
+ * Restrito exclusivamente a coordenadores do bloco (isAdmin = true).
+ * 
+ * @param musicas - Lista atual de músicas
+ * @param id - Identificador da música a ser modificada
+ * @param dadosAtualizados - Dados parciais da música
+ * @param isAdmin - Booleano indicando se o usuário é coordenador
+ * @returns Lista de músicas atualizada ou inalterada se permissão negada
+ */
+export function editarMusicaRepertorio(
+  musicas: MusicaRepertorio[],
+  id: string,
+  dadosAtualizados: Partial<MusicaRepertorio>,
+  isAdmin: boolean
+): MusicaRepertorio[] {
+  if (!isAdmin) return musicas;
+
+  return musicas.map(musica => {
+    if (musica.id !== id) return musica;
+
+    const linksYoutube = dadosAtualizados.youtubeLinks ?? musica.youtubeLinks;
+    const arquivos = dadosAtualizados.arquivos ?? musica.arquivos;
+
+    return {
+      ...musica,
+      ...dadosAtualizados,
+      youtubeUrl: linksYoutube && linksYoutube.length > 0 ? linksYoutube[0].url : (dadosAtualizados.youtubeUrl ?? musica.youtubeUrl),
+      arquivoRepertorio: arquivos && arquivos.length > 0 ? arquivos[0].nome : (dadosAtualizados.arquivoRepertorio ?? musica.arquivoRepertorio),
+      partituraUrl: arquivos && arquivos.length > 0 ? arquivos[0].url : (dadosAtualizados.partituraUrl ?? musica.partituraUrl),
+      youtubeLinks: linksYoutube,
+      arquivos: arquivos
+    };
+  });
+}
+
+/**
+ * Remove uma música do repertório oficial.
+ * Restrito exclusivamente a coordenadores do bloco (isAdmin = true).
+ * 
+ * @param musicas - Lista atual de músicas
+ * @param id - Identificador da música a ser removida
+ * @param isAdmin - Booleano indicando se o usuário é coordenador
+ * @returns Lista filtrada com ordens reindexadas ou inalterada se não for coordenador
+ */
+export function removerMusicaRepertorio(
+  musicas: MusicaRepertorio[],
+  id: string,
+  isAdmin: boolean
+): MusicaRepertorio[] {
+  if (!isAdmin) return musicas;
+
+  const filtradas = musicas.filter(m => m.id !== id);
+  return filtradas.map((m, index) => ({
+    ...m,
+    ordemDesfile: index + 1
+  }));
+}
+
+/**
+ * Atualiza um documento, letra ou partitura do caderno de cifras.
+ * Restrito exclusivamente a coordenadores do bloco (isAdmin = true).
+ * 
+ * @param itens - Lista atual de letras e cifras
+ * @param id - Identificador do item
+ * @param dados - Dados atualizados
+ * @param isAdmin - Booleano indicando se o usuário é coordenador
+ * @returns Lista atualizada ou inalterada
+ */
+export function editarItemLetraCifra(
+  itens: ItemLetraCifra[],
+  id: string,
+  dados: Partial<ItemLetraCifra>,
+  isAdmin: boolean
+): ItemLetraCifra[] {
+  if (!isAdmin) return itens;
+  return itens.map(item => item.id === id ? { ...item, ...dados } : item);
+}
+
+/**
+ * Remove um item do caderno de letras e cifras.
+ * Restrito exclusivamente a coordenadores do bloco (isAdmin = true).
+ * 
+ * @param itens - Lista atual de letras e cifras
+ * @param id - Identificador do item a ser excluído
+ * @param isAdmin - Booleano indicando se o usuário é coordenador
+ * @returns Lista filtrada ou inalterada
+ */
+export function removerItemLetraCifra(
+  itens: ItemLetraCifra[],
+  id: string,
+  isAdmin: boolean
+): ItemLetraCifra[] {
+  if (!isAdmin) return itens;
+  return itens.filter(item => item.id !== id);
 }
 
 /**
