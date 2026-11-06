@@ -76,6 +76,7 @@ export default function Home() {
   const [usuarios, setUsuarios] = useState<UsuarioBloco[]>(USUARIOS_INICIAIS);
   const [usuarioLogado, setUsuarioLogado] = useState<UsuarioBloco | null>(null);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const [modoConvite, setModoConvite] = useState(false);
 
   // Perfil ativo derivado da sessão atual
   const perfilAtivo: PerfilUsuario = usuarioLogado ? usuarioLogado.perfil : 'publico';
@@ -84,6 +85,22 @@ export default function Home() {
 
   // Aba ativa: inicia em 'inscricao' para o público e em 'tarefas' para membros
   const [activeTab, setActiveTab] = useState<TabId>('inscricao');
+
+  // Detecta acesso via link exclusivo de convite de primeiro acesso (?convite=bicho, ?cadastro=true)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const isInvite = params.get('convite') === 'bicho' || 
+                       params.get('convite') === 'true' || 
+                       params.get('cadastro') === 'true' || 
+                       params.get('primeiro-acesso') === 'true' || 
+                       window.location.hash === '#primeiro-acesso';
+      if (isInvite) {
+        setModoConvite(true);
+        setLoginModalOpen(true);
+      }
+    }
+  }, []);
 
   // Estados principais da aplicação
   const [integrantes, setIntegrantes] = useState<Integrante[]>(INTEGRANTES_INICIAIS);
@@ -134,7 +151,7 @@ export default function Home() {
         if (est.usuarios && Array.isArray(est.usuarios) && est.usuarios.length > 0) {
           setUsuarios(est.usuarios);
         }
-        if (est.tarefas && Array.isArray(est.tarefas)) setTarefas(est.tarefas);
+        if (est.tarefas && Array.isArray(est.tarefas) && est.tarefas.length > 0) { setTarefas(est.tarefas); } else { setTarefas(TAREFAS_POSTIT_INICIAIS); }
         if (est.macrotarefas && Array.isArray(est.macrotarefas)) setMacrotarefas(est.macrotarefas);
         if (est.movimentosBar && Array.isArray(est.movimentosBar)) setMovimentosBar(est.movimentosBar);
         if (est.bilhetesRifa && Array.isArray(est.bilhetesRifa)) setBilhetesRifa(est.bilhetesRifa);
@@ -185,7 +202,16 @@ export default function Home() {
       }
 
       const sTarefas = localStorage.getItem('bicha_tarefas_v4');
-      if (sTarefas) setTarefas(JSON.parse(sTarefas));
+      if (sTarefas) {
+        const parsed = JSON.parse(sTarefas);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setTarefas(parsed);
+        } else {
+          setTarefas(TAREFAS_POSTIT_INICIAIS);
+        }
+      } else {
+        setTarefas(TAREFAS_POSTIT_INICIAIS);
+      }
 
       const sMacros = localStorage.getItem('bicha_macros_v4');
       if (sMacros) setMacrotarefas(JSON.parse(sMacros));
@@ -430,7 +456,7 @@ export default function Home() {
       {/* Cabeçalho Vintage com Autenticação e Botão de Atualização em Tempo Real */}
       <Header
         usuarioLogado={usuarioLogado}
-        onOpenLoginModal={() => setLoginModalOpen(true)}
+        onOpenLoginModal={() => { setModoConvite(false); setLoginModalOpen(true); }}
         onLogout={handleLogout}
         temaTitulo={temaAno.titulo}
         temaSubtitulo={temaAno.subtituloOuSlogan}

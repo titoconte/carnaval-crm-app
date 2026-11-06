@@ -6,7 +6,8 @@ import {
   LogOut, 
   ShieldCheck, 
   User, 
-  Database
+  Database,
+  Link as LinkIcon
 } from 'lucide-react';
 import { UsuarioBloco } from '../data/blocoData';
 
@@ -27,6 +28,7 @@ interface HeaderProps {
  * - Versão Mobile: Painel compacto (~85px) sem sobrecarregar a tela.
  * - Autenticação: Mostra status de Folião Público (com botão Entrar / Login) ou crachá do usuário logado (Bicho ou Coordenador).
  * - Sincronização: Indicador de status do Vercel Postgres / LocalStorage.
+ * - Coordenação: Botão exclusivo para copiar o link privado de convite (Primeiro Acesso).
  */
 export default function Header({
   usuarioLogado,
@@ -57,6 +59,23 @@ export default function Header({
     const interval = setInterval(calculateCountdown, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  /**
+   * Copia o link exclusivo de Primeiro Acesso para a área de transferência do coordenador.
+   */
+  const copiarLinkConvite = () => {
+    if (typeof window === 'undefined') return;
+    const url = `${window.location.origin}/?convite=bicho`;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(() => {
+        alert(`Link de Primeiro Acesso copiado com sucesso!\n\nEnvie este link para novos integrantes se cadastrarem:\n${url}`);
+      }).catch(() => {
+        prompt('Copie o link de primeiro acesso abaixo:', url);
+      });
+    } else {
+      prompt('Copie o link de primeiro acesso abaixo:', url);
+    }
+  };
 
   return (
     <header className="carnival-banner text-white border-b-4 border-[#1E1B2E] shadow-lg relative overflow-hidden">
@@ -109,10 +128,22 @@ export default function Header({
                   <strong className="font-bold">{usuarioLogado.username}</strong>
                 </div>
 
+                {usuarioLogado.perfil === 'coordenador' && (
+                  <button
+                    type="button"
+                    onClick={copiarLinkConvite}
+                    className="ml-2 px-2 py-0.5 border border-[#1E1B2E] bg-purple-100 hover:bg-purple-200 text-[#581C87] text-[10px] font-mono font-bold uppercase cursor-pointer flex items-center gap-1 transition-colors"
+                    title="Copiar link exclusivo de Primeiro Acesso para enviar aos novos integrantes"
+                  >
+                    <LinkIcon className="w-3 h-3" />
+                    <span>Copiar Link de Convite</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={onLogout}
-                  className="ml-2 pl-2 border-l border-stone-300 text-stone-500 hover:text-[#E6007E] transition-colors p-1"
+                  className="ml-2 pl-2 border-l border-stone-300 text-stone-500 hover:text-[#E6007E] transition-colors p-1 cursor-pointer"
                   title="Sair do Sistema"
                 >
                   <LogOut className="w-3.5 h-3.5" />
@@ -200,10 +231,20 @@ export default function Header({
             {usuarioLogado ? (
               <div className="flex items-center gap-1 bg-white text-[#1E1B2E] px-1.5 py-0.5 border border-black text-[10px] font-mono font-bold">
                 <span className="text-[#E6007E]">{usuarioLogado.username}</span>
+                {usuarioLogado.perfil === 'coordenador' && (
+                  <button
+                    type="button"
+                    onClick={copiarLinkConvite}
+                    className="text-[#581C87] hover:text-[#E6007E] px-1 cursor-pointer"
+                    title="Copiar link de convite"
+                  >
+                    🔗
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={onLogout}
-                  className="text-stone-500 hover:text-red-600 pl-1"
+                  className="text-stone-500 hover:text-red-600 pl-1 cursor-pointer"
                   title="Sair"
                 >
                   <LogOut className="w-2.5 h-2.5" />

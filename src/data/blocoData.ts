@@ -297,7 +297,348 @@ export const INTEGRANTES_INICIAIS: Integrante[] = [];
 /**
  * Tarefas estilo Quadro de Cortiça e Post-it.
  */
-export const TAREFAS_POSTIT_INICIAIS: TarefaPostIt[] = [];
+/**
+ * Tarefas estilo Quadro de Cortiça e Post-it extraídas da Ata de Planejamento (Recording_7).
+ * Todas iniciam sem responsável para que a coordenação preencha manualmente.
+ */
+export const TAREFAS_POSTIT_INICIAIS: TarefaPostIt[] = [
+  {
+    "id": "task-ata7-01",
+    "titulo": "Fechar acerto financeiro (R$ 200) com Renato Cartola para uso da Kombi Cora",
+    "descricao": "Acertar o valor simbólico de R$ 200 para uso da Kombi Cora como veículo de apoio, suporte sonoro, open bar e minicarro alegórico no cortejo.",
+    "categoria": "Logística",
+    "responsavel": "",
+    "corPostIt": "amarelo",
+    "urgente": true,
+    "concluida": false,
+    "checklists": [
+      {
+        "id": "chk-01-1",
+        "texto": "Alinhar disponibilidade da Kombi para os dias de ensaio e cortejo",
+        "concluido": false,
+        "responsavel": ""
+      },
+      {
+        "id": "chk-01-2",
+        "texto": "Definir espaço para caixas térmicas, hidratação e suporte sonoro",
+        "concluido": false,
+        "responsavel": ""
+      },
+      {
+        "id": "chk-01-3",
+        "texto": "Repassar valor de ajuda de custo acordado (R$ 200)",
+        "concluido": false,
+        "responsavel": ""
+      }
+    ]
+  },
+  {
+    "id": "task-ata7-02",
+    "titulo": "Contatar casas parceiras (Odara / Borogodó / Graffi) para ensaios no centro",
+    "descricao": "Articular com Camilo e responsáveis das casas culturais (Graffi, Borogodó e Odara) datas e horários de ensaio nas segundas e sextas-feiras.",
+    "categoria": "Produção",
+    "responsavel": "",
+    "corPostIt": "rosa",
+    "urgente": true,
+    "concluida": false,
+    "checklists": [
+      {
+        "id": "chk-02-1",
+        "texto": "Contatar Camilo para datas no Odara",
+        "concluido": false,
+        "responsavel": ""
+      },
+      {
+        "id": "chk-02-2",
+        "texto": "Verificar datas disponíveis no Borogodó e Graffi",
+        "concluido": false,
+        "responsavel": ""
+      },
+      {
+        "id": "chk-02-3",
+        "texto": "Confirmar estrutura de som e acústica para percussão e metais",
+        "concluido": false,
+        "responsavel": ""
+      }
+    ]
+  },
+  {
+    "id": "task-ata7-03",
+    "titulo": "Publicar e coordenar formulário de novos integrantes do bloco",
+    "descricao": "Lançar publicamente a ficha de inscrição estruturada em novembro, após fechamento do núcleo veterano, com foco em integrantes com instrumento próprio.",
+    "categoria": "Comunicação",
+    "responsavel": "",
+    "corPostIt": "verde",
+    "urgente": true,
+    "concluida": false,
+    "checklists": [
+      {
+        "id": "chk-03-1",
+        "texto": "Ajustar modelo de formulário com base na versão do Vitinho",
+        "concluido": false,
+        "responsavel": ""
+      },
+      {
+        "id": "chk-03-2",
+        "texto": "Divulgar nos canais oficiais e redes sociais do bloco",
+        "concluido": false,
+        "responsavel": ""
+      },
+      {
+        "id": "chk-03-3",
+        "texto": "Filtrar inscritos por instrumento e experiência prévia",
+        "concluido": false,
+        "responsavel": ""
+      }
+    ]
+  },
+  {
+    "id": "task-ata7-04",
+    "titulo": "Elaborar curadoria musical e disponibilizar áudios de contra-canto",
+    "descricao": "Enxugar repertório oficial, simplificar arranjos de metais em contra-canto e gravar áudios de referência para estudo prévio dos naipes.",
+    "categoria": "Música",
+    "responsavel": "",
+    "corPostIt": "azul",
+    "urgente": false,
+    "concluida": false,
+    "checklists": [
+      {
+        "id": "chk-04-1",
+        "texto": "Definir cortes de faixas truncadas no repertório (ex: Erva Venenosa)",
+        "concluido": false,
+        "responsavel": ""
+      },
+      {
+        "id": "chk-04-2",
+        "texto": "Estruturar linhas melódicas e contra-canto para trompete, sax e trombone",
+        "concluido": false,
+        "responsavel": ""
+      },
+      {
+        "id": "chk-04-3",
+        "texto": "Gravar áudios guia isolados de cada instrumento e enviar nos subgrupos",
+        "concluido": false,
+        "responsavel": ""
+      }
+    ]
+  },
+  {
+    "id": "task-ata7-05",
+    "titulo": "Levantar viabilidade de CNPJ / Associação de blocos",
+    "descricao": "Pesquisar custos contábeis, cartorários e governança jurídica para criação de associação própria ou compartilhada entre blocos de Florianópolis.",
+    "categoria": "Apoio",
+    "responsavel": "",
+    "corPostIt": "amarelo",
+    "urgente": false,
+    "concluida": false,
+    "checklists": [
+      {
+        "id": "chk-05-1",
+        "texto": "Reunião de alinhamento com Elisa sobre modelos associativos",
+        "concluido": false,
+        "responsavel": ""
+      },
+      {
+        "id": "chk-05-2",
+        "texto": "Levantamento de taxas cartorárias e CNPJ em Florianópolis",
+        "concluido": false,
+        "responsavel": ""
+      },
+      {
+        "id": "chk-05-3",
+        "texto": "Definir plano de transição para conta bancária PJ oficial",
+        "concluido": false,
+        "responsavel": ""
+      }
+    ]
+  },
+  {
+    "id": "task-ata7-06",
+    "titulo": "Organizar logística de compra das caixas de isopor na peixaria",
+    "descricao": "Adquirir caixas de isopor descartáveis direto de atacado/peixaria para o bar dos ensaios, aposentando coolers particulares, e doar após uso.",
+    "categoria": "Logística",
+    "responsavel": "",
+    "corPostIt": "rosa",
+    "urgente": false,
+    "concluida": false,
+    "checklists": [
+      {
+        "id": "chk-06-1",
+        "texto": "Mapear fornecedor de caixas de isopor na peixaria/atacado",
+        "concluido": false,
+        "responsavel": ""
+      },
+      {
+        "id": "chk-06-2",
+        "texto": "Calcular quantidade necessária para os primeiros ensaios",
+        "concluido": false,
+        "responsavel": ""
+      },
+      {
+        "id": "chk-06-3",
+        "texto": "Definir destino e descarte consciente das caixas pós-ensaio",
+        "concluido": false,
+        "responsavel": ""
+      }
+    ]
+  },
+  {
+    "id": "task-ata7-07",
+    "titulo": "Lançar a Rifa do Bloco Bicharada",
+    "descricao": "Estruturar premiações, definir cotas por integrante e lançar venda dos bilhetes para gerar caixa inicial de custos fixos do bloco.",
+    "categoria": "Produção",
+    "responsavel": "",
+    "corPostIt": "verde",
+    "urgente": true,
+    "concluida": false,
+    "checklists": [
+      {
+        "id": "chk-07-1",
+        "texto": "Definir lista de prêmios da rifa",
+        "concluido": false,
+        "responsavel": ""
+      },
+      {
+        "id": "chk-07-2",
+        "texto": "Ativar numeração e controle no aplicativo do bloco",
+        "concluido": false,
+        "responsavel": ""
+      },
+      {
+        "id": "chk-07-3",
+        "texto": "Mobilizar integrantes para venda dos bilhetes",
+        "concluido": false,
+        "responsavel": ""
+      }
+    ]
+  },
+  {
+    "id": "task-ata7-08",
+    "titulo": "Realizar votação do tema e agendar 2 oficinas de fantasias",
+    "descricao": "Abrir consulta do tema do ano para a comunidade e organizar duas oficinas abertas de reciclagem e confecção de adereços/fantasias.",
+    "categoria": "Fantasias",
+    "responsavel": "",
+    "corPostIt": "azul",
+    "urgente": false,
+    "concluida": false,
+    "checklists": [
+      {
+        "id": "chk-08-1",
+        "texto": "Lançar enquete/votação pública do tema do ano",
+        "concluido": false,
+        "responsavel": ""
+      },
+      {
+        "id": "chk-08-2",
+        "texto": "Agendar datas das 2 oficinas com Bel R. e produção",
+        "concluido": false,
+        "responsavel": ""
+      },
+      {
+        "id": "chk-08-3",
+        "texto": "Arrecadar materiais recicláveis e insumos de confecção",
+        "concluido": false,
+        "responsavel": ""
+      }
+    ]
+  },
+  {
+    "id": "task-ata7-09",
+    "titulo": "Operação do Bar dos Ensaios (Compras no Fort Atacadista)",
+    "descricao": "Comprar cerveja e insumos em lote no atacado (Fort / Rio Tavares) a preço de custo e organizar escala de vendas e gelo nos ensaios.",
+    "categoria": "Logística",
+    "responsavel": "",
+    "corPostIt": "amarelo",
+    "urgente": false,
+    "concluida": false,
+    "checklists": [
+      {
+        "id": "chk-09-1",
+        "texto": "Cotação de preços no Fort Atacadista",
+        "concluido": false,
+        "responsavel": ""
+      },
+      {
+        "id": "chk-09-2",
+        "texto": "Compra de gelo e sacos para as caixas térmicas",
+        "concluido": false,
+        "responsavel": ""
+      },
+      {
+        "id": "chk-09-3",
+        "texto": "Escala de voluntários para atendimento no bar",
+        "concluido": false,
+        "responsavel": ""
+      },
+      {
+        "id": "chk-09-4",
+        "texto": "Registro de entradas e saídas no caixa do bar",
+        "concluido": false,
+        "responsavel": ""
+      }
+    ]
+  },
+  {
+    "id": "task-ata7-10",
+    "titulo": "Transição financeira e encerramento de conta pessoal",
+    "descricao": "Encerrar uso de conta física/Nubank de integrantes para movimentação do bloco, unificando registros e prestação de contas transparente.",
+    "categoria": "Apoio",
+    "responsavel": "",
+    "corPostIt": "rosa",
+    "urgente": true,
+    "concluida": false,
+    "checklists": [
+      {
+        "id": "chk-10-1",
+        "texto": "Transferir saldos remanescentes do caixa",
+        "concluido": false,
+        "responsavel": ""
+      },
+      {
+        "id": "chk-10-2",
+        "texto": "Desvincular chave PIX pessoal das comunicações do bloco",
+        "concluido": false,
+        "responsavel": ""
+      },
+      {
+        "id": "chk-10-3",
+        "texto": "Adotar planilha/painel oficial de entradas e saídas",
+        "concluido": false,
+        "responsavel": ""
+      }
+    ]
+  },
+  {
+    "id": "task-ata7-11",
+    "titulo": "Estruturar cronograma e chamada de ensaios (Segundas e Sextas)",
+    "descricao": "Definir grade fixa de ensaios com início pontual, intensificando a frequência de ensaios gerais em janeiro rumo ao desfile de 08/02/2027.",
+    "categoria": "Música",
+    "responsavel": "",
+    "corPostIt": "verde",
+    "urgente": true,
+    "concluida": false,
+    "checklists": [
+      {
+        "id": "chk-11-1",
+        "texto": "Confirmar horários de início e término nos locais parceiros",
+        "concluido": false,
+        "responsavel": ""
+      },
+      {
+        "id": "chk-11-2",
+        "texto": "Divulgar datas no calendário do aplicativo",
+        "concluido": false,
+        "responsavel": ""
+      },
+      {
+        "id": "chk-11-3",
+        "texto": "Estabelecer regra de pontualidade e presença mínima",
+        "concluido": false,
+        "responsavel": ""
+      }
+    ]
+  }
+];
 
 /**
  * Calcula o percentual de conclusão dos itens de uma checklist (0 a 100).

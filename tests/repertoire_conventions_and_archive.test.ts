@@ -194,3 +194,4 @@ describe('Autocadastro e Primeiro Login de Integrantes', () => {
     assert.strictEqual(curtaSenha.sucesso, false);
   });
 });
+

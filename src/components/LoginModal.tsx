@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Lock, User, X, LogIn, AlertCircle, UserPlus, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Lock, User, X, LogIn, AlertCircle, UserPlus, CheckCircle2, Ticket } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { UsuarioBloco, autenticarUsuario, adicionarNovoUsuario } from '../data/blocoData';
+import { UsuarioBloco, autenticarUsuario } from '../data/blocoData';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -11,25 +11,35 @@ interface LoginModalProps {
   onLoginSuccess: (usuario: UsuarioBloco) => void;
   usuarios: UsuarioBloco[];
   onCadastrarUsuario?: (usuario: UsuarioBloco) => void;
+  isModoConvite?: boolean;
 }
 
 /**
- * Modal de Autenticação e Autocadastro do Bloco Bicharada.
- * - Modo Login: Bichos e Coordenadores entram com username e senha.
- * - Modo Autocadastro: Novos integrantes criam sua conta de 'Bicho' no primeiro acesso.
+ * Modal de Autenticação e Primeiro Acesso por Convite do Bloco Bicharada.
+ * - Modo Normal: Apenas formulário de Login (Username + Senha). Nenhuma opção pública de cadastro é visível.
+ * - Modo Convite (Link Exclusivo): Abre tela de Primeiro Acesso para criação de conta de Bicho.
  */
 export default function LoginModal({
   isOpen,
   onClose,
   onLoginSuccess,
   usuarios,
-  onCadastrarUsuario
+  onCadastrarUsuario,
+  isModoConvite = false
 }: LoginModalProps) {
-  const [modo, setModo] = useState<'login' | 'cadastro'>('login');
+  const [modo, setModo] = useState<'login' | 'cadastro'>(isModoConvite ? 'cadastro' : 'login');
   const [username, setUsername] = useState('');
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [erro, setErro] = useState<string | null>(null);
+
+  // Sincroniza o modo quando o modal abre dependendo se é convite exclusivo ou login normal
+  useEffect(() => {
+    if (isOpen) {
+      setModo(isModoConvite ? 'cadastro' : 'login');
+      setErro(null);
+    }
+  }, [isOpen, isModoConvite]);
 
   if (!isOpen) return null;
 
@@ -60,7 +70,7 @@ export default function LoginModal({
   };
 
   /**
-   * Processa o autocadastro de um novo integrante com perfil 'bicho'.
+   * Processa o autocadastro de um novo integrante com perfil 'bicho' via link de convite.
    */
   const handleAutocadastro = (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,43 +141,25 @@ export default function LoginModal({
         </button>
 
         <div className="text-center mb-4">
-          <span className="stamp stamp-urgent text-xs">
-            {modo === 'login' ? 'Acesso ao Sistema' : 'Primeiro Acesso'}
-          </span>
+          {isModoConvite ? (
+            <span className="stamp stamp-gold text-xs flex items-center justify-center gap-1 mx-auto w-fit">
+              <Ticket className="w-3.5 h-3.5" />
+              <span>Convite Exclusivo</span>
+            </span>
+          ) : (
+            <span className="stamp stamp-urgent text-xs">
+              Acesso ao Sistema
+            </span>
+          )}
+
           <h3 className="font-mono font-black text-lg uppercase text-[#1E1B2E] mt-1">
-            {modo === 'login' ? 'Entrar no Bloco' : 'Criar Minha Conta'}
+            {modo === 'login' ? 'Entrar no Bloco' : 'Primeiro Acesso'}
           </h3>
           <p className="text-xs font-serif text-stone-600 mt-0.5">
             {modo === 'login'
               ? 'Acesso para Bichos e Coordenadores da Bicharada'
-              : 'Cadastre seu usuário para acessar todas as áreas do bloco'}
+              : 'Cadastre seu usuário para ter acesso ao sistema interno'}
           </p>
-        </div>
-
-        {/* Abas Alternadoras: Login / Criar Conta */}
-        <div className="flex border-2 border-[#1E1B2E] mb-4 bg-stone-200 font-mono text-xs font-bold">
-          <button
-            type="button"
-            onClick={() => { setModo('login'); setErro(null); }}
-            className={`flex-1 py-1.5 text-center uppercase cursor-pointer transition-colors ${
-              modo === 'login'
-                ? 'bg-[#1E1B2E] text-white'
-                : 'text-[#1E1B2E] hover:bg-stone-300'
-            }`}
-          >
-            Fazer Login
-          </button>
-          <button
-            type="button"
-            onClick={() => { setModo('cadastro'); setErro(null); }}
-            className={`flex-1 py-1.5 text-center uppercase cursor-pointer transition-colors ${
-              modo === 'cadastro'
-                ? 'bg-[#E6007E] text-white'
-                : 'text-[#1E1B2E] hover:bg-stone-300'
-            }`}
-          >
-            Primeiro Acesso
-          </button>
         </div>
 
         {erro && (
@@ -219,41 +211,54 @@ export default function LoginModal({
               className="w-full vintage-button mt-3 py-2 bg-[#00D287] hover:bg-[#34EEA0] text-[#1E1B2E] text-xs font-black uppercase flex items-center justify-center gap-1.5 shadow-[2px_2px_0px_#1E1B2E] cursor-pointer"
             >
               <LogIn className="w-4 h-4" />
-              <span>Entrar na Minha Conta</span>
+              <span>Entrar no Sistema</span>
             </button>
+
+            {/* Se acessou via link de convite mas já tem conta, pode alternar */}
+            {isModoConvite && (
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setModo('cadastro'); setErro(null); }}
+                  className="text-xs font-mono text-[#581C87] hover:underline"
+                >
+                  ← Voltar para Primeiro Acesso
+                </button>
+              </div>
+            )}
           </form>
         ) : (
           <form onSubmit={handleAutocadastro} className="space-y-3">
             <div>
               <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">
-                Escolha seu Nome de Usuário *
+                Nome de Usuário (Apelido/Nome) *
               </label>
               <div className="relative">
                 <input
                   type="text"
                   required
                   autoFocus
-                  placeholder="Ex: joaosilva (sem espaços)"
+                  placeholder="Ex: lais.sax ou pedro.surdo"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full pl-9 pr-3 py-2 bg-white border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none"
                 />
                 <User className="w-4 h-4 text-stone-500 absolute left-2.5 top-2.5" />
               </div>
-              <span className="text-[10px] text-stone-500 font-mono mt-0.5 block">
-                Mínimo 3 letras ou números.
+              <span className="text-[10px] font-mono text-stone-500 mt-0.5 block">
+                Sem espaços, minúsculo. Será seu login de acesso.
               </span>
             </div>
 
             <div>
               <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">
-                Criar Senha Simples *
+                Crie uma Senha Simples *
               </label>
               <div className="relative">
                 <input
                   type="password"
                   required
-                  placeholder="Crie uma senha..."
+                  placeholder="Mínimo de 3 caracteres..."
                   value={senha}
                   onChange={(e) => setSenha(e.target.value)}
                   className="w-full pl-9 pr-3 py-2 bg-white border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none"
@@ -264,18 +269,18 @@ export default function LoginModal({
 
             <div>
               <label className="block text-xs font-black uppercase text-[#1E1B2E] mb-1">
-                Confirmar Senha *
+                Confirme a Senha *
               </label>
               <div className="relative">
                 <input
                   type="password"
                   required
-                  placeholder="Digite a mesma senha..."
+                  placeholder="Repita a senha criada..."
                   value={confirmarSenha}
                   onChange={(e) => setConfirmarSenha(e.target.value)}
                   className="w-full pl-9 pr-3 py-2 bg-white border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none"
                 />
-                <CheckCircle2 className="w-4 h-4 text-stone-500 absolute left-2.5 top-2.5" />
+                <Lock className="w-4 h-4 text-stone-500 absolute left-2.5 top-2.5" />
               </div>
             </div>
 
@@ -283,31 +288,21 @@ export default function LoginModal({
               type="submit"
               className="w-full vintage-button mt-3 py-2 bg-[#E6007E] hover:bg-[#C2006A] text-white text-xs font-black uppercase flex items-center justify-center gap-1.5 shadow-[2px_2px_0px_#1E1B2E] cursor-pointer"
             >
-              <UserPlus className="w-4 h-4" />
-              <span>Cadastrar e Entrar</span>
+              <CheckCircle2 className="w-4 h-4" />
+              <span>Concluir Cadastro & Entrar</span>
             </button>
+
+            <div className="text-center pt-2">
+              <button
+                type="button"
+                onClick={() => { setModo('login'); setErro(null); }}
+                className="text-xs font-mono text-[#581C87] hover:underline"
+              >
+                Já tem conta cadastrada? Fazer Login
+              </button>
+            </div>
           </form>
         )}
-
-        <div className="mt-4 pt-3 border-t border-stone-300 text-center">
-          {modo === 'login' ? (
-            <button
-              type="button"
-              onClick={() => { setModo('cadastro'); setErro(null); }}
-              className="text-xs font-mono font-bold text-[#E6007E] hover:underline cursor-pointer"
-            >
-              Primeiro acesso? Crie sua conta aqui!
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => { setModo('login'); setErro(null); }}
-              className="text-xs font-mono font-bold text-stone-700 hover:underline cursor-pointer"
-            >
-              Já possui conta? Clique para entrar
-            </button>
-          )}
-        </div>
       </div>
     </div>
   );
