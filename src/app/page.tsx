@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Header from '../components/Header';
 import Navigation, { TabId } from '../components/Navigation';
 import TasksManager from '../components/TasksManager';
@@ -42,6 +42,8 @@ import {
   USUARIOS_INICIAIS,
   UsuarioBloco,
   PerfilUsuario,
+  detectarAcessoConvite,
+  mesclarUsuariosSemPerda,
   converterTarefaEmMacrotarefa,
   Integrante,
   InscritoBloco,
@@ -78,6 +80,7 @@ export default function Home() {
   const [usuarioLogado, setUsuarioLogado] = useState<UsuarioBloco | null>(null);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [modoConvite, setModoConvite] = useState(false);
+  const usuariosRecemCriadosRef = useRef<UsuarioBloco[]>([]);
 
   // Perfil ativo derivado da sessão atual
   const perfilAtivo: PerfilUsuario = usuarioLogado ? usuarioLogado.perfil : 'publico';
@@ -90,12 +93,7 @@ export default function Home() {
   // Detecta acesso via link exclusivo de convite de primeiro acesso (?convite=bicho, ?cadastro=true)
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const isInvite = params.get('convite') === 'bicho' || 
-                       params.get('convite') === 'true' || 
-                       params.get('cadastro') === 'true' || 
-                       params.get('primeiro-acesso') === 'true' || 
-                       window.location.hash === '#primeiro-acesso';
+      const isInvite = detectarAcessoConvite(window.location.search, window.location.hash);
       if (isInvite) {
         setModoConvite(true);
         setLoginModalOpen(true);
@@ -150,7 +148,13 @@ export default function Home() {
         setDbConnected(true);
         const est = data.estados || {};
         if (est.usuarios && Array.isArray(est.usuarios) && est.usuarios.length > 0) {
-          setUsuarios(est.usuarios);
+          const consolidados = mesclarUsuariosSemPerda(est.usuarios, usuariosRecemCriadosRef.current);
+          // Remove do buffer temporário contas que já constam no banco
+          const nomesNoBanco = new Set(est.usuarios.map((u: UsuarioBloco) => u.username.toLowerCase()));
+          usuariosRecemCriadosRef.current = usuariosRecemCriadosRef.current.filter(
+            u => !nomesNoBanco.has(u.username.toLowerCase())
+          );
+          setUsuarios(consolidados);
         }
         if (Array.isArray(est.tarefas)) {
           setTarefas(est.tarefas);
@@ -419,6 +423,48 @@ export default function Home() {
   ).length;
 
   /**
+   * Registra um novo usuário criado pelo link de convite de Primeiro Acesso,
+   * salvando imediatamente no estado local, LocalStorage e Vercel Postgres antes do login.
+   *
+   * @param novoUsuario - Objeto do usuário recém-cadastrado com perfil 'bicho'
+   */
+  const handleCadastrarUsuario = async (novoUsuario: UsuarioBloco) => {
+    usuariosRecemCriadosRef.current = [
+      novoUsuario,
+      ...usuariosRecemCriadosRef.current.filter(
+        u => u.username.toLowerCase() !== novoUsuario.username.toLowerCase()
+      )
+    ];
+
+    const listaAtualizada = mesclarUsuariosSemPerda(usuarios, [novoUsuario]);
+    setUsuarios(listaAtualizada);
+
+    try {
+      localStorage.setItem('bicha_usuarios_v4', JSON.stringify(listaAtualizada));
+    } catch (e) {
+      console.error('Erro ao salvar usuário no LocalStorage:', e);
+    }
+
+    try {
+      await fetch('/api/db/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          key: 'usuarios',
+          data: listaAtualizada
+        })
+      });
+    } catch (err) {
+      console.error('Erro ao persistir novo usuário no Vercel Postgres:', err);
+    }
+
+    setModoConvite(false);
+    if (typeof window !== 'undefined' && (window.location.search || window.location.hash)) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  };
+
+  /**
    * Registra o login bem-sucedido de um usuário (Bicho ou Coordenador).
    */
   const handleLoginSuccess = (usuario: UsuarioBloco) => {
@@ -663,12 +709,14 @@ export default function Home() {
         )}
       </footer>
 
-      {/* Modal de Login de Usuários (Bicho ou Coordenador) */}
+      {/* Modal de Login e Primeiro Acesso por Convite (Bicho ou Coordenador) */}
       <LoginModal
         isOpen={loginModalOpen}
         onClose={() => setLoginModalOpen(false)}
         onLoginSuccess={handleLoginSuccess}
         usuarios={usuarios}
+        onCadastrarUsuario={handleCadastrarUsuario}
+        isModoConvite={modoConvite}
       />
     </div>
   );

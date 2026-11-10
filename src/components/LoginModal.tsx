@@ -3,14 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { Lock, User, X, LogIn, AlertCircle, UserPlus, CheckCircle2, Ticket } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { UsuarioBloco, autenticarUsuario } from '../data/blocoData';
+import { UsuarioBloco, autenticarUsuario, autocadastrarPorConvite } from '../data/blocoData';
 
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLoginSuccess: (usuario: UsuarioBloco) => void;
   usuarios: UsuarioBloco[];
-  onCadastrarUsuario?: (usuario: UsuarioBloco) => void;
+  onCadastrarUsuario?: (usuario: UsuarioBloco) => Promise<void> | void;
   isModoConvite?: boolean;
 }
 
@@ -32,6 +32,7 @@ export default function LoginModal({
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [erro, setErro] = useState<string | null>(null);
+  const [cadastrando, setCadastrando] = useState(false);
 
   // Sincroniza o modo quando o modal abre dependendo se é convite exclusivo ou login normal
   useEffect(() => {
@@ -72,43 +73,30 @@ export default function LoginModal({
   /**
    * Processa o autocadastro de um novo integrante com perfil 'bicho' via link de convite.
    */
-  const handleAutocadastro = (e: React.FormEvent) => {
+  const handleAutocadastro = async (e: React.FormEvent) => {
     e.preventDefault();
     setErro(null);
 
-    const userLimpo = username.trim().toLowerCase();
-    if (userLimpo.length < 3) {
-      setErro('O nome de usuário deve ter pelo menos 3 caracteres.');
+    const resultado = autocadastrarPorConvite(usuarios, {
+      username,
+      senha,
+      confirmarSenha
+    });
+
+    if (!resultado.sucesso || !resultado.novoUsuario) {
+      setErro(resultado.erro || 'Não foi possível concluir o cadastro.');
       return;
     }
 
-    if (senha.length < 3) {
-      setErro('A senha deve ter pelo menos 3 caracteres.');
-      return;
-    }
+    const novoUsuario = resultado.novoUsuario;
 
-    if (senha !== confirmarSenha) {
-      setErro('As senhas não coincidem. Digite novamente.');
-      return;
-    }
-
-    // Verifica se já existe um usuário com esse username
-    const jaExiste = usuarios.some(u => u.username.toLowerCase() === userLimpo);
-    if (jaExiste) {
-      setErro(`O usuário "${userLimpo}" já está cadastrado. Tente outro nome ou faça login.`);
-      return;
-    }
-
-    const novoUsuario: UsuarioBloco = {
-      id: `usr-auto-${Date.now()}`,
-      username: userLimpo,
-      senha: senha,
-      perfil: 'bicho',
-      criadoEm: new Date().toISOString()
-    };
-
-    if (onCadastrarUsuario) {
-      onCadastrarUsuario(novoUsuario);
+    try {
+      setCadastrando(true);
+      if (onCadastrarUsuario) {
+        await onCadastrarUsuario(novoUsuario);
+      }
+    } finally {
+      setCadastrando(false);
     }
 
     confetti({
@@ -122,6 +110,9 @@ export default function LoginModal({
     onClose();
   };
 
+  /**
+   * Limpa todos os campos temporários e mensagens de erro do formulário do modal.
+   */
   const limparFormulario = () => {
     setUsername('');
     setSenha('');
@@ -258,7 +249,7 @@ export default function LoginModal({
                 <input
                   type="password"
                   required
-                  placeholder="Mínimo de 3 caracteres..."
+                  placeholder="Mínimo de 4 caracteres..."
                   value={senha}
                   onChange={(e) => setSenha(e.target.value)}
                   className="w-full pl-9 pr-3 py-2 bg-white border-2 border-[#1E1B2E] text-xs font-mono focus:outline-none"
@@ -286,10 +277,11 @@ export default function LoginModal({
 
             <button
               type="submit"
-              className="w-full vintage-button mt-3 py-2 bg-[#E6007E] hover:bg-[#C2006A] text-white text-xs font-black uppercase flex items-center justify-center gap-1.5 shadow-[2px_2px_0px_#1E1B2E] cursor-pointer"
+              disabled={cadastrando}
+              className="w-full vintage-button mt-3 py-2 bg-[#E6007E] hover:bg-[#C2006A] disabled:opacity-60 text-white text-xs font-black uppercase flex items-center justify-center gap-1.5 shadow-[2px_2px_0px_#1E1B2E] cursor-pointer"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>Concluir Cadastro & Entrar</span>
+              <span>{cadastrando ? 'Criando Conta...' : 'Concluir Cadastro & Entrar'}</span>
             </button>
 
             <div className="text-center pt-2">

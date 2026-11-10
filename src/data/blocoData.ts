@@ -1942,6 +1942,113 @@ export function adicionarNovoUsuario(
 }
 
 /**
+ * Verifica se os parâmetros da URL (search ou hash) indicam abertura pelo Link Privado de Convite
+ * para Primeiro Acesso e autocadastro de novos integrantes.
+ *
+ * @param search - String de query params da URL (ex: window.location.search)
+ * @param hash - Hash da URL opcional (ex: window.location.hash)
+ * @returns Verdadeiro se for acesso de convite/primeiro acesso
+ */
+export function detectarAcessoConvite(search: string, hash = ''): boolean {
+  const params = new URLSearchParams(search || '');
+  const convite = (params.get('convite') || '').trim().toLowerCase();
+  const cadastro = (params.get('cadastro') || '').trim().toLowerCase();
+  const primeiroAcesso = (params.get('primeiro-acesso') || '').trim().toLowerCase();
+  const hashLimpo = (hash || '').trim().toLowerCase();
+
+  return (
+    convite === 'bicho' ||
+    convite === 'true' ||
+    convite === '1' ||
+    cadastro === 'true' ||
+    cadastro === '1' ||
+    cadastro === 'bicho' ||
+    primeiroAcesso === 'true' ||
+    primeiroAcesso === '1' ||
+    hashLimpo === '#primeiro-acesso' ||
+    hashLimpo === '#convite' ||
+    hashLimpo === '#cadastro'
+  );
+}
+
+/**
+ * Executa o autocadastro de um novo integrante (perfil 'bicho') via link exclusivo de convite,
+ * validando a confirmação de senha e higienizando login e senha para autenticação imediata.
+ *
+ * @param usuarios - Lista atual de usuários cadastrados
+ * @param dados - Credenciais digitadas no formulário de Primeiro Acesso
+ * @returns Resultado contendo o novo usuário criado, lista atualizada ou mensagem de erro
+ */
+export function autocadastrarPorConvite(
+  usuarios: UsuarioBloco[],
+  dados: {
+    username: string;
+    senha: string;
+    confirmarSenha: string;
+  }
+): {
+  sucesso: boolean;
+  novoUsuario?: UsuarioBloco;
+  usuariosAtualizados: UsuarioBloco[];
+  erro?: string;
+} {
+  const senhaLimpa = (dados.senha || '').trim();
+  const confirmacaoLimpa = (dados.confirmarSenha || '').trim();
+
+  if (senhaLimpa !== confirmacaoLimpa) {
+    return {
+      sucesso: false,
+      usuariosAtualizados: usuarios,
+      erro: 'As senhas não coincidem. Digite novamente.'
+    };
+  }
+
+  const resultado = adicionarNovoUsuario(usuarios, {
+    username: dados.username,
+    senha: senhaLimpa,
+    perfil: 'bicho'
+  });
+
+  if (!resultado.sucesso) {
+    return {
+      sucesso: false,
+      usuariosAtualizados: usuarios,
+      erro: resultado.erro
+    };
+  }
+
+  return {
+    sucesso: true,
+    novoUsuario: resultado.usuariosAtualizados[0],
+    usuariosAtualizados: resultado.usuariosAtualizados
+  };
+}
+
+/**
+ * Mescla a lista de usuários vinda do servidor com contas recém-criadas na sessão local,
+ * impedindo que leituras concorrentes do banco apaguem um autocadastro recém-concluído.
+ *
+ * @param usuariosServidor - Lista retornada pelo endpoint de sincronização
+ * @param usuariosLocaisRecentes - Contas criadas recentemente nesta aba do navegador
+ * @returns Lista consolidada sem perda de contas recém-criadas
+ */
+export function mesclarUsuariosSemPerda(
+  usuariosServidor: UsuarioBloco[],
+  usuariosLocaisRecentes: UsuarioBloco[]
+): UsuarioBloco[] {
+  if (!usuariosLocaisRecentes || usuariosLocaisRecentes.length === 0) {
+    return usuariosServidor;
+  }
+
+  const usernamesServidor = new Set(usuariosServidor.map(u => u.username.toLowerCase()));
+  const faltantes = usuariosLocaisRecentes.filter(
+    u => !usernamesServidor.has(u.username.toLowerCase())
+  );
+
+  return faltantes.length > 0 ? [...faltantes, ...usuariosServidor] : usuariosServidor;
+}
+
+/**
  * Remove um usuário do sistema pelo seu identificador único.
  * Impede que a lista de usuários fique completamente vazia.
  * 
