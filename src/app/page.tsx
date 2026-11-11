@@ -387,6 +387,33 @@ export default function Home() {
   }, []);
 
   /**
+   * Atualiza a lista de integrantes do elenco no estado da aplicação e sincroniza no banco de dados.
+   * 
+   * @param acao - Nova lista de integrantes ou função modificadora funcional
+   */
+  const handleAtualizarIntegrantes = useCallback((
+    acao: Integrante[] | ((prev: Integrante[]) => Integrante[])
+  ) => {
+    setIntegrantes(prev => {
+      const novosIntegrantes = typeof acao === 'function' ? acao(prev) : acao;
+
+      // Dispara persistência imediata no banco de dados Neon/Vercel Postgres
+      fetch('/api/db/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          key: 'integrantes',
+          data: novosIntegrantes
+        })
+      }).catch(err => {
+        console.error('Erro ao sincronizar integrantes no banco de dados:', err);
+      });
+
+      return novosIntegrantes;
+    });
+  }, []);
+
+  /**
    * Salva o tema do ano no estado local, LocalStorage e diretamente no banco Vercel Postgres,
    * garantindo sincronização imediata sem depender exclusivamente do debounce.
    */
@@ -511,7 +538,7 @@ export default function Home() {
    * Adiciona um novo integrante aprovado à listagem oficial.
    */
   const handleAddIntegrante = (novo: Integrante) => {
-    setIntegrantes(prev => [novo, ...prev]);
+    handleAtualizarIntegrantes(prev => [novo, ...prev]);
   };
 
   /**
@@ -654,7 +681,7 @@ export default function Home() {
         {activeTab === 'elenco' && !isPublico && (
           <RosterView
             integrantes={integrantes}
-            setIntegrantes={setIntegrantes}
+            setIntegrantes={handleAtualizarIntegrantes}
             isAdmin={isAdmin}
           />
         )}

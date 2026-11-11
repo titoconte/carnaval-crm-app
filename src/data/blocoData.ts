@@ -2078,6 +2078,21 @@ export function removerIntegranteElenco(
 }
 
 /**
+ * Atualiza os dados de um integrante no elenco oficial.
+ * Substitui o registro correspondente mantendo a integridade da lista.
+ * 
+ * @param integrantes - Lista atual de integrantes
+ * @param integranteAtualizado - Dados do integrante com as modificações aplicadas
+ * @returns Nova lista de integrantes com o integrante atualizado
+ */
+export function atualizarIntegranteElenco(
+  integrantes: Integrante[],
+  integranteAtualizado: Integrante
+): Integrante[] {
+  return integrantes.map(i => i.id === integranteAtualizado.id ? { ...integranteAtualizado } : i);
+}
+
+/**
  * Atualiza os dados de uma tarefa post-it existente no mural de tarefas.
  * 
  * @param tarefas - Lista atual de tarefas post-it

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Users, UserPlus, UserMinus, Search, Trash2, Music, Theater, ClipboardList } from 'lucide-react';
+import { Users, UserPlus, UserMinus, Search, Trash2, Edit2, Music, Theater, ClipboardList } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import {
   Integrante,
@@ -12,7 +12,8 @@ import {
   MACROCATEGORIAS_ELENCO,
   agruparElencoPorMacrocategoria,
   obterSetorDoGrupo,
-  removerIntegranteElenco
+  removerIntegranteElenco,
+  atualizarIntegranteElenco
 } from '../data/blocoData';
 
 interface RosterViewProps {
@@ -36,6 +37,15 @@ export default function RosterView({ integrantes, setIntegrantes, isAdmin = fals
   const [modalNovo, setModalNovo] = useState(false);
   const [modalRemover, setModalRemover] = useState(false);
   const [integranteParaRemoverId, setIntegranteParaRemoverId] = useState<string>('');
+
+  // Estados para edição de integrante existente (exclusivo coordenadores)
+  const [modalEditar, setModalEditar] = useState(false);
+  const [integranteEmEdicao, setIntegranteEmEdicao] = useState<Integrante | null>(null);
+  const [editNome, setEditNome] = useState('');
+  const [editGrandeGrupo, setEditGrandeGrupo] = useState<GrandeGrupoElenco>('Bateria');
+  const [editInstrumentoOuFuncao, setEditInstrumentoOuFuncao] = useState('');
+  const [editObservacao, setEditObservacao] = useState('');
+  const [editAtivo, setEditAtivo] = useState(true);
 
   // Form states para adição rápida de novos integrantes
   const [nome, setNome] = useState('');
@@ -90,6 +100,61 @@ export default function RosterView({ integrantes, setIntegrantes, isAdmin = fals
     if (modalRemover) {
       setModalRemover(false);
     }
+  };
+
+  /**
+   * Abre o modal de edição preenchendo os dados do integrante selecionado.
+   * 
+   * @param integrante - Integrante do elenco a ser editado
+   */
+  const abrirModalEditar = (integrante: Integrante) => {
+    setIntegranteEmEdicao(integrante);
+    setEditNome(integrante.nome);
+    setEditGrandeGrupo(integrante.grandeGrupo);
+    setEditInstrumentoOuFuncao(integrante.instrumentoOuFuncao);
+    setEditObservacao(integrante.observacao || '');
+    setEditAtivo(integrante.ativo !== false);
+    setModalEditar(true);
+  };
+
+  /**
+   * Atualiza a seleção do integrante a editar a partir do dropdown do modal.
+   * 
+   * @param id - Identificador do integrante escolhido no menu
+   */
+  const handleSelecionarIntegranteParaEdicao = (id: string) => {
+    const alvo = integrantes.find(i => i.id === id);
+    if (alvo) {
+      abrirModalEditar(alvo);
+    }
+  };
+
+  /**
+   * Salva as alterações efetuadas pelo coordenador nos dados do integrante do elenco.
+   */
+  const handleSalvarEdicaoIntegrante = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!integranteEmEdicao || !editNome.trim() || !editInstrumentoOuFuncao.trim()) return;
+
+    const atualizado: Integrante = {
+      ...integranteEmEdicao,
+      nome: editNome.trim(),
+      grandeGrupo: editGrandeGrupo,
+      instrumentoOuFuncao: editInstrumentoOuFuncao.trim(),
+      observacao: editObservacao.trim() || undefined,
+      ativo: editAtivo
+    };
+
+    setIntegrantes(prev => atualizarIntegranteElenco(prev, atualizado));
+    setSetorAtivo(obterSetorDoGrupo(editGrandeGrupo));
+    setModalEditar(false);
+    setIntegranteEmEdicao(null);
+
+    confetti({
+      particleCount: 40,
+      spread: 60,
+      colors: ['#00D287', '#E6007E', '#FBBF24']
+    });
   };
 
   /**
@@ -236,6 +301,22 @@ export default function RosterView({ integrantes, setIntegrantes, isAdmin = fals
             <span className="hidden sm:inline">+ Novo Integrante</span>
           </button>
 
+          {/* Botão para Coordenadores: Editar Integrante */}
+          {isAdmin && integrantes.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                const primeiro = integrantes[0];
+                if (primeiro) abrirModalEditar(primeiro);
+              }}
+              className="vintage-button px-3.5 py-2 bg-amber-100 hover:bg-amber-200 text-amber-900 border-2 border-[#1E1B2E] text-xs font-black uppercase flex items-center gap-1.5 shrink-0 shadow-[2px_2px_0px_#1E1B2E] cursor-pointer"
+              title="Exclusivo Coordenadores: Editar dados de participante do elenco"
+            >
+              <Edit2 className="w-4 h-4 text-amber-700" />
+              <span>Editar Integrante</span>
+            </button>
+          )}
+
           {/* Botão para Coordenadores: Remover Integrante */}
           {isAdmin && integrantes.length > 0 && (
             <button
@@ -356,9 +437,14 @@ export default function RosterView({ integrantes, setIntegrantes, isAdmin = fals
                               <span className="w-5 h-5 bg-[#E6007E] text-white text-[10px] font-black flex items-center justify-center shrink-0 border border-black">
                                 {m.nome.charAt(0)}
                               </span>
-                              <span className="truncate font-bold text-stone-900 text-xs">
+                              <span className={`truncate font-bold text-xs ${m.ativo === false ? 'text-stone-400 line-through' : 'text-stone-900'}`}>
                                 {m.nome}
                               </span>
+                              {m.ativo === false && (
+                                <span className="text-[9px] font-mono px-1 py-0.2 bg-stone-200 text-stone-600 border border-stone-400 uppercase">
+                                  Inativo
+                                </span>
+                              )}
                             </div>
 
                             <div className="flex items-center gap-1.5 shrink-0">
@@ -368,14 +454,24 @@ export default function RosterView({ integrantes, setIntegrantes, isAdmin = fals
                                 </span>
                               )}
                               {isAdmin && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoverIntegrante(m.id)}
-                                  title={`Remover ${m.nome}`}
-                                  className="text-stone-400 hover:text-red-600 p-0.5 transition-colors cursor-pointer"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
+                                <div className="flex items-center gap-0.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => abrirModalEditar(m)}
+                                    title={`Editar ${m.nome}`}
+                                    className="text-stone-400 hover:text-amber-600 p-0.5 transition-colors cursor-pointer"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoverIntegrante(m.id)}
+                                    title={`Remover ${m.nome}`}
+                                    className="text-stone-400 hover:text-red-600 p-0.5 transition-colors cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               )}
                             </div>
                           </div>
@@ -538,6 +634,135 @@ export default function RosterView({ integrantes, setIntegrantes, isAdmin = fals
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Editar Integrante (Exclusivo Coordenadores) */}
+      {isAdmin && modalEditar && integranteEmEdicao && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#FAF6EC] border-4 border-[#1A181B] p-6 max-w-md w-full shadow-[6px_6px_0px_#1A181B] max-h-[90vh] overflow-y-auto">
+            <div className="stamp stamp-open text-xs mb-2">Exclusivo Coordenadores</div>
+            <h3 className="text-base font-black uppercase text-[#1A181B] font-mono mb-1 flex items-center gap-2">
+              <Edit2 className="w-5 h-5 text-amber-600" />
+              <span>Editar Integrante do Elenco</span>
+            </h3>
+            <p className="text-xs text-stone-600 mb-4 font-serif">
+              Atualize as informações de cadastro, naipe ou instrumento deste participante.
+            </p>
+
+            <form onSubmit={handleSalvarEdicaoIntegrante} className="space-y-3">
+              {/* Seletor rápido de integrante se quiser alternar */}
+              {integrantes.length > 1 && (
+                <div>
+                  <label className="block text-xs font-mono font-bold uppercase text-stone-700 mb-1">
+                    Selecionar Outro Integrante
+                  </label>
+                  <select
+                    value={integranteEmEdicao.id}
+                    onChange={(e) => handleSelecionarIntegranteParaEdicao(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-stone-100 border-2 border-[#1A181B] text-xs font-mono focus:outline-none"
+                  >
+                    {[...integrantes]
+                      .sort((a, b) => a.nome.localeCompare(b.nome))
+                      .map((int) => (
+                        <option key={int.id} value={int.id}>
+                          {int.nome} — {int.grandeGrupo} ({int.instrumentoOuFuncao})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-black uppercase text-[#1A181B] mb-1">Nome Completo *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Nome do integrante"
+                  value={editNome}
+                  onChange={(e) => setEditNome(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border-2 border-[#1A181B] text-xs font-mono focus:outline-none font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase text-[#1A181B] mb-1">Macrocategoria (Coluna) *</label>
+                <select
+                  value={editGrandeGrupo}
+                  onChange={(e) => setEditGrandeGrupo(e.target.value as GrandeGrupoElenco)}
+                  className="w-full px-3 py-2 bg-white border-2 border-[#1A181B] text-xs font-mono font-bold"
+                >
+                  <optgroup label="🎺 Setor Música">
+                    <option value="Bateria">Bateria</option>
+                    <option value="Sopros">Sopros</option>
+                    <option value="Vozes">Vozes</option>
+                    <option value="Outros Instrumentos">Outros Instrumentos / Harmonia</option>
+                  </optgroup>
+                  <optgroup label="🎭 Setor Performance">
+                    <option value="Brincantes & Dança">Brincantes & Dança (Pernaltas, Brincantes, Dançarinos)</option>
+                    <option value="Carro Alegórico">Carro Alegórico & Kombi Sonora</option>
+                  </optgroup>
+                  <optgroup label="📋 Setor Organização">
+                    <option value="Organização & Apoio">Organização, Produção & Apoio</option>
+                  </optgroup>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase text-[#1A181B] mb-1">Instrumento / Função *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Caixa, Surdo, Trompete, Pernalta, Cenógrafo, Produção..."
+                  value={editInstrumentoOuFuncao}
+                  onChange={(e) => setEditInstrumentoOuFuncao(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border-2 border-[#1A181B] text-xs font-mono focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase text-[#1A181B] mb-1">Observações (opcional)</label>
+                <input
+                  type="text"
+                  placeholder="Disponibilidade, instrumento próprio, etc."
+                  value={editObservacao}
+                  onChange={(e) => setEditObservacao(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border-2 border-[#1A181B] text-xs font-mono focus:outline-none"
+                />
+              </div>
+
+              <div className="p-2.5 bg-stone-100 border border-stone-300">
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-mono font-bold text-[#1A181B]">
+                  <input
+                    type="checkbox"
+                    checked={editAtivo}
+                    onChange={(e) => setEditAtivo(e.target.checked)}
+                    className="w-4 h-4 accent-[#00D287]"
+                  />
+                  <span>Integrante ativo e confirmado no Carnaval 2027</span>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-300">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModalEditar(false);
+                    setIntegranteEmEdicao(null);
+                  }}
+                  className="px-3 py-1.5 border-2 border-[#1A181B] text-xs font-bold uppercase hover:bg-stone-200 cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="vintage-button px-4 py-1.5 bg-amber-400 hover:bg-amber-500 text-[#1E1B2E] text-xs uppercase font-black cursor-pointer shadow-[2px_2px_0px_#1E1B2E]"
+                >
+                  Salvar Alterações
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
