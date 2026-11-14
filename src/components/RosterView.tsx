@@ -13,7 +13,8 @@ import {
   agruparElencoPorMacrocategoria,
   obterSetorDoGrupo,
   removerIntegranteElenco,
-  atualizarIntegranteElenco
+  atualizarIntegranteElenco,
+  podeEditarIntegranteElenco
 } from '../data/blocoData';
 
 interface RosterViewProps {
@@ -28,17 +29,18 @@ interface RosterViewProps {
  * 2. Performance (Brincantes, Pernaltas, Dança e Carro Alegórico)
  * 3. Organização (Organização, Apoio e Produção)
  * 
- * Permite inserção de novos membros e, exclusivamente para coordenadores (isAdmin),
- * a deleção de integrantes via botão com dropdown ou lixeira individual com confirmação.
+ * Permite a inserção e a edição de integrantes para todos os usuários do bloco,
+ * mantendo apenas a deleção restrita aos coordenadores (isAdmin).
  */
 export default function RosterView({ integrantes, setIntegrantes, isAdmin = false }: RosterViewProps) {
+  const podeEditar = podeEditarIntegranteElenco(isAdmin ? 'coordenador' : 'bicho');
   const [search, setSearch] = useState('');
   const [setorAtivo, setSetorAtivo] = useState<SetorElenco>('Música');
   const [modalNovo, setModalNovo] = useState(false);
   const [modalRemover, setModalRemover] = useState(false);
   const [integranteParaRemoverId, setIntegranteParaRemoverId] = useState<string>('');
 
-  // Estados para edição de integrante existente (exclusivo coordenadores)
+  // Estados para edição de integrante existente (disponível para todos os usuários)
   const [modalEditar, setModalEditar] = useState(false);
   const [integranteEmEdicao, setIntegranteEmEdicao] = useState<Integrante | null>(null);
   const [editNome, setEditNome] = useState('');
@@ -130,7 +132,7 @@ export default function RosterView({ integrantes, setIntegrantes, isAdmin = fals
   };
 
   /**
-   * Salva as alterações efetuadas pelo coordenador nos dados do integrante do elenco.
+   * Salva as alterações efetuadas pelo usuário nos dados do integrante do elenco.
    */
   const handleSalvarEdicaoIntegrante = (e: React.FormEvent) => {
     e.preventDefault();
@@ -301,8 +303,8 @@ export default function RosterView({ integrantes, setIntegrantes, isAdmin = fals
             <span className="hidden sm:inline">+ Novo Integrante</span>
           </button>
 
-          {/* Botão para Coordenadores: Editar Integrante */}
-          {isAdmin && integrantes.length > 0 && (
+          {/* Botão para Todos os Usuários: Editar Integrante */}
+          {podeEditar && integrantes.length > 0 && (
             <button
               type="button"
               onClick={() => {
@@ -310,7 +312,7 @@ export default function RosterView({ integrantes, setIntegrantes, isAdmin = fals
                 if (primeiro) abrirModalEditar(primeiro);
               }}
               className="vintage-button px-3.5 py-2 bg-amber-100 hover:bg-amber-200 text-amber-900 border-2 border-[#1E1B2E] text-xs font-black uppercase flex items-center gap-1.5 shrink-0 shadow-[2px_2px_0px_#1E1B2E] cursor-pointer"
-              title="Exclusivo Coordenadores: Editar dados de participante do elenco"
+              title="Editar dados de participante do elenco"
             >
               <Edit2 className="w-4 h-4 text-amber-700" />
               <span>Editar Integrante</span>
@@ -453,8 +455,8 @@ export default function RosterView({ integrantes, setIntegrantes, isAdmin = fals
                                   {m.observacao}
                                 </span>
                               )}
-                              {isAdmin && (
-                                <div className="flex items-center gap-0.5">
+                              <div className="flex items-center gap-0.5">
+                                {podeEditar && (
                                   <button
                                     type="button"
                                     onClick={() => abrirModalEditar(m)}
@@ -463,6 +465,8 @@ export default function RosterView({ integrantes, setIntegrantes, isAdmin = fals
                                   >
                                     <Edit2 className="w-3.5 h-3.5" />
                                   </button>
+                                )}
+                                {isAdmin && (
                                   <button
                                     type="button"
                                     onClick={() => handleRemoverIntegrante(m.id)}
@@ -471,8 +475,8 @@ export default function RosterView({ integrantes, setIntegrantes, isAdmin = fals
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </button>
-                                </div>
-                              )}
+                                )}
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -638,11 +642,11 @@ export default function RosterView({ integrantes, setIntegrantes, isAdmin = fals
         </div>
       )}
 
-      {/* Modal para Editar Integrante (Exclusivo Coordenadores) */}
-      {isAdmin && modalEditar && integranteEmEdicao && (
+      {/* Modal para Editar Integrante (Disponível para Todos os Usuários) */}
+      {podeEditar && modalEditar && integranteEmEdicao && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-[#FAF6EC] border-4 border-[#1A181B] p-6 max-w-md w-full shadow-[6px_6px_0px_#1A181B] max-h-[90vh] overflow-y-auto">
-            <div className="stamp stamp-open text-xs mb-2">Exclusivo Coordenadores</div>
+            <div className="stamp stamp-open text-xs mb-2">Edição de Cadastro</div>
             <h3 className="text-base font-black uppercase text-[#1A181B] font-mono mb-1 flex items-center gap-2">
               <Edit2 className="w-5 h-5 text-amber-600" />
               <span>Editar Integrante do Elenco</span>

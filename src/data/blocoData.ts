@@ -2078,8 +2078,21 @@ export function removerIntegranteElenco(
 }
 
 /**
+ * Verifica se o usuário possui permissão para editar integrantes na página do elenco.
+ * Liberado para todos os usuários autenticados do bloco ('bicho' e 'coordenador'),
+ * não sendo restrito apenas aos coordenadores.
+ * 
+ * @param perfil - Perfil do usuário logado (padrão: 'bicho')
+ * @returns Verdadeiro se o usuário puder editar dados do elenco
+ */
+export function podeEditarIntegranteElenco(perfil: PerfilUsuario = 'bicho'): boolean {
+  return perfil === 'bicho' || perfil === 'coordenador';
+}
+
+/**
  * Atualiza os dados de um integrante no elenco oficial.
  * Substitui o registro correspondente mantendo a integridade da lista.
+ * Disponível para todos os usuários com acesso à página do elenco.
  * 
  * @param integrantes - Lista atual de integrantes
  * @param integranteAtualizado - Dados do integrante com as modificações aplicadas
