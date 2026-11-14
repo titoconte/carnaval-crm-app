@@ -1,17 +1,20 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
+import fs from 'node:fs';
+import path from 'node:path';
 import {
   Integrante,
   atualizarIntegranteElenco,
   removerIntegranteElenco,
-  obterSetorDoGrupo
+  obterSetorDoGrupo,
+  podeEditarIntegranteElenco
 } from '../src/data/blocoData';
 
 /**
  * Suíte de testes para a funcionalidade de edição e gerenciamento de integrantes
- * do elenco oficial do Bloco Bicharada por coordenadores.
+ * do elenco oficial do Bloco Bicharada por todos os usuários do sistema.
  */
-describe('Edição de Integrantes do Elenco Oficial (Coordenadores)', () => {
+describe('Edição de Integrantes do Elenco Oficial (Todos os Usuários)', () => {
   const listaInicial: Integrante[] = [
     {
       id: 'int-1',
@@ -38,6 +41,53 @@ describe('Edição de Integrantes do Elenco Oficial (Coordenadores)', () => {
       ativo: true
     }
   ];
+
+  /**
+   * Verifica que tanto integrantes comuns ('bicho') quanto 'coordenador' possuem permissão de edição.
+   */
+  it('deve permitir edição de elenco para todos os usuários logados (bicho e coordenador)', () => {
+    assert.strictEqual(podeEditarIntegranteElenco('bicho'), true, 'Usuários bicho devem poder editar o elenco');
+    assert.strictEqual(podeEditarIntegranteElenco('coordenador'), true, 'Coordenadores devem poder editar o elenco');
+    assert.strictEqual(podeEditarIntegranteElenco(), true, 'Valor padrão deve permitir edição para membros');
+    assert.strictEqual(podeEditarIntegranteElenco('publico'), false, 'Visitantes anônimos sem login não editam o elenco');
+  });
+
+  /**
+   * Verifica na estrutura de RosterView.tsx que os controles de edição não estão bloqueados por isAdmin.
+   */
+  it('deve disponibilizar os botões e o modal de edição para todos os usuários no RosterView', () => {
+    const rosterPath = path.resolve(process.cwd(), 'src/components/RosterView.tsx');
+    const source = fs.readFileSync(rosterPath, 'utf-8');
+
+    // A edição utiliza podeEditar (habilitado tanto para bicho quanto coordenador) e não bloqueia por isAdmin
+    assert.strictEqual(
+      source.includes('podeEditar && integrantes.length > 0'),
+      true,
+      'O botão superior de Editar Integrante deve estar liberado via podeEditar'
+    );
+    assert.strictEqual(
+      source.includes('podeEditar && modalEditar && integranteEmEdicao'),
+      true,
+      'O modal de edição deve abrir para todos os usuários com podeEditar'
+    );
+    assert.strictEqual(
+      source.includes('isAdmin && modalEditar'),
+      false,
+      'O modal de edição não deve exigir isAdmin'
+    );
+    assert.strictEqual(
+      source.includes('Exclusivo Coordenadores: Editar'),
+      false,
+      'Não deve haver rótulo restringindo a edição apenas a coordenadores'
+    );
+
+    // A remoção permanece protegida para coordenadores (isAdmin)
+    assert.strictEqual(
+      source.includes('isAdmin && modalRemover'),
+      true,
+      'A remoção em massa continua exclusiva para coordenadores'
+    );
+  });
 
   it('deve atualizar os dados de um integrante existente com sucesso', () => {
     const integranteAtualizado: Integrante = {
