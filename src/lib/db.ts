@@ -6,9 +6,40 @@
  */
 
 import { Pool } from '@neondatabase/serverless';
+import {
+  RegistroPresencaEvento,
+  USUARIOS_INICIAIS,
+  UsuarioBloco,
+  autenticarUsuario
+} from '../data/blocoData';
 
 let cachedPool: Pool | null = null;
 let schemaInitialized = false;
+let fatoPresencaInitialized = false;
+
+/**
+ * DDL oficial da tabela fato de presenças em ensaios e reuniões do calendário.
+ * Armazena as chaves dimensionais (evento_id e integrante_id) com snapshot do elenco
+ * para consultas analíticas e restrição de unicidade por evento/integrante.
+ */
+export const FATO_PRESENCA_EVENTOS_TABLE_SQL = `
+  CREATE TABLE IF NOT EXISTS fato_presenca_eventos (
+    id VARCHAR(120) PRIMARY KEY,
+    evento_id VARCHAR(100) NOT NULL,
+    integrante_id VARCHAR(100) NOT NULL,
+    integrante_nome VARCHAR(150) NOT NULL,
+    grande_grupo VARCHAR(100) NOT NULL,
+    instrumento_ou_funcao VARCHAR(120) NOT NULL,
+    evento_data VARCHAR(50) NOT NULL,
+    evento_tipo VARCHAR(50) NOT NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'Presente',
+    observacao TEXT,
+    registrado_por VARCHAR(100),
+    registrado_em TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_fato_presenca_evento_integrante UNIQUE (evento_id, integrante_id)
+  );
+`;
 
 /**
  * Reseta o pool de conexão (útil para testes unitários ou reconexão).
@@ -16,6 +47,7 @@ let schemaInitialized = false;
 export function resetDbPool(): void {
   cachedPool = null;
   schemaInitialized = false;
+  fatoPresencaInitialized = false;
 }
 
 /**
@@ -204,7 +236,20 @@ export async function initDatabaseSchema(): Promise<{ success: boolean; message:
       );
     `);
 
+    // 8. Tabela Fato de Lista de Presença em Ensaios e Reuniões (Exclusivo Coordenação)
+    await executeSql(FATO_PRESENCA_EVENTOS_TABLE_SQL);
+    await executeSql(
+      'CREATE INDEX IF NOT EXISTS idx_fato_presenca_evento_id ON fato_presenca_eventos (evento_id);'
+    );
+    await executeSql(
+      'CREATE INDEX IF NOT EXISTS idx_fato_presenca_integrante_id ON fato_presenca_eventos (integrante_id);'
+    );
+    await executeSql(
+      'CREATE INDEX IF NOT EXISTS idx_fato_presenca_evento_data ON fato_presenca_eventos (evento_data);'
+    );
+
     schemaInitialized = true;
+    fatoPresencaInitialized = true;
 
     return {
       success: true,
@@ -307,4 +352,259 @@ export async function obterTodosEstadosDoBanco(): Promise<Record<string, any>> {
     console.error('Erro ao obter todos os estados do banco:', error);
     return {};
   }
+}
+
+/**
+ * Garante que a tabela fato fato_presenca_eventos e seus índices existam no PostgreSQL
+ * antes de executar operações de leitura ou escrita de presenças.
+ */
+export async function ensureFatoPresencaInitialized(): Promise<void> {
+  if (fatoPresencaInitialized || !isDatabaseConfigured()) return;
+  try {
+    await executeSql(FATO_PRESENCA_EVENTOS_TABLE_SQL);
+    await executeSql(
+      'CREATE INDEX IF NOT EXISTS idx_fato_presenca_evento_id ON fato_presenca_eventos (evento_id);'
+    );
+    await executeSql(
+      'CREATE INDEX IF NOT EXISTS idx_fato_presenca_integrante_id ON fato_presenca_eventos (integrante_id);'
+    );
+    await executeSql(
+      'CREATE INDEX IF NOT EXISTS idx_fato_presenca_evento_data ON fato_presenca_eventos (evento_data);'
+    );
+    fatoPresencaInitialized = true;
+  } catch (error) {
+    console.error('Erro ao verificar/criar tabela fato_presenca_eventos:', error);
+  }
+}
+
+/**
+ * Converte uma linha retornada da tabela fato_presenca_eventos (snake_case)
+ * para o modelo de domínio RegistroPresencaEvento (camelCase).
+ * 
+ * @param row - Linha bruta retornada pela consulta PostgreSQL
+ * @returns Objeto RegistroPresencaEvento padronizado
+ */
+function mapearLinhaFatoPresenca(row: any): RegistroPresencaEvento {
+  return {
+    id: String(row.id),
+    eventoId: String(row.evento_id),
+    integranteId: String(row.integrante_id),
+    integranteNome: String(row.integrante_nome),
+    grandeGrupo: row.grande_grupo,
+    instrumentoOuFuncao: String(row.instrumento_ou_funcao),
+    eventoData: String(row.evento_data),
+    eventoTipo: row.evento_tipo,
+    status: row.status,
+    observacao: row.observacao ?? undefined,
+    registradoPor: row.registrado_por ?? undefined,
+    registradoEm: row.registrado_em
+      ? new Date(row.registrado_em).toISOString()
+      : new Date().toISOString(),
+    atualizadoEm: row.atualizado_em
+      ? new Date(row.atualizado_em).toISOString()
+      : undefined
+  };
+}
+
+/**
+ * Lista os registros da tabela fato fato_presenca_eventos, opcionalmente filtrados por evento.
+ * 
+ * @param eventoId - Identificador opcional do evento para filtrar a consulta
+ * @returns Lista de registros de presença armazenados no banco
+ */
+export async function listarPresencasNoBanco(
+  eventoId?: string
+): Promise<RegistroPresencaEvento[]> {
+  if (!isDatabaseConfigured()) {
+    return [];
+  }
+
+  try {
+    await ensureFatoPresencaInitialized();
+
+    const rows = eventoId
+      ? await executeSql(
+          `SELECT * FROM fato_presenca_eventos
+           WHERE evento_id = $1
+           ORDER BY integrante_nome ASC`,
+          [eventoId]
+        )
+      : await executeSql(
+          `SELECT * FROM fato_presenca_eventos
+           ORDER BY evento_data DESC, integrante_nome ASC`
+        );
+
+    return rows.map(mapearLinhaFatoPresenca);
+  } catch (error) {
+    console.error('Erro ao listar presenças da tabela fato:', error);
+    return [];
+  }
+}
+
+/**
+ * Insere ou atualiza (upsert) um registro na tabela fato fato_presenca_eventos.
+ * Garante unicidade pelo par (evento_id, integrante_id).
+ * 
+ * @param registro - Registro de presença a persistir na tabela fato
+ * @returns Verdadeiro se salvo com sucesso no banco
+ */
+export async function salvarPresencaNoBanco(
+  registro: RegistroPresencaEvento
+): Promise<boolean> {
+  if (!isDatabaseConfigured()) {
+    return false;
+  }
+
+  try {
+    await ensureFatoPresencaInitialized();
+
+    await executeSql(
+      `
+      INSERT INTO fato_presenca_eventos (
+        id,
+        evento_id,
+        integrante_id,
+        integrante_nome,
+        grande_grupo,
+        instrumento_ou_funcao,
+        evento_data,
+        evento_tipo,
+        status,
+        observacao,
+        registrado_por,
+        registrado_em,
+        atualizado_em
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ON CONFLICT (evento_id, integrante_id)
+      DO UPDATE SET
+        integrante_nome = EXCLUDED.integrante_nome,
+        grande_grupo = EXCLUDED.grande_grupo,
+        instrumento_ou_funcao = EXCLUDED.instrumento_ou_funcao,
+        evento_data = EXCLUDED.evento_data,
+        evento_tipo = EXCLUDED.evento_tipo,
+        status = EXCLUDED.status,
+        observacao = EXCLUDED.observacao,
+        registrado_por = EXCLUDED.registrado_por,
+        atualizado_em = CURRENT_TIMESTAMP;
+      `,
+      [
+        registro.id,
+        registro.eventoId,
+        registro.integranteId,
+        registro.integranteNome,
+        registro.grandeGrupo,
+        registro.instrumentoOuFuncao,
+        registro.eventoData,
+        registro.eventoTipo,
+        registro.status,
+        registro.observacao || null,
+        registro.registradoPor || null
+      ]
+    );
+    return true;
+  } catch (error) {
+    console.error('Erro ao salvar presença na tabela fato:', error);
+    return false;
+  }
+}
+
+/**
+ * Persiste múltiplos registros de presença em lote na tabela fato fato_presenca_eventos.
+ * 
+ * @param registros - Lista de registros de presença a inserir ou atualizar
+ * @returns Verdadeiro se todos os registros foram persistidos com sucesso
+ */
+export async function salvarPresencasEmLoteNoBanco(
+  registros: RegistroPresencaEvento[]
+): Promise<boolean> {
+  if (!isDatabaseConfigured() || registros.length === 0) {
+    return false;
+  }
+
+  try {
+    await ensureFatoPresencaInitialized();
+
+    for (const registro of registros) {
+      const ok = await salvarPresencaNoBanco(registro);
+      if (!ok) return false;
+    }
+    return true;
+  } catch (error) {
+    console.error('Erro ao salvar presenças em lote na tabela fato:', error);
+    return false;
+  }
+}
+
+/**
+ * Exclui um registro específico de presença (por evento e integrante) ou todos os registros
+ * de um evento da tabela fato fato_presenca_eventos.
+ * 
+ * @param eventoId - Identificador do evento
+ * @param integranteId - Identificador opcional do integrante (se omitido, exclui todas as presenças do evento)
+ * @returns Verdadeiro se a exclusão foi executada com sucesso
+ */
+export async function excluirPresencaNoBanco(
+  eventoId: string,
+  integranteId?: string
+): Promise<boolean> {
+  if (!isDatabaseConfigured()) {
+    return false;
+  }
+
+  try {
+    await ensureFatoPresencaInitialized();
+
+    if (integranteId) {
+      await executeSql(
+        'DELETE FROM fato_presenca_eventos WHERE evento_id = $1 AND integrante_id = $2',
+        [eventoId, integranteId]
+      );
+    } else {
+      await executeSql(
+        'DELETE FROM fato_presenca_eventos WHERE evento_id = $1',
+        [eventoId]
+      );
+    }
+    return true;
+  } catch (error) {
+    console.error('Erro ao excluir presença da tabela fato:', error);
+    return false;
+  }
+}
+
+/**
+ * Valida no servidor se as credenciais informadas pertencem a um usuário com perfil 'coordenador'.
+ * Consulta os usuários sincronizados no banco de dados e inclui os usuários iniciais como fallback seguro.
+ * 
+ * @param username - Nome de usuário enviado no cabeçalho da requisição
+ * @param senha - Senha enviada no cabeçalho da requisição
+ * @returns Verdadeiro exclusivamente se o usuário existir e tiver perfil 'coordenador'
+ */
+export async function validarCoordenadorNoBanco(
+  username?: string | null,
+  senha?: string | null
+): Promise<boolean> {
+  if (!username || !senha) return false;
+
+  let listaUsuarios: UsuarioBloco[] = [...USUARIOS_INICIAIS];
+
+  if (isDatabaseConfigured()) {
+    try {
+      const usuariosSalvos = await obterEstadoDoBanco<UsuarioBloco[]>('usuarios');
+      if (Array.isArray(usuariosSalvos) && usuariosSalvos.length > 0) {
+        // Mescla garantindo que o coordenador mestre inicial nunca fique órfão
+        const existentes = new Set(usuariosSalvos.map(u => u.username.toLowerCase()));
+        const faltantes = USUARIOS_INICIAIS.filter(
+          u => !existentes.has(u.username.toLowerCase())
+        );
+        listaUsuarios = [...usuariosSalvos, ...faltantes];
+      }
+    } catch (error) {
+      console.error('Erro ao consultar usuários para validação de coordenador:', error);
+    }
+  }
+
+  const usuario = autenticarUsuario(listaUsuarios, username, senha);
+  return Boolean(usuario && usuario.perfil === 'coordenador');
 }
