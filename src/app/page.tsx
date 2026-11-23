@@ -57,6 +57,13 @@ import {
   ItemLetraCifra,
   EnqueteWhatsApp,
   EventoCalendario,
+  RegistroPresencaEvento,
+  StatusPresenca,
+  PRESENCAS_INICIAIS,
+  registrarOuEditarPresenca,
+  removerPresencaEvento,
+  removerPresencasDoEvento,
+  marcarTodosPresentesNoEvento,
   DocumentoBloco,
   CorPaletaAnual,
   ArquivoArteMidia,
@@ -115,6 +122,7 @@ export default function Home() {
   const [letrasCifras, setLetrasCifras] = useState<ItemLetraCifra[]>(LETRAS_CIFRAS_INICIAIS);
   const [enquetes, setEnquetes] = useState<EnqueteWhatsApp[]>(ENQUETES_WHATSAPP_INICIAIS);
   const [eventos, setEventos] = useState<EventoCalendario[]>(CALENDARIO_INICIAL);
+  const [presencas, setPresencas] = useState<RegistroPresencaEvento[]>(PRESENCAS_INICIAIS);
   const [documentos, setDocumentos] = useState<DocumentoBloco[]>(DOCUMENTOS_INICIAIS);
   const [cores, setCores] = useState<CorPaletaAnual[]>(CORES_PALETA_INICIAIS);
   const [artes, setArtes] = useState<ArquivoArteMidia[]>(ARTES_MIDIA_INICIAIS);
@@ -510,10 +518,226 @@ export default function Home() {
   };
 
   /**
+   * Monta os cabeçalhos de autenticação exclusivos de coordenador para o endpoint /api/presencas.
+   * 
+   * @param usuario - Usuário autenticado atualmente na sessão
+   * @returns Cabeçalhos HTTP com credenciais de coordenação ou objeto vazio se não for coordenador
+   */
+  const obterHeadersCoordenador = useCallback((usuario: UsuarioBloco | null): Record<string, string> => {
+    if (!usuario || usuario.perfil !== 'coordenador') return {};
+    return {
+      'Content-Type': 'application/json',
+      'x-coord-user': usuario.username,
+      'x-coord-pass': usuario.senha
+    };
+  }, []);
+
+  /**
+   * Carrega os registros da tabela fato fato_presenca_eventos diretamente de /api/presencas.
+   * Executado ESTRITAMENTE para coordenadores; para outros perfis limpa imediatamente o estado.
+   */
+  const carregarPresencasCoordenacao = useCallback(async () => {
+    if (!usuarioLogado || usuarioLogado.perfil !== 'coordenador') {
+      setPresencas([]);
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/presencas', {
+        cache: 'no-store',
+        headers: {
+          ...obterHeadersCoordenador(usuarioLogado),
+          'Cache-Control': 'no-cache, no-store, must-revalidate'
+        }
+      });
+
+      if (!res.ok) {
+        setPresencas([]);
+        return;
+      }
+
+      const data = await res.json();
+      if (data.configured && Array.isArray(data.presencas)) {
+        setPresencas(data.presencas);
+        try {
+          localStorage.removeItem('bicha_presencas_coord_v1');
+        } catch {}
+      } else if (!data.configured) {
+        // Fallback local exclusivo para ambiente sem Postgres configurado (apenas coordenador)
+        try {
+          const sPresencas = localStorage.getItem('bicha_presencas_coord_v1');
+          if (sPresencas) {
+            const parsed = JSON.parse(sPresencas);
+            if (Array.isArray(parsed)) setPresencas(parsed);
+          }
+        } catch {}
+      }
+    } catch (err) {
+      console.error('Erro ao carregar lista de presença da coordenação:', err);
+    }
+  }, [usuarioLogado, obterHeadersCoordenador]);
+
+  // Carrega ou limpa a lista de presença sempre que o usuário logado mudar
+  useEffect(() => {
+    carregarPresencasCoordenacao();
+  }, [carregarPresencasCoordenacao]);
+
+  /**
+   * Insere ou edita o registro de presença de um integrante do elenco em um ensaio ou reunião,
+   * persistindo diretamente na tabela fato fato_presenca_eventos via /api/presencas.
+   * 
+   * @param evento - Evento elegível do calendário (Ensaio ou Reunião presencial)
+   * @param integrante - Integrante cadastrado no elenco oficial
+   * @param status - Status de presença atribuído pela coordenação
+   * @param observacao - Observação opcional registrada pela coordenação
+   */
+  const handleSalvarPresenca = useCallback((
+    evento: EventoCalendario,
+    integrante: Integrante,
+    status: StatusPresenca,
+    observacao?: string
+  ) => {
+    if (!usuarioLogado || usuarioLogado.perfil !== 'coordenador') return;
+
+    setPresencas(prev => {
+      const atualizadas = registrarOuEditarPresenca(
+        prev,
+        evento,
+        integrante,
+        { status, observacao, registradoPor: usuarioLogado.username },
+        true
+      );
+
+      const registroSalvo = atualizadas.find(
+        p => p.eventoId === evento.id && p.integranteId === integrante.id
+      );
+
+      if (!dbConnected) {
+        try {
+          localStorage.setItem('bicha_presencas_coord_v1', JSON.stringify(atualizadas));
+        } catch {}
+      }
+
+      if (registroSalvo) {
+        fetch('/api/presencas', {
+          method: 'POST',
+          headers: obterHeadersCoordenador(usuarioLogado),
+          body: JSON.stringify({ registro: registroSalvo })
+        }).catch(err => {
+          console.error('Erro ao persistir registro na tabela fato de presenças:', err);
+        });
+      }
+
+      return atualizadas;
+    });
+  }, [usuarioLogado, dbConnected, obterHeadersCoordenador]);
+
+  /**
+   * Marca todos os integrantes ativos do elenco como presentes em lote para um evento,
+   * persistindo os registros na tabela fato fato_presenca_eventos.
+   * 
+   * @param evento - Ensaio ou reunião do calendário
+   */
+  const handleSalvarPresencasLote = useCallback((evento: EventoCalendario) => {
+    if (!usuarioLogado || usuarioLogado.perfil !== 'coordenador') return;
+
+    setPresencas(prev => {
+      const atualizadas = marcarTodosPresentesNoEvento(
+        prev,
+        evento,
+        integrantes,
+        usuarioLogado.username,
+        true
+      );
+
+      const registrosDoEvento = atualizadas.filter(p => p.eventoId === evento.id);
+
+      if (!dbConnected) {
+        try {
+          localStorage.setItem('bicha_presencas_coord_v1', JSON.stringify(atualizadas));
+        } catch {}
+      }
+
+      if (registrosDoEvento.length > 0) {
+        fetch('/api/presencas', {
+          method: 'POST',
+          headers: obterHeadersCoordenador(usuarioLogado),
+          body: JSON.stringify({ registros: registrosDoEvento })
+        }).catch(err => {
+          console.error('Erro ao persistir lote na tabela fato de presenças:', err);
+        });
+      }
+
+      return atualizadas;
+    });
+  }, [usuarioLogado, integrantes, dbConnected, obterHeadersCoordenador]);
+
+  /**
+   * Remove o registro de presença de um integrante em um evento específico da tabela fato.
+   * 
+   * @param eventoId - Identificador do evento do calendário
+   * @param integranteId - Identificador do integrante do elenco
+   */
+  const handleRemoverPresenca = useCallback((eventoId: string, integranteId: string) => {
+    if (!usuarioLogado || usuarioLogado.perfil !== 'coordenador') return;
+
+    setPresencas(prev => {
+      const atualizadas = removerPresencaEvento(prev, eventoId, integranteId, true);
+
+      if (!dbConnected) {
+        try {
+          localStorage.setItem('bicha_presencas_coord_v1', JSON.stringify(atualizadas));
+        } catch {}
+      }
+
+      fetch(
+        `/api/presencas?eventoId=${encodeURIComponent(eventoId)}&integranteId=${encodeURIComponent(integranteId)}`,
+        {
+          method: 'DELETE',
+          headers: obterHeadersCoordenador(usuarioLogado)
+        }
+      ).catch(err => {
+        console.error('Erro ao excluir registro da tabela fato de presenças:', err);
+      });
+
+      return atualizadas;
+    });
+  }, [usuarioLogado, dbConnected, obterHeadersCoordenador]);
+
+  /**
+   * Remove todos os registros de presença vinculados a um evento na tabela fato.
+   * 
+   * @param eventoId - Identificador do evento cujas presenças serão excluídas
+   */
+  const handleRemoverPresencasEvento = useCallback((eventoId: string) => {
+    if (!usuarioLogado || usuarioLogado.perfil !== 'coordenador') return;
+
+    setPresencas(prev => {
+      const atualizadas = removerPresencasDoEvento(prev, eventoId, true);
+
+      if (!dbConnected) {
+        try {
+          localStorage.setItem('bicha_presencas_coord_v1', JSON.stringify(atualizadas));
+        } catch {}
+      }
+
+      fetch(`/api/presencas?eventoId=${encodeURIComponent(eventoId)}`, {
+        method: 'DELETE',
+        headers: obterHeadersCoordenador(usuarioLogado)
+      }).catch(err => {
+        console.error('Erro ao excluir presenças do evento na tabela fato:', err);
+      });
+
+      return atualizadas;
+    });
+  }, [usuarioLogado, dbConnected, obterHeadersCoordenador]);
+
+  /**
    * Executa o logout da sessão, retornando o acesso para perfil Público.
    */
   const handleLogout = () => {
     setUsuarioLogado(null);
+    setPresencas([]);
     try {
       localStorage.removeItem('bicha_sessao_usuario_v4');
     } catch (e) {}
@@ -562,7 +786,10 @@ export default function Home() {
         temaSubtitulo={temaAno.subtituloOuSlogan}
         dbConnected={dbConnected}
         dbSyncing={dbSyncing}
-        onSync={() => recarregarDadosDoServidor(false)}
+        onSync={() => {
+          recarregarDadosDoServidor(false);
+          carregarPresencasCoordenacao();
+        }}
       />
 
       {/* Menu Fanzine de Navegação adaptado ao perfil */}
@@ -585,12 +812,18 @@ export default function Home() {
           />
         )}
 
-        {/* 2. Calendário de Ensaios & Datas (Bicho e Coordenador) */}
+        {/* 2. Calendário de Ensaios & Datas (Bicho e Coordenador; Lista de Presença exclusiva Coordenador) */}
         {activeTab === 'calendario' && !isPublico && (
           <CalendarView
             eventos={eventos}
             setEventos={setEventos}
             isAdmin={isAdmin}
+            integrantes={isAdmin ? integrantes : []}
+            presencas={isAdmin ? presencas : []}
+            onSalvarPresenca={isAdmin ? handleSalvarPresenca : undefined}
+            onSalvarPresencasLote={isAdmin ? handleSalvarPresencasLote : undefined}
+            onRemoverPresenca={isAdmin ? handleRemoverPresenca : undefined}
+            onRemoverPresencasEvento={isAdmin ? handleRemoverPresencasEvento : undefined}
           />
         )}
 
