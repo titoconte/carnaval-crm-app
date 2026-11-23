@@ -195,6 +195,70 @@ export interface EventoCalendario {
   observacoes?: string;
 }
 
+/**
+ * Status possíveis para o registro de presença de um integrante em ensaios e reuniões.
+ */
+export type StatusPresenca = 'Presente' | 'Falta' | 'Justificada' | 'Atrasado';
+
+/**
+ * Registro da tabela fato de presenças (fato_presenca_eventos).
+ * Vincula o evento do calendário ao integrante do elenco oficial com snapshot dimensional.
+ */
+export interface RegistroPresencaEvento {
+  id: string;
+  eventoId: string;
+  integranteId: string;
+  integranteNome: string;
+  grandeGrupo: GrandeGrupoElenco;
+  instrumentoOuFuncao: string;
+  eventoData: string;
+  eventoTipo: EventoCalendario['tipo'];
+  status: StatusPresenca;
+  observacao?: string;
+  registradoPor?: string;
+  registradoEm: string;
+  atualizadoEm?: string;
+}
+
+/**
+ * Resumo consolidado de frequência de um evento (ensaio ou reunião).
+ */
+export interface ResumoPresencaEvento {
+  totalElencoAtivo: number;
+  registrados: number;
+  presentes: number;
+  atrasados: number;
+  justificadas: number;
+  faltas: number;
+  semRegistro: number;
+  percentualPresenca: number;
+}
+
+/**
+ * Resumo consolidado de frequência de um integrante ao longo dos ensaios e reuniões.
+ */
+export interface ResumoFrequenciaIntegrante {
+  totalEventosElegiveis: number;
+  presentes: number;
+  atrasados: number;
+  justificadas: number;
+  faltas: number;
+  percentualFrequencia: number;
+}
+
+/**
+ * Lista inicial vazia da tabela fato de presenças em eventos.
+ */
+export const PRESENCAS_INICIAIS: RegistroPresencaEvento[] = [];
+
+/**
+ * Tipos de eventos do calendário que aceitam controle de lista de presença.
+ */
+export const TIPOS_EVENTO_COM_PRESENCA: EventoCalendario['tipo'][] = [
+  'Ensaio',
+  'Reunião presencial'
+];
+
 export const MACROCATEGORIAS_ELENCO: Integrante['grandeGrupo'][] = [
   'Bateria',
   'Sopros',
@@ -1395,6 +1459,292 @@ export function removerEventoCalendario(
   id: string
 ): EventoCalendario[] {
   return eventos.filter(ev => ev.id !== id);
+}
+
+/**
+ * Verifica se o perfil informado possui permissão para visualizar e gerenciar a lista de presença.
+ * Regra de negócio: acesso estritamente exclusivo para coordenadores.
+ * 
+ * @param perfil - Perfil de acesso do usuário atual
+ * @returns Verdadeiro apenas quando o perfil for 'coordenador'
+ */
+export function podeGerenciarPresenca(perfil: PerfilUsuario): boolean {
+  return perfil === 'coordenador';
+}
+
+/**
+ * Verifica se um evento do calendário é elegível para controle de lista de presença.
+ * Apenas 'Ensaio' e 'Reunião presencial' possuem chamada de elenco.
+ * 
+ * @param evento - Evento do calendário (ou objeto contendo a propriedade tipo)
+ * @returns Verdadeiro se o evento aceitar lista de presença
+ */
+export function eventoAceitaListaPresenca(evento: Pick<EventoCalendario, 'tipo'>): boolean {
+  return TIPOS_EVENTO_COM_PRESENCA.includes(evento.tipo);
+}
+
+/**
+ * Insere ou edita um registro de presença na tabela fato para um integrante do elenco em um evento.
+ * Operação restrita a coordenadores e permitida apenas para ensaios e reuniões presenciais.
+ * 
+ * @param presencas - Lista atual de registros da tabela fato de presenças
+ * @param evento - Evento do calendário (Ensaio ou Reunião presencial)
+ * @param integrante - Integrante cadastrado no elenco oficial
+ * @param dados - Status, observação opcional e usuário coordenador responsável
+ * @param isAdmin - Flag confirmando privilégio de coordenação
+ * @returns Lista atualizada de registros de presença ou lista original se não autorizado
+ */
+export function registrarOuEditarPresenca(
+  presencas: RegistroPresencaEvento[],
+  evento: EventoCalendario,
+  integrante: Integrante,
+  dados: {
+    status: StatusPresenca;
+    observacao?: string;
+    registradoPor?: string;
+  },
+  isAdmin: boolean
+): RegistroPresencaEvento[] {
+  if (!isAdmin || !eventoAceitaListaPresenca(evento)) {
+    return presencas;
+  }
+
+  const agora = new Date().toISOString();
+  const observacaoLimpa = dados.observacao?.trim() || undefined;
+  const existente = presencas.find(
+    p => p.eventoId === evento.id && p.integranteId === integrante.id
+  );
+
+  if (existente) {
+    return presencas.map(p => {
+      if (p.eventoId === evento.id && p.integranteId === integrante.id) {
+        return {
+          ...p,
+          integranteNome: integrante.nome,
+          grandeGrupo: integrante.grandeGrupo,
+          instrumentoOuFuncao: integrante.instrumentoOuFuncao,
+          eventoData: evento.data,
+          eventoTipo: evento.tipo,
+          status: dados.status,
+          observacao: observacaoLimpa,
+          registradoPor: dados.registradoPor || p.registradoPor,
+          atualizadoEm: agora
+        };
+      }
+      return p;
+    });
+  }
+
+  const novoRegistro: RegistroPresencaEvento = {
+    id: `pres-${evento.id}-${integrante.id}`,
+    eventoId: evento.id,
+    integranteId: integrante.id,
+    integranteNome: integrante.nome,
+    grandeGrupo: integrante.grandeGrupo,
+    instrumentoOuFuncao: integrante.instrumentoOuFuncao,
+    eventoData: evento.data,
+    eventoTipo: evento.tipo,
+    status: dados.status,
+    observacao: observacaoLimpa,
+    registradoPor: dados.registradoPor,
+    registradoEm: agora,
+    atualizadoEm: agora
+  };
+
+  return [novoRegistro, ...presencas];
+}
+
+/**
+ * Remove o registro de presença de um integrante específico em um evento.
+ * Operação exclusiva para coordenadores.
+ * 
+ * @param presencas - Lista atual de registros de presença
+ * @param eventoId - Identificador do evento do calendário
+ * @param integranteId - Identificador do integrante do elenco
+ * @param isAdmin - Flag confirmando privilégio de coordenação
+ * @returns Lista atualizada sem o registro removido
+ */
+export function removerPresencaEvento(
+  presencas: RegistroPresencaEvento[],
+  eventoId: string,
+  integranteId: string,
+  isAdmin: boolean
+): RegistroPresencaEvento[] {
+  if (!isAdmin) return presencas;
+  return presencas.filter(
+    p => !(p.eventoId === eventoId && p.integranteId === integranteId)
+  );
+}
+
+/**
+ * Remove todos os registros de presença vinculados a um evento excluído do calendário.
+ * Operação exclusiva para coordenadores.
+ * 
+ * @param presencas - Lista atual de registros de presença
+ * @param eventoId - Identificador do evento removido
+ * @param isAdmin - Flag confirmando privilégio de coordenação
+ * @returns Lista filtrada mantendo apenas registros de outros eventos
+ */
+export function removerPresencasDoEvento(
+  presencas: RegistroPresencaEvento[],
+  eventoId: string,
+  isAdmin: boolean
+): RegistroPresencaEvento[] {
+  if (!isAdmin) return presencas;
+  return presencas.filter(p => p.eventoId !== eventoId);
+}
+
+/**
+ * Marca todos os integrantes ativos do elenco como 'Presente' em um ensaio ou reunião.
+ * Operação exclusiva para coordenadores.
+ * 
+ * @param presencas - Lista atual de registros de presença
+ * @param evento - Evento elegível do calendário
+ * @param integrantes - Cadastro completo do elenco oficial
+ * @param registradoPor - Nome de usuário do coordenador
+ * @param isAdmin - Flag confirmando privilégio de coordenação
+ * @returns Lista atualizada com todos os integrantes ativos marcados como presentes
+ */
+export function marcarTodosPresentesNoEvento(
+  presencas: RegistroPresencaEvento[],
+  evento: EventoCalendario,
+  integrantes: Integrante[],
+  registradoPor: string | undefined,
+  isAdmin: boolean
+): RegistroPresencaEvento[] {
+  if (!isAdmin || !eventoAceitaListaPresenca(evento)) {
+    return presencas;
+  }
+
+  let atualizadas = [...presencas];
+  const ativos = integrantes.filter(i => i.ativo !== false);
+
+  for (const membro of ativos) {
+    const registroAtual = atualizadas.find(
+      p => p.eventoId === evento.id && p.integranteId === membro.id
+    );
+    atualizadas = registrarOuEditarPresenca(
+      atualizadas,
+      evento,
+      membro,
+      {
+        status: 'Presente',
+        observacao: registroAtual?.observacao,
+        registradoPor
+      },
+      isAdmin
+    );
+  }
+
+  return atualizadas;
+}
+
+/**
+ * Retorna todos os registros de presença vinculados a um evento específico.
+ * 
+ * @param presencas - Lista completa de registros da tabela fato
+ * @param eventoId - Identificador do evento
+ * @returns Subconjunto de registros pertencentes ao evento informado
+ */
+export function obterPresencasPorEvento(
+  presencas: RegistroPresencaEvento[],
+  eventoId: string
+): RegistroPresencaEvento[] {
+  return presencas.filter(p => p.eventoId === eventoId);
+}
+
+/**
+ * Calcula os indicadores estatísticos de presença de um evento com base no elenco ativo.
+ * 
+ * @param presencas - Lista completa de registros da tabela fato
+ * @param eventoId - Identificador do evento
+ * @param integrantes - Cadastro completo do elenco oficial
+ * @returns Resumo numérico contendo contagens por status e percentual de presença
+ */
+export function calcularResumoPresencaEvento(
+  presencas: RegistroPresencaEvento[],
+  eventoId: string,
+  integrantes: Integrante[]
+): ResumoPresencaEvento {
+  const registrosEvento = obterPresencasPorEvento(presencas, eventoId);
+  const ativos = integrantes.filter(i => i.ativo !== false);
+  const totalElencoAtivo = ativos.length;
+
+  let presentes = 0;
+  let atrasados = 0;
+  let justificadas = 0;
+  let faltas = 0;
+
+  for (const r of registrosEvento) {
+    if (r.status === 'Presente') presentes += 1;
+    else if (r.status === 'Atrasado') atrasados += 1;
+    else if (r.status === 'Justificada') justificadas += 1;
+    else if (r.status === 'Falta') faltas += 1;
+  }
+
+  const idsRegistrados = new Set(registrosEvento.map(r => r.integranteId));
+  const semRegistro = ativos.filter(i => !idsRegistrados.has(i.id)).length;
+  const baseCalculo = totalElencoAtivo > 0 ? totalElencoAtivo : registrosEvento.length;
+  const percentualPresenca = baseCalculo > 0
+    ? Math.round(((presentes + atrasados) / baseCalculo) * 100)
+    : 0;
+
+  return {
+    totalElencoAtivo,
+    registrados: registrosEvento.length,
+    presentes,
+    atrasados,
+    justificadas,
+    faltas,
+    semRegistro,
+    percentualPresenca
+  };
+}
+
+/**
+ * Calcula o histórico e o percentual de frequência de um integrante nos ensaios e reuniões cadastrados.
+ * 
+ * @param presencas - Lista completa de registros da tabela fato
+ * @param eventos - Lista de eventos do calendário
+ * @param integranteId - Identificador do integrante do elenco
+ * @returns Estatísticas consolidadas de participação do integrante
+ */
+export function calcularResumoFrequenciaIntegrante(
+  presencas: RegistroPresencaEvento[],
+  eventos: EventoCalendario[],
+  integranteId: string
+): ResumoFrequenciaIntegrante {
+  const eventosElegiveis = eventos.filter(eventoAceitaListaPresenca);
+  const idsElegiveis = new Set(eventosElegiveis.map(e => e.id));
+  const registrosMembro = presencas.filter(
+    p => p.integranteId === integranteId && idsElegiveis.has(p.eventoId)
+  );
+
+  let presentes = 0;
+  let atrasados = 0;
+  let justificadas = 0;
+  let faltas = 0;
+
+  for (const r of registrosMembro) {
+    if (r.status === 'Presente') presentes += 1;
+    else if (r.status === 'Atrasado') atrasados += 1;
+    else if (r.status === 'Justificada') justificadas += 1;
+    else if (r.status === 'Falta') faltas += 1;
+  }
+
+  const totalEventosElegiveis = eventosElegiveis.length;
+  const percentualFrequencia = totalEventosElegiveis > 0
+    ? Math.round(((presentes + atrasados) / totalEventosElegiveis) * 100)
+    : 0;
+
+  return {
+    totalEventosElegiveis,
+    presentes,
+    atrasados,
+    justificadas,
+    faltas,
+    percentualFrequencia
+  };
 }
 
 /**
